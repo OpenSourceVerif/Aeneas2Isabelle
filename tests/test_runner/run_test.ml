@@ -4,6 +4,7 @@ type runner_env = {
   aeneas_path : string;
   llbc_dir : string;
   dest_dir : string;
+  continue_on_error : bool;
 }
 
 let concat_path = List.fold_left Filename.concat ""
@@ -79,11 +80,14 @@ let run_aeneas (env : runner_env) (case : Input.t) (backend : Backend.t) =
   (* Build the command *)
   let args = [ env.aeneas_path; input_file ] @ dest_command @ backend_command in
   (* Abort on error to help debugging, except for borrow-check failure cases
-     where that would be too noisy. *)
+     where that would be too noisy. In continue mode, let Aeneas process as
+     much of the input as possible before returning an error. *)
   let abort_on_error =
-    match action with
-    | KnownFailure when backend = Backend.BorrowCheck -> []
-    | _ -> [ "-abort-on-error" ]
+    if env.continue_on_error then []
+    else
+      match action with
+      | KnownFailure when backend = Backend.BorrowCheck -> []
+      | _ -> [ "-abort-on-error" ]
   in
   let args =
     List.concat [ args; aeneas_options; abort_on_error ]
@@ -108,7 +112,16 @@ let run_aeneas (env : runner_env) (case : Input.t) (backend : Backend.t) =
   (* Run Aeneas *)
   match action with
   | Skip -> ()
-  | Normal -> Command.run_command_expecting_success cmd
+  | Normal ->
+      if env.continue_on_error then
+        match Command.run cmd with
+        | Success -> ()
+        | Failure ->
+            prerr_endline
+              ("\x1b[33m[test_runner]\x1b[0m Ignoring failed Aeneas command "
+             ^ "because AENEAS_TEST_CONTINUE_ON_ERROR is enabled: `"
+             ^ Command.to_string cmd ^ "`")
+      else Command.run_command_expecting_success cmd
   | KnownFailure ->
       let out =
         if check_output then
@@ -194,7 +207,21 @@ let () =
         | aeneas_options -> (None, aeneas_options)
       in
       let runner_env =
-        { charon_path; aeneas_path; llbc_dir; dest_dir = "tests" }
+        let continue_on_error =
+          match Sys.getenv_opt "AENEAS_TEST_CONTINUE_ON_ERROR" with
+          | Some value -> (
+              match String.lowercase_ascii value with
+              | "1" | "true" | "yes" -> true
+              | _ -> false)
+          | None -> false
+        in
+        {
+          charon_path;
+          aeneas_path;
+          llbc_dir;
+          dest_dir = "tests";
+          continue_on_error;
+        }
       in
       let test_case = Input.build test_path in
       let test_case =

@@ -6,6 +6,12 @@
  (name run_test)
  (modules Backend Input Utils run_test))
 
+(executable
+ (public_name isabelle_test_runner)
+ (libraries unix)
+ (name run_isabelle)
+ (modules run_isabelle))
+
 (env
  (dev
   (flags :standard -warn-error -5@8-11-14-32-33-20-21-26-27-39)))
