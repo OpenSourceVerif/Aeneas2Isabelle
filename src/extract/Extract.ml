@@ -594,7 +594,9 @@ let extract_binop (span : Meta.span) (ctx : extraction_ctx)
   (* Some binary operations have a special notation depending on the backend *)
   (match (backend (), binop) with
   | (HOL4 | Isabelle), (Eq _ | Ne _)
-  | (FStar | Coq | Lean), (Eq _ | Lt _ | Le _ | Ne _ | Ge _ | Gt _ | BoolOr)
+  | (FStar | Coq | Lean), (Eq _ | Lt _ | Le _ | Ne _ | Ge _ | Gt _)
+  | (FStar | Lean), (BoolAnd | BoolOr)
+  | Lean, BoolXor
   | ( Lean,
       ( Div (OPanic, _)
       | Rem (OPanic, _)
@@ -626,14 +628,15 @@ let extract_binop (span : Meta.span) (ctx : extraction_ctx)
         | BitXor _ -> "^^^"
         | BitOr _ -> "|||"
         | BitAnd _ -> "&&&"
+        | BoolAnd -> "&&"
         | BoolOr -> "||"
+        | BoolXor -> "^^"
         | _ ->
             [%add_loc] admit_string span
               ("Unimplemented binary operation: " ^ binop_to_string ctx binop)
       in
       let binop_str =
         match (backend (), binop) with
-        | Coq, BoolOr -> binop_str
         | Coq, _ -> "s" ^ binop_str
         | _ -> binop_str
       in
@@ -2176,7 +2179,17 @@ let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
       [ "reducible" ]
     else []
   in
-  let attributes = rust_attributes @ reduc_attribute in
+  (* A trait method's default-implementation body is emitted with the
+     [trait_default] attribute so that the [impl_def] command can unfold it when
+     resolving self-referential trait-impl fields (see the TraitDefault elab). *)
+  let trait_default =
+    if backend () = Lean then
+      match def.src with
+      | TraitDeclItem _ -> [ "trait_default" ]
+      | _ -> []
+    else []
+  in
+  let attributes = rust_attributes @ reduc_attribute @ trait_default in
   extract_attributes span ctx fmt def.item_meta.name None attributes "rust_fun"
     []
     ~is_external:(not def.item_meta.is_local);
@@ -2992,7 +3005,7 @@ let extract_trait_decl_type_names (ctx : extraction_ctx)
 
 (** Similar to {!extract_trait_decl_register_names} *)
 let extract_trait_decl_method_names (ctx : extraction_ctx)
-    (trait_decl : trait_decl) (trait_decl_name : string)
+    (trait_decl : trait_decl) (_trait_decl_name : string)
     (builtin_info : Pure.builtin_trait_decl_info option) : extraction_ctx =
   [%ltrace trait_decl.name];
   let methods = trait_decl.methods in
@@ -3076,14 +3089,10 @@ let extract_trait_decl_method_names (ctx : extraction_ctx)
           (TraitMethodId (trait_decl.def_id, method_id))
           fun_name ctx
       in
-      (* Also register the default implementation if there is *)
-      match default_id with
-      | Some def_id when backend () = Lean ->
-          ctx_add trait_decl.item_meta.span
-            (FunId (FromLlbc (FunId (FRegular def_id), None)))
-            (trait_decl_name ^ fun_name ^ ".default")
-            ctx
-      | _ -> ctx)
+      (* We do not register the default_id: it is registered when registering
+         the default method itself. *)
+      ignore default_id;
+      ctx)
     ctx method_names
 
 (** Similar to {!extract_type_decl_register_names} *)

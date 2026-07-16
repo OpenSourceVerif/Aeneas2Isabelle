@@ -384,7 +384,7 @@ and translate_function_call_aux (call : S.call) (e : S.expr) (ctx : bs_ctx) :
           let decls_ctx = ctx.decls_ctx in
           let dsg =
             translate_inst_fun_sig_to_decomposed_fun_type (Some ctx.span)
-              decls_ctx fid_t inst_sg
+              decls_ctx fid_t inst_sg sg.output
               (List.map (fun _ -> None) sg.inputs)
           in
           let back_tys = compute_back_tys_with_info dsg in
@@ -627,9 +627,15 @@ and translate_function_call_aux (call : S.call) (e : S.expr) (ctx : bs_ctx) :
             in
             let binop =
               match binop with
-              | Expressions.BitXor -> BitXor (get_single_int_ty ())
-              | Expressions.BitAnd -> BitAnd (get_single_int_ty ())
-              | Expressions.BitOr -> BitOr (get_single_int_ty ())
+              | Expressions.BitXor ->
+                  if arg0.ty = TLiteral TBool then BoolXor
+                  else BitXor (get_single_int_ty ())
+              | Expressions.BitAnd ->
+                  if arg0.ty = TLiteral TBool then BoolAnd
+                  else BitAnd (get_single_int_ty ())
+              | Expressions.BitOr ->
+                  if arg0.ty = TLiteral TBool then BoolOr
+                  else BitOr (get_single_int_ty ())
               | Expressions.Eq ->
                   [%sanity_check] ctx.span (arg0.ty = arg1.ty);
                   Eq arg0.ty
