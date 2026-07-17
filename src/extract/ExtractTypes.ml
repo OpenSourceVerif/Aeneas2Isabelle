@@ -582,8 +582,6 @@ and extract_trait_decl_ref (span : Meta.span) (ctx : extraction_ctx)
     (tr : trait_decl_ref) : unit =
   let use_brackets = tr.decl_generics <> empty_generic_args && inside in
   let name = ctx_get_trait_decl span tr.trait_decl_id ctx in
-  if use_brackets then F.pp_print_string fmt "(";
-  F.pp_print_string fmt name;
   (* Lookup the information about the implicit/explicit parameters *)
   let explicit =
     match TraitDeclId.Map.find_opt tr.trait_decl_id ctx.trans_trait_decls with
@@ -593,7 +591,15 @@ and extract_trait_decl_ref (span : Meta.span) (ctx : extraction_ctx)
   (* There is something subtle here: the trait obligations for the implemented
      trait are put inside the parent clauses, so we must ignore them here *)
   let generics = { tr.decl_generics with trait_refs = [] } in
-  extract_generic_args span ctx fmt no_params_tys ~explicit generics;
+  if use_brackets then F.pp_print_string fmt "(";
+  if backend () = Isabelle then (
+    extract_generic_args span ctx fmt no_params_tys generics;
+    if generics.types <> [] || generics.const_generics <> [] then
+      F.pp_print_space fmt ();
+    F.pp_print_string fmt name)
+  else (
+    F.pp_print_string fmt name;
+    extract_generic_args span ctx fmt no_params_tys ~explicit generics);
   if use_brackets then F.pp_print_string fmt ")"
 
 and extract_generic_args (span : Meta.span) (ctx : extraction_ctx)
@@ -805,10 +811,18 @@ and extract_trait_clause_type (span : Meta.span) (ctx : extraction_ctx)
     (fmt : F.formatter) (no_params_tys : TypeDeclId.Set.t)
     (clause : trait_param) : unit =
   let trait_name = ctx_get_trait_decl span clause.trait_id ctx in
-  F.pp_print_string fmt trait_name;
-  (* let span = (TraitDeclId.Map.find clause.trait_id ctx.trans_trait_decls).span in
-   *)
-  extract_generic_args span ctx fmt no_params_tys clause.generics
+  if backend () = Isabelle then (
+    extract_generic_args span ctx fmt no_params_tys clause.generics;
+    if
+      clause.generics.types <> [] || clause.generics.const_generics <> []
+      || clause.generics.trait_refs <> []
+    then F.pp_print_space fmt ();
+    F.pp_print_string fmt trait_name)
+  else (
+    F.pp_print_string fmt trait_name;
+    (* let span = (TraitDeclId.Map.find clause.trait_id ctx.trans_trait_decls).span in
+     *)
+    extract_generic_args span ctx fmt no_params_tys clause.generics)
 
 (** Compute the names for all the top-level identifiers used in a type
     definition (type name, variant names, field names, etc. but not type
@@ -981,31 +995,19 @@ let extract_type_decl_register_names (ctx : extraction_ctx) (def : type_decl) :
   ctx
 
 (** Print the variants *)
-let extract_type_decl_variant (first : bool) (span : Meta.span) (ctx : extraction_ctx)
+let extract_type_decl_variant (span : Meta.span) (ctx : extraction_ctx)
     (fmt : F.formatter) (type_decl_group : TypeDeclId.Set.t)
     (type_name : string) (type_params : string list) (cg_params : string list)
     (cons_name : string) (fields : field list) : unit =
-  F.pp_print_space fmt ();
+  if backend () <> Isabelle then F.pp_print_space fmt ();
   (* variant box *)
   F.pp_open_hvbox fmt ctx.indent_incr;
   (* [| Cons :]
    * Note that we really don't want any break above so we print everything
    * at once. *)
   let opt_colon = if backend () <> HOL4 && backend () <> Isabelle then " :" else "" in
-  if backend () = Isabelle then(
-    if first then(
-      F.pp_print_newline fmt ();
-      F.pp_print_string fmt "    ";
-      (* variant box *)
-      F.pp_open_hvbox fmt ctx.indent_incr;
-      F.pp_print_string fmt cons_name;)
-    else(
-      F.pp_print_string fmt " |";
-      F.pp_force_newline fmt ();
-      F.pp_print_string fmt "    ";
-      (* variant box *)
-      F.pp_open_hvbox fmt ctx.indent_incr;
-      F.pp_print_string fmt cons_name))
+  if backend () = Isabelle then
+    F.pp_print_string fmt cons_name
   else
     F.pp_print_string fmt ("| " ^ cons_name ^ opt_colon);
   let print_field (fid : FieldId.id) (f : field) (ctx : extraction_ctx) :
@@ -1112,8 +1114,11 @@ let extract_type_decl_enum_body (ctx : extraction_ctx) (fmt : F.formatter)
        id (in the case of Lean) *)
     let cons_name = ctx_compute_variant_name ctx def v in
     let fields = v.fields in
-    let first = (VariantId.to_int _variant_id) = 0 in
-    extract_type_decl_variant first def.item_meta.span ctx fmt type_decl_group
+    if backend () = Isabelle then (
+      F.pp_force_newline fmt ();
+      F.pp_print_string fmt
+        (if VariantId.to_int _variant_id = 0 then "    " else "  | "));
+    extract_type_decl_variant def.item_meta.span ctx fmt type_decl_group
       def_name type_params cg_params cons_name fields
   in
   (* Print the variants *)
@@ -1124,33 +1129,37 @@ let extract_type_decl_enum_body (ctx : extraction_ctx) (fmt : F.formatter)
 let extract_type_decl_tuple_struct_body (span : Meta.span)
     (ctx : extraction_ctx) (fmt : F.formatter) (fields : field list) : unit =
   (* If the type is empty, we need to have a special treatment *)
-  match fields with
-  | [] -> (
+  if fields = [] then (
     F.pp_print_space fmt ();
     F.pp_print_string fmt (unit_name ()))
-  | first :: rest -> (
+  else (
+    (* Open additional boxes *)
+    F.pp_print_break fmt 1 2;
+    F.pp_open_hovbox fmt 0;
+    (* In Isabelle, the right-hand side of a type synonym is quoted. *)
+    let is_isabelle = backend () = Isabelle in
+    if is_isabelle then F.pp_print_string fmt "\"";
+    (* Print the product type. *)
     let sep =
       match backend () with
       | Coq | FStar | HOL4 -> "*"
       | Lean | Isabelle -> "×"
     in
-    F.pp_print_space fmt ();
-    if backend () = Isabelle then F.pp_print_string fmt "\"";
-    extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false first.field_ty;
-    if rest <> [] then (
-      F.pp_print_space fmt ();
-      F.pp_print_string fmt sep
-    );
+    (* Isabelle's product type binds more tightly than the function arrow.  In
+       a product with several fields, parenthesize compound field types so that
+       [(a ⇒ b) × c] cannot be parsed as [a ⇒ (b × c)]. *)
+    let inside = is_isabelle && List.length fields > 1 in
     Collections.List.iter_link
       (fun () ->
         F.pp_print_space fmt ();
-        F.pp_print_string fmt sep)
+        F.pp_print_string fmt sep;
+        F.pp_print_space fmt ())
       (fun (f : field) ->
-        F.pp_print_space fmt ();
-        extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false f.field_ty)
-      rest;
-    if backend () = Isabelle then F.pp_print_string fmt "\"";
-  )
+        extract_ty span ctx fmt TypeDeclId.Set.empty ~inside f.field_ty)
+      fields;
+    if is_isabelle then F.pp_print_string fmt "\"";
+    (* Close the boxes *)
+    F.pp_close_box fmt ())
 
 let extract_type_decl_struct_body (ctx : extraction_ctx) (fmt : F.formatter)
     (type_decl_group : TypeDeclId.Set.t) (kind : decl_kind) (def : type_decl)
@@ -1213,19 +1222,61 @@ let extract_type_decl_struct_body (ctx : extraction_ctx) (fmt : F.formatter)
   (* Note that we already printed: [type t =] *)
   let is_rec = decl_is_from_rec_group kind in
   let _ =
-    if backend () = FStar && fields = [] then (
+    if backend () = Isabelle then (
+      (* Isabelle records cannot be recursive.  Non-recursive structures are
+         extracted as records, while recursive ones are extracted as datatypes
+         with named selectors. *)
+      let print_field (in_datatype : bool) (field_id : FieldId.id) (f : field) :
+          unit =
+        let field_name =
+          ctx_get_field def.item_meta.span (TAdtId def.def_id) field_id ctx
+        in
+        F.pp_open_box fmt ctx.indent_incr;
+        if in_datatype then F.pp_print_string fmt "(";
+        F.pp_print_string fmt field_name;
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt (if in_datatype then ":" else "::");
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt "\"";
+        extract_ty def.item_meta.span ctx fmt type_decl_group ~inside:false
+          f.field_ty;
+        F.pp_print_string fmt "\"";
+        if in_datatype then F.pp_print_string fmt ")";
+        F.pp_close_box fmt ()
+      in
+      let fields = FieldId.mapi (fun fid f -> (fid, f)) fields in
+      if fields = [] then (
+        (* Empty records are normally handled by
+           [extract_type_decl_isabelle_empty_record]. *)
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt (unit_name ()))
+      else if is_rec then (
+        F.pp_print_break fmt 1 ctx.indent_incr;
+        F.pp_open_hvbox fmt 0;
+        F.pp_print_string fmt
+          (ctx_get_struct def.item_meta.span (TAdtId def.def_id) ctx);
+        List.iter
+          (fun (fid, f) ->
+            F.pp_print_space fmt ();
+            print_field true fid f)
+          fields;
+        F.pp_close_box fmt ())
+      else (
+        F.pp_print_break fmt 1 ctx.indent_incr;
+        F.pp_open_vbox fmt 0;
+        Collections.List.iter_link (F.pp_print_space fmt)
+          (fun (fid, f) -> print_field false fid f)
+          fields;
+        F.pp_close_box fmt ()))
+    else if backend () = FStar && fields = [] then (
       F.pp_print_space fmt ();
       F.pp_print_string fmt (unit_name ()))
     else if backend () = Lean && fields = [] then ()
       (* If the definition is recursive, we may need to extract it as an inductive
          (instead of a record). We start with the "normal" case: we extract it
          as a record. *)
-    else if backend () = Isabelle && fields = [] then (
-      F.pp_print_space fmt ();
-      F.pp_print_string fmt (unit_name())
-    )
-    else if (not is_rec) || (backend () <> Coq && backend () <> Lean && backend () <> Isabelle) then (
-      if backend () <> Lean && backend () <> Isabelle then F.pp_print_space fmt ();
+    else if (not is_rec) || (backend () <> Coq && backend () <> Lean) then (
+      if backend () <> Lean then F.pp_print_space fmt ();
       (* If Coq: print the constructor name *)
       (* TODO: remove superfluous test not is_rec below *)
       if backend () = Coq && not is_rec then (
@@ -1233,40 +1284,31 @@ let extract_type_decl_struct_body (ctx : extraction_ctx) (fmt : F.formatter)
           (ctx_get_struct def.item_meta.span (TAdtId def.def_id) ctx);
         F.pp_print_string fmt " ");
       (match backend () with
-      | Lean | Isabelle -> ()
+      | Lean -> ()
       | FStar | Coq -> F.pp_print_string fmt "{"
-      | HOL4 -> F.pp_print_string fmt "<|");
+      | HOL4 -> F.pp_print_string fmt "<|"
+      | Isabelle -> [%internal_error] def.item_meta.span);
       F.pp_print_break fmt 1 ctx.indent_incr;
       (* The body itself *)
       (* Open a box for the body *)
       (match backend () with
       | Coq | FStar | HOL4 -> F.pp_open_hvbox fmt 0
-      | Lean | Isabelle -> F.pp_open_vbox fmt 0);
+      | Lean -> F.pp_open_vbox fmt 0
+      | Isabelle -> [%internal_error] def.item_meta.span);
       (* Print the fields *)
       let print_field (field_id : FieldId.id) (f : field) : unit =
         let field_name =
           ctx_get_field def.item_meta.span (TAdtId def.def_id) field_id ctx
         in
-        if backend () = Isabelle then (
-          let field_name = StringUtils.capitalize_first_letter
-          (ctx_compute_type_name_no_suffix ctx def.item_meta def.item_meta.name
-          ^ "_" ^ field_name) in
-          (* Open a box for the field *)
-          F.pp_open_box fmt ctx.indent_incr;
-          F.pp_print_string fmt field_name;
-        )
-        else(
-          (* Open a box for the field *)
-          F.pp_open_box fmt ctx.indent_incr;
-          F.pp_print_string fmt field_name;
-        );
+        (* Open a box for the field *)
+        F.pp_open_box fmt ctx.indent_incr;
+        F.pp_print_string fmt field_name;
         F.pp_print_space fmt ();
-        if backend () = Isabelle then F.pp_print_string fmt "::" else F.pp_print_string fmt ":";
+        F.pp_print_string fmt ":";
         F.pp_print_space fmt ();
-        if backend () = Isabelle then F.pp_print_string fmt "\"";
-        extract_ty def.item_meta.span ctx fmt type_decl_group ~inside:false f.field_ty;
-        if backend () = Isabelle then F.pp_print_string fmt "\"";
-        if backend () <> Lean && backend () <> Isabelle then F.pp_print_string fmt ";";
+        extract_ty def.item_meta.span ctx fmt type_decl_group ~inside:false
+          f.field_ty;
+        if backend () <> Lean then F.pp_print_string fmt ";";
         (* Close the box for the field *)
         F.pp_close_box fmt ()
       in
@@ -1277,13 +1319,14 @@ let extract_type_decl_struct_body (ctx : extraction_ctx) (fmt : F.formatter)
       (* Close the box for the body *)
       F.pp_close_box fmt ();
       match backend () with
-      | Lean | Isabelle -> ()
+      | Lean -> ()
       | FStar | Coq ->
           F.pp_print_space fmt ();
           F.pp_print_string fmt "}"
       | HOL4 ->
           F.pp_print_space fmt ();
-          F.pp_print_string fmt "|>")
+          F.pp_print_string fmt "|>"
+      | Isabelle -> [%internal_error] def.item_meta.span)
     else (
       (* We extract for Coq or Lean, and we have a recursive record, or a record in
          a group of mutually recursive types: we extract it as an inductive type *)
@@ -1295,11 +1338,11 @@ let extract_type_decl_struct_body (ctx : extraction_ctx) (fmt : F.formatter)
          i.e., instead of generating `inductive Foo := | MkFoo ...` like in Coq
          we generate `inductive Foo := | mk ... *)
       let cons_name =
-        if backend () = Lean || backend () = Isabelle then "mk"
+        if backend () = Lean then "mk"
         else ctx_get_struct def.item_meta.span (TAdtId def.def_id) ctx
       in
       let def_name = ctx_get_local_type def.item_meta.span def.def_id ctx in
-      extract_type_decl_variant true def.item_meta.span ctx fmt type_decl_group
+      extract_type_decl_variant def.item_meta.span ctx fmt type_decl_group
         def_name type_params cg_params cons_name fields)
   in
   ()
@@ -1339,7 +1382,7 @@ let extract_doc_comment (fmt : F.formatter) (sl : string list) : unit =
     match backend () with
     | Coq | FStar | HOL4 -> ("(** ", 4, " *)")
     | Lean -> ("/-- ", 4, " -/")
-    | Isabelle -> ("(* ", 4, " *)")
+    | Isabelle -> ("(* ", 3, " *)")
   in
   extract_comment_block fmt delimiters sl
 
@@ -1433,6 +1476,27 @@ let extract_attributes (span : Meta.span) (ctx : extraction_ctx)
 let insert_req_space (fmt : F.formatter) (space : bool ref) : unit =
   if !space then space := false else F.pp_print_space fmt ()
 
+(** Print the type parameters on the left-hand side of an Isabelle type
+    declaration.  Isabelle implicitly quantifies type variables in function
+    declarations, but type constructors declare their parameters before their
+    name: ['a list_t] or [('a, 'b) pair_t]. *)
+let extract_isabelle_type_decl_params (fmt : F.formatter)
+    (type_params : string list) : unit =
+  match type_params with
+  | [] -> ()
+  | [ type_param ] ->
+      F.pp_print_string fmt type_param;
+      F.pp_print_space fmt ()
+  | _ ->
+      F.pp_print_string fmt "(";
+      Collections.List.iter_link
+        (fun () ->
+          F.pp_print_string fmt ",";
+          F.pp_print_space fmt ())
+        (F.pp_print_string fmt) type_params;
+      F.pp_print_string fmt ")";
+      F.pp_print_space fmt ()
+
 (** - [as_implicits]: if [explicit] is [None], then we use this parameter to
       control whether the parameters should be extract as explicit or implicit.
 *)
@@ -1443,6 +1507,40 @@ let extract_generic_params (span : Meta.span) (ctx : extraction_ctx)
     (origin : generic_origin) (generics : generic_params)
     (explicit : explicit_info option) (type_params : string list)
     (cg_params : string list) (trait_clauses : string list) : unit =
+  if backend () = Isabelle then (
+    (* Isabelle implicitly quantifies type variables, so [type_params] are not
+       printed here.  Const generics and trait clauses, however, are runtime
+       parameters in the current pure model and must remain explicit. *)
+    let insert_req_space () =
+      match space with
+      | None -> F.pp_print_space fmt ()
+      | Some space -> insert_req_space fmt space
+    in
+    let print_typed_param (name : string) (print_ty : unit -> unit) : unit =
+      insert_req_space ();
+      F.pp_print_string fmt "(";
+      F.pp_print_string fmt name;
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt "::";
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt "\"";
+      print_ty ();
+      F.pp_print_string fmt "\")"
+    in
+    List.iter2
+      (fun (name : string) (var : const_generic_param) ->
+        print_typed_param name (fun () -> extract_literal_type ctx fmt var.ty))
+      cg_params generics.const_generics;
+    List.iter2
+      (fun (name : string) (clause : trait_param) ->
+        let registered_name =
+          ctx_get_local_trait_clause span origin clause.clause_id ctx
+        in
+        [%sanity_check] span (name = registered_name);
+        print_typed_param name (fun () ->
+            extract_trait_clause_type span ctx fmt no_params_tys clause))
+      trait_clauses generics.trait_clauses)
+  else
   let all_params = List.concat [ type_params; cg_params; trait_clauses ] in
   (* HOL4 doesn't support const generics *)
   [%cassert] span
@@ -1472,9 +1570,7 @@ let extract_generic_params (span : Meta.span) (ctx : extraction_ctx)
         insert_req_space ();
         F.pp_print_string fmt ":");
       insert_req_space ();
-      match backend () with
-      | Isabelle -> F.pp_print_string fmt "∀"  (* Isabelle use ∀ *)
-      | _ -> F.pp_print_string fmt "forall");
+      F.pp_print_string fmt "forall");
     if use_fun then (
       insert_req_space ();
       F.pp_print_string fmt "fun");
@@ -1609,7 +1705,7 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
       def.generics ctx
   in
   (* Add a break before *)
-  if backend () <> HOL4 && backend () <> Isabelle || not (decl_is_first_from_group kind) then
+  if backend () <> HOL4 || not (decl_is_first_from_group kind) then
     F.pp_print_break fmt 0 0;
   (* Print a comment to link the extracted type to its original rust definition *)
   (let name =
@@ -1721,9 +1817,18 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
   F.pp_open_hovbox fmt ctx.indent_incr;
   (* > "type TYPE_NAME" *)
   let qualif = type_decl_kind_to_qualif span kind type_kind in
-  (match qualif with
-  | Some qualif -> F.pp_print_string fmt (qualif ^ " " ^ def_name)
-  | None -> F.pp_print_string fmt def_name);
+  if backend () = Isabelle then (
+    (match qualif with
+    | Some qualif ->
+        F.pp_print_string fmt qualif;
+        F.pp_print_space fmt ()
+    | None -> ());
+    extract_isabelle_type_decl_params fmt type_params;
+    F.pp_print_string fmt def_name)
+  else
+    (match qualif with
+    | Some qualif -> F.pp_print_string fmt (qualif ^ " " ^ def_name)
+    | None -> F.pp_print_string fmt def_name);
   (* HOL4 doesn't support const generics, and type definitions in HOL4 don't
      support trait clauses *)
   [%cassert] span
@@ -1731,8 +1836,17 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
     "Constant generics and type definitions with trait clauses are not \
      supported yet when generating code for HOL4";
   (* Print the generic parameters *)
-  extract_generic_params span ctx_body fmt type_decl_group Item ~use_forall
-    def.generics (Some def.explicit_info) type_params cg_params trait_clauses;
+  if backend () = Isabelle then (
+    if cg_params <> [] then
+      [%save_error] span
+        "Constant generic parameters on Isabelle type declarations are not \
+         supported";
+    if trait_clauses <> [] then
+      [%save_error] span
+        "Trait clauses on Isabelle type declarations are not supported")
+  else
+    extract_generic_params span ctx_body fmt type_decl_group Item ~use_forall
+      def.generics (Some def.explicit_info) type_params cg_params trait_clauses;
   (* Print the "=" if we extract the body*)
   if extract_body then (
     F.pp_print_space fmt ();
@@ -1788,33 +1902,68 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
     F.pp_print_break fmt 0 0
 
 let extract_type_decl_isabelle_opaque (ctx : extraction_ctx) (fmt : F.formatter) (def : type_decl) : unit =
-  let def_name = ctx_get_local_type def.item_meta.span def.def_id ctx in
+  let span = def.item_meta.span in
+  let def_name = ctx_get_local_type span def.def_id ctx in
+  let _, type_params, cg_params, trait_clauses =
+    ctx_add_generic_params span def.item_meta.name Item def.llbc_generics
+      def.generics ctx
+  in
+  if cg_params <> [] then
+    [%save_error] span
+      "Constant generic parameters on Isabelle type declarations are not \
+       supported";
+  if trait_clauses <> [] then
+    [%save_error] span
+      "Trait clauses on Isabelle type declarations are not supported";
+  F.pp_print_break fmt 0 0;
   (* add comments *)
   extract_comment_with_span ctx fmt
     [ "[" ^ name_to_string ctx def.item_meta.name ^ "]" ]
     (if !Config.extract_external_name_patterns && not def.item_meta.is_local
      then Some def.item_meta.name
      else None)
-    def.item_meta.span;
+    span;
   F.pp_print_break fmt 0 0;
   (* opaque type definition *)
   F.pp_open_hvbox fmt 0;
-  F.pp_print_string fmt "type ";
+  F.pp_print_string fmt "typedecl ";
+  extract_isabelle_type_decl_params fmt type_params;
   F.pp_print_string fmt def_name;
-  (* add type params *)
-  let _(*ctx_body*), type_params, _(*cg_params*), _(*trait_clauses*) =
-    ctx_add_generic_params def.item_meta.span def.item_meta.name Item
-      def.llbc_generics def.generics ctx
-  in
-  if type_params <> [] then (
-    F.pp_print_space fmt ();
-    List.iter (fun p -> F.pp_print_string fmt p; F.pp_print_space fmt ()) type_params);
   F.pp_close_box fmt ();
   F.pp_print_break fmt 0 0
 
-(** Extract an empty record type declaration for Isabelle *)
+(** Extract an empty enumeration to Isabelle/HOL.
+
+    Isabelle/HOL has no empty types, so an empty Rust enumeration cannot be
+    represented faithfully as a datatype. We declare an abstract type instead;
+    unlike an empty [datatype] command, this at least produces valid Isabelle
+    syntax. *)
+let extract_type_decl_isabelle_empty_enum (ctx : extraction_ctx)
+    (fmt : F.formatter) (def : type_decl) : unit =
+  [%warn] def.item_meta.span
+    ("Isabelle/HOL has no empty types: extracting the empty enumeration "
+    ^ name_to_string ctx def.item_meta.name
+    ^ " as an abstract type");
+  extract_type_decl_isabelle_opaque ctx fmt def
+
+(** Extract an empty record type declaration for Isabelle.
+
+    Empty records are represented as [unit], consistently with the extraction
+    of their values. *)
 let extract_type_decl_isabelle_empty_record (ctx : extraction_ctx) (fmt : F.formatter) (def : type_decl) : unit =
   let def_name = ctx_get_local_type def.item_meta.span def.def_id ctx in
+  let _, type_params, cg_params, trait_clauses =
+    ctx_add_generic_params def.item_meta.span def.item_meta.name Item
+      def.llbc_generics def.generics ctx
+  in
+  if cg_params <> [] then
+    [%save_error] def.item_meta.span
+      "Constant generic parameters on Isabelle type declarations are not \
+       supported";
+  if trait_clauses <> [] then
+    [%save_error] def.item_meta.span
+      "Trait clauses on Isabelle type declarations are not supported";
+  F.pp_print_break fmt 0 0;
   (* add comments *)
   extract_comment_with_span ctx fmt
     [ "[" ^ name_to_string ctx def.item_meta.name ^ "]" ]
@@ -1823,13 +1972,12 @@ let extract_type_decl_isabelle_empty_record (ctx : extraction_ctx) (fmt : F.form
      else None)
     def.item_meta.span;
   F.pp_print_break fmt 0 0;
-  (* empty record definition *)
+  (* Empty record definition *)
   F.pp_open_hvbox fmt 0;
-  F.pp_print_string fmt "record ";
+  F.pp_print_string fmt "type_synonym ";
+  extract_isabelle_type_decl_params fmt type_params;
   F.pp_print_string fmt def_name;
-  F.pp_print_string fmt " = ";
-  F.pp_force_newline fmt ();
-  F.pp_print_string fmt "    dummy :: unit";
+  F.pp_print_string fmt " = unit";
   F.pp_close_box fmt ();
   F.pp_print_break fmt 0 0
 
@@ -1896,14 +2044,17 @@ let extract_type_decl (ctx : extraction_ctx) (fmt : F.formatter)
     match backend () with
     | HOL4 when is_empty_record_type_decl def ->
         extract_type_decl_hol4_empty_record ctx fmt def
+    | Isabelle when def.kind = Enum [] ->
+        extract_type_decl_isabelle_empty_enum ctx fmt def
     | Isabelle when is_empty_record_type_decl def ->
         extract_type_decl_isabelle_empty_record ctx fmt def
     | _ ->
         extract_type_decl_gen ctx fmt type_decl_group kind def extract_body
   else
     match backend () with
-    | FStar | Coq | Lean | Isabelle ->
+    | FStar | Coq | Lean ->
         extract_type_decl_gen ctx fmt type_decl_group kind def extract_body
+    | Isabelle -> extract_type_decl_isabelle_opaque ctx fmt def
     | HOL4 -> extract_type_decl_hol4_opaque ctx fmt def
 
 (** Generate a [Argument] instruction in Coq to allow omitting implicit

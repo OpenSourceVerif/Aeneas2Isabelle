@@ -3366,7 +3366,7 @@ let extract_trait_decl (ctx : extraction_ctx) (fmt : F.formatter)
     F.pp_print_space fmt ());
   F.pp_print_string fmt qualif;
   F.pp_print_space fmt ();
-  F.pp_print_string fmt decl_name;
+  if backend () <> Isabelle then F.pp_print_string fmt decl_name;
   (* Print the generics *)
   let generics = decl.generics in
   (* Add the type and const generic params - note that we need those bindings only for the
@@ -3402,8 +3402,19 @@ let extract_trait_decl (ctx : extraction_ctx) (fmt : F.formatter)
     ctx_add_generic_params decl.item_meta.span decl.item_meta.name Item
       decl.llbc_generics generics ctx
   in
-  extract_generic_params decl.item_meta.span ctx fmt TypeDeclId.Set.empty Item
-    generics (Some decl.explicit_info) type_params cg_params trait_clauses;
+  if backend () = Isabelle then (
+    extract_isabelle_type_decl_params fmt type_params;
+    F.pp_print_string fmt decl_name;
+    if cg_params <> [] then
+      [%save_error] decl.item_meta.span
+        "Constant generic parameters on Isabelle trait declarations are not \
+         supported";
+    if trait_clauses <> [] then
+      [%save_error] decl.item_meta.span
+        "Parent trait clauses on Isabelle trait declarations are not supported")
+  else
+    extract_generic_params decl.item_meta.span ctx fmt TypeDeclId.Set.empty Item
+      generics (Some decl.explicit_info) type_params cg_params trait_clauses;
 
   F.pp_print_space fmt ();
   if is_empty && backend () = FStar then (

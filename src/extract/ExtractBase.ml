@@ -1787,7 +1787,8 @@ let ctx_compute_field_name (def : type_decl) (field_meta : Meta.attr_info)
   in
   match backend () with
   | Lean | HOL4 -> name
-  | Coq | FStar | Isabelle -> StringUtils.lowercase_first_letter name
+  | Coq | FStar -> StringUtils.lowercase_first_letter name
+  | Isabelle -> StringUtils.capitalize_first_letter name
 
 (** Inputs:
     - type name
