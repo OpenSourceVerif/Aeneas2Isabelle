@@ -1290,6 +1290,13 @@ let isabelle_standard_library_names =
     "choose"; "range"; "univ"
   ]
 
+(** Avoid shadowing names already provided by Isabelle/HOL.  A trailing prime
+    is part of an Isabelle identifier and keeps the generated name readable. *)
+let escape_isabelle_standard_library_name (name : string) : string =
+  if backend () = Isabelle && List.mem name isabelle_standard_library_names then
+    name ^ "'"
+  else name
+
 let builtin_adts () : (builtin_ty * string) list =
   (* We voluntarily omit the type [Error]: it is never directly
      referenced in the generated translation, and easily collides
@@ -1867,7 +1874,10 @@ let ctx_fun_global_name_to_extract_string (meta : T.item_meta)
   in
   let fname = flatten_name fname in
   match backend () with
-  | FStar | Coq | HOL4 | Isabelle -> StringUtils.lowercase_first_letter fname
+  | Isabelle ->
+      escape_isabelle_standard_library_name
+        (StringUtils.lowercase_first_letter fname)
+  | FStar | Coq | HOL4 -> StringUtils.lowercase_first_letter fname
   | Lean -> fname
 
 (** Helper function: generate a suffix for a function name, i.e., generates a
@@ -2225,8 +2235,8 @@ let ctx_compute_var_basename (span : Meta.span) (ctx : extraction_ctx)
       match Config.backend () with
       | Lean -> basename
       | FStar | Coq | HOL4 -> to_snake_case basename
-      | Isabelle -> if List.mem basename isabelle_standard_library_names then (to_snake_case basename) ^ "'" 
-      else to_snake_case basename)
+      | Isabelle ->
+          escape_isabelle_standard_library_name (to_snake_case basename))
   | None -> (
       (* No basename: we use the first letter of the type *)
       match ty with
