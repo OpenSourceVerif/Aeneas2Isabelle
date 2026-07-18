@@ -3,10 +3,12 @@
 theory Primitives
   imports
     Main
-    "HOL-Library.Word" (* For eventual bitwise ops *)
+    "HOL-Library.Word" (* Integer bit operations and their syntax bundle *)
     (*"HOL-Library.String"
     "HOL-Library.Code_Char" *)
 begin
+
+unbundle bit_operations_syntax
 
 (* Aeneas imports *)
 (*
@@ -58,7 +60,16 @@ definition char_of_byte :: "Word.word8 ⇒ char" where
   "char_of_byte = Code_Char.char_of_byte" *)
 
 definition core_mem_replace :: "'a ⇒ 'a ⇒ ('a × 'a)" where
-  "core_mem_replace x y ≡ (x, x)"
+  "core_mem_replace x y ≡ (x, y)"
+
+definition bool_and :: "bool ⇒ bool ⇒ bool" where
+  "bool_and x y ≡ x ∧ y"
+
+definition bool_or :: "bool ⇒ bool ⇒ bool" where
+  "bool_or x y ≡ x ∨ y"
+
+definition bool_xor :: "bool ⇒ bool ⇒ bool" where
+  "bool_xor x y ≡ x ≠ y"
 
 record 'a mut_raw_ptr = mut_raw_ptr_v :: 'a
 record 'a const_raw_ptr = const_raw_ptr_v :: 'a
@@ -103,19 +114,48 @@ definition u64_max  :: int where "u64_max = 18446744073709551615"
 definition u128_min :: int where "u128_min = 0"
 definition u128_max :: int where "u128_max = 340282366920938463463374607431768211455"
 
+(* The Isabelle backend currently fixes Rust's target pointer width to 64 bits.
+   Consequently, [isize] and [usize] have the same bounds and cast behaviour as
+   [i64] and [u64], respectively.  Supporting another target requires making
+   this width part of the extraction configuration. *)
+definition isize_min :: int where "isize_min = -9223372036854775808"
+definition isize_max :: int where "isize_max = 9223372036854775807"
 definition usize_min :: int where "usize_min = 0"
-
-axiomatization isize_min :: int and isize_max :: int and usize_max :: int
-where
-  isize_min_bound: "isize_min ≤ i32_min" and
-  isize_max_bound: "i32_max ≤ isize_max" and
-  usize_min_bound: "usize_min = 0" and
-  usize_max_bound: "u32_max ≤ usize_max"
+definition usize_max :: int where "usize_max = 18446744073709551615"
 
 
 datatype scalar_ty =
     Isize | I8 | I16 | I32 | I64 | I128 |
     Usize | U8 | U16 | U32 | U64 | U128
+
+(* [isize] and [usize] are fixed to 64 bits, as documented above. *)
+fun scalar_bits :: "scalar_ty ⇒ nat" where
+  "scalar_bits Isize = 64"
+| "scalar_bits I8 = 8"
+| "scalar_bits I16 = 16"
+| "scalar_bits I32 = 32"
+| "scalar_bits I64 = 64"
+| "scalar_bits I128 = 128"
+| "scalar_bits Usize = 64"
+| "scalar_bits U8 = 8"
+| "scalar_bits U16 = 16"
+| "scalar_bits U32 = 32"
+| "scalar_bits U64 = 64"
+| "scalar_bits U128 = 128"
+
+fun scalar_is_signed :: "scalar_ty ⇒ bool" where
+  "scalar_is_signed Isize = True"
+| "scalar_is_signed I8 = True"
+| "scalar_is_signed I16 = True"
+| "scalar_is_signed I32 = True"
+| "scalar_is_signed I64 = True"
+| "scalar_is_signed I128 = True"
+| "scalar_is_signed Usize = False"
+| "scalar_is_signed U8 = False"
+| "scalar_is_signed U16 = False"
+| "scalar_is_signed U32 = False"
+| "scalar_is_signed U64 = False"
+| "scalar_is_signed U128 = False"
 
 fun scalar_min :: "scalar_ty ⇒ int" where
   "scalar_min Isize = isize_min"
@@ -165,6 +205,29 @@ definition mk_u64   :: "int ⇒ u64 result"   where "mk_u64 = mk_scalar U64"
 definition mk_u128  :: "int ⇒ u128 result"  where "mk_u128 = mk_scalar U128"
 definition mk_usize :: "int ⇒ usize result" where "mk_usize = mk_scalar Usize"
 
+(* Interpret an arbitrary integer at the fixed width and signedness of [ty]. *)
+definition scalar_modulus :: "scalar_ty ⇒ int" where
+  "scalar_modulus ty ≡ (2 :: int) ^ scalar_bits ty"
+
+definition scalar_wrap :: "scalar_ty ⇒ int ⇒ int" where
+  "scalar_wrap ty x ≡
+    (let modulus = scalar_modulus ty;
+         value = x mod modulus
+     in if scalar_is_signed ty ∧ value ≥ modulus div 2
+        then value - modulus
+        else value)"
+
+(* Isabelle's integer division rounds towards minus infinity, whereas Rust
+   truncates towards zero.  Define the Rust operations explicitly. *)
+definition scalar_trunc_div :: "int ⇒ int ⇒ int" where
+  "scalar_trunc_div x y ≡
+    (if (x < 0) = (y < 0)
+     then abs x div abs y
+     else -(abs x div abs y))"
+
+definition scalar_trunc_rem :: "int ⇒ int ⇒ int" where
+  "scalar_trunc_rem x y ≡ x - scalar_trunc_div x y * y"
+
 
 (* Scalar operations *)
 definition scalar_add :: "scalar_ty ⇒ int ⇒ int ⇒ int result" where
@@ -174,11 +237,44 @@ definition scalar_sub :: "scalar_ty ⇒ int ⇒ int ⇒ int result" where
 definition scalar_mul :: "scalar_ty ⇒ int ⇒ int ⇒ int result" where
   "scalar_mul ty x y ≡ mk_scalar ty (x * y)"
 definition scalar_div :: "scalar_ty ⇒ int ⇒ int ⇒ int result" where
-  "scalar_div ty x y ≡ if y = 0 then fail Failure else mk_scalar ty (x div y)"
+  "scalar_div ty x y ≡
+    if y = 0 then fail Failure else mk_scalar ty (scalar_trunc_div x y)"
 definition scalar_rem :: "scalar_ty ⇒ int ⇒ int ⇒ int result" where
-  "scalar_rem ty x y ≡ if y = 0 then fail Failure else mk_scalar ty (x mod y)"
+  "scalar_rem ty x y ≡
+    if y = 0 then fail Failure else mk_scalar ty (scalar_trunc_rem x y)"
 definition scalar_neg :: "scalar_ty ⇒ int ⇒ int result" where
   "scalar_neg ty x ≡ mk_scalar ty (- x)"
+
+(* Wrapping operations are pure in Aeneas' Pure IR, except division and
+   remainder which can still fail on a zero divisor. *)
+definition scalar_wrapping_add :: "scalar_ty ⇒ int ⇒ int ⇒ int" where
+  "scalar_wrapping_add ty x y ≡ scalar_wrap ty (x + y)"
+definition scalar_wrapping_sub :: "scalar_ty ⇒ int ⇒ int ⇒ int" where
+  "scalar_wrapping_sub ty x y ≡ scalar_wrap ty (x - y)"
+definition scalar_wrapping_mul :: "scalar_ty ⇒ int ⇒ int ⇒ int" where
+  "scalar_wrapping_mul ty x y ≡ scalar_wrap ty (x * y)"
+definition scalar_wrapping_neg :: "scalar_ty ⇒ int ⇒ int" where
+  "scalar_wrapping_neg ty x ≡ scalar_wrap ty (- x)"
+definition scalar_wrapping_div :: "scalar_ty ⇒ int ⇒ int ⇒ int result" where
+  "scalar_wrapping_div ty x y ≡
+    if y = 0 then fail Failure
+    else return (scalar_wrap ty (scalar_trunc_div x y))"
+definition scalar_wrapping_rem :: "scalar_ty ⇒ int ⇒ int ⇒ int result" where
+  "scalar_wrapping_rem ty x y ≡
+    if y = 0 then fail Failure
+    else return (scalar_wrap ty (scalar_trunc_rem x y))"
+
+(* Rust's overflowing_* operations return the wrapped value and an overflow
+   flag.  The Pure checked operators use this same pair representation. *)
+definition scalar_add_checked :: "scalar_ty ⇒ int ⇒ int ⇒ int × bool" where
+  "scalar_add_checked ty x y ≡
+    (let z = x + y in (scalar_wrap ty z, ¬ scalar_in_bounds ty z))"
+definition scalar_sub_checked :: "scalar_ty ⇒ int ⇒ int ⇒ int × bool" where
+  "scalar_sub_checked ty x y ≡
+    (let z = x - y in (scalar_wrap ty z, ¬ scalar_in_bounds ty z))"
+definition scalar_mul_checked :: "scalar_ty ⇒ int ⇒ int ⇒ int × bool" where
+  "scalar_mul_checked ty x y ≡
+    (let z = x * y in (scalar_wrap ty z, ¬ scalar_in_bounds ty z))"
 (* Logic *)
 definition scalar_lt :: "scalar_ty ⇒ int ⇒ int ⇒ bool" where
   "scalar_lt ty x y ≡ x < y"
@@ -193,20 +289,55 @@ definition scalar_eq :: "scalar_ty ⇒ int ⇒ int ⇒ bool" where
 definition scalar_ne :: "scalar_ty ⇒ int ⇒ int ⇒ bool" where
   "scalar_ne ty x y ≡ x ≠ y"
 
-(* Axiomatized bitwise operations *)
-axiomatization scalar_xor :: "scalar_ty ⇒ int ⇒ int ⇒ int result"
-axiomatization scalar_or  :: "scalar_ty ⇒ int ⇒ int ⇒ int result"
-axiomatization scalar_and :: "scalar_ty ⇒ int ⇒ int ⇒ int result"
-axiomatization scalar_shl :: "scalar_ty ⇒ scalar_ty ⇒ int ⇒ int ⇒ int result"
-axiomatization scalar_shr :: "scalar_ty ⇒ scalar_ty ⇒ int ⇒ int ⇒ int result"
-axiomatization scalar_not :: "scalar_ty ⇒ int ⇒ int result"
+(* Bitwise operations are pure.  Wrapping the mathematical integer result is
+   essential for signed types, whose representation is two's complement. *)
+definition scalar_xor :: "scalar_ty ⇒ int ⇒ int ⇒ int" where
+  "scalar_xor ty x y ≡ scalar_wrap ty (x XOR y)"
+definition scalar_or :: "scalar_ty ⇒ int ⇒ int ⇒ int" where
+  "scalar_or ty x y ≡ scalar_wrap ty (x OR y)"
+definition scalar_and :: "scalar_ty ⇒ int ⇒ int ⇒ int" where
+  "scalar_and ty x y ≡ scalar_wrap ty (x AND y)"
+definition scalar_not :: "scalar_ty ⇒ int ⇒ int" where
+  "scalar_not ty x ≡ scalar_wrap ty (NOT x)"
 
-(* Casts *)
+definition scalar_shift_in_bounds :: "scalar_ty ⇒ int ⇒ bool" where
+  "scalar_shift_in_bounds ty n ≡ 0 ≤ n ∧ n < int (scalar_bits ty)"
+
+definition scalar_shl :: "scalar_ty ⇒ int ⇒ int ⇒ int result" where
+  "scalar_shl ty x n ≡
+    if scalar_shift_in_bounds ty n
+    then return (scalar_wrap ty (x * (2 :: int) ^ nat n))
+    else fail Failure"
+
+definition scalar_shr :: "scalar_ty ⇒ int ⇒ int ⇒ int result" where
+  "scalar_shr ty x n ≡
+    if scalar_shift_in_bounds ty n
+    then return (scalar_wrap ty (x div (2 :: int) ^ nat n))
+    else fail Failure"
+
+definition scalar_wrapping_shift_amount :: "scalar_ty ⇒ int ⇒ nat" where
+  "scalar_wrapping_shift_amount ty n ≡ nat (n mod int (scalar_bits ty))"
+
+definition scalar_wrapping_shl :: "scalar_ty ⇒ int ⇒ int ⇒ int" where
+  "scalar_wrapping_shl ty x n ≡
+    scalar_wrap ty
+      (x * (2 :: int) ^ scalar_wrapping_shift_amount ty n)"
+
+definition scalar_wrapping_shr :: "scalar_ty ⇒ int ⇒ int ⇒ int" where
+  "scalar_wrapping_shr ty x n ≡
+    scalar_wrap ty
+      (x div (2 :: int) ^ scalar_wrapping_shift_amount ty n)"
+
+(* Rust integer casts never fail for a well-formed source scalar.  They first
+   retain the low bits of the target width, then interpret those bits as a
+   two's-complement number when the target is signed.  We keep a [result]
+   return type because the Pure translation currently treats non-Lean casts as
+   monadic. *)
 definition scalar_cast :: "scalar_ty ⇒ scalar_ty ⇒ int ⇒ int result" where
-  "scalar_cast _ tgt_ty x ≡ mk_scalar tgt_ty x"
+  "scalar_cast _ tgt_ty x ≡ return (scalar_wrap tgt_ty x)"
 
 definition scalar_cast_bool :: "scalar_ty ⇒ bool ⇒ int result" where
-  "scalar_cast_bool tgt_ty b ≡ mk_scalar tgt_ty (if b then 1 else 0)"
+  "scalar_cast_bool _ b ≡ return (if b then 1 else 0)"
 
 (* Helper for HOL4/Isabelle style casts (e.g., i32_of_u8) *)
 definition i8_to_int    :: "i8 ⇒ int"    where "i8_to_int x = x"
@@ -382,159 +513,159 @@ definition u128_mul :: "int ⇒ int ⇒ int result" where
   "u128_mul = scalar_mul U128"
 
 (* Xor Op *)
-definition u8_xor :: "int ⇒ int ⇒ int result" where 
+definition u8_xor :: "int ⇒ int ⇒ int" where
   "u8_xor = scalar_xor U8"
-definition u16_xor :: "int ⇒ int ⇒ int result" where 
+definition u16_xor :: "int ⇒ int ⇒ int" where
   "u16_xor = scalar_xor U16"
-definition u32_xor :: "int ⇒ int ⇒ int result" where 
+definition u32_xor :: "int ⇒ int ⇒ int" where
   "u32_xor = scalar_xor U32"
-definition u64_xor :: "int ⇒ int ⇒ int result" where 
+definition u64_xor :: "int ⇒ int ⇒ int" where
   "u64_xor = scalar_xor U64"
-definition u128_xor :: "int ⇒ int ⇒ int result" where 
+definition u128_xor :: "int ⇒ int ⇒ int" where
   "u128_xor = scalar_xor U128"
-definition usize_xor :: "int ⇒ int ⇒ int result" where 
+definition usize_xor :: "int ⇒ int ⇒ int" where
   "usize_xor = scalar_xor Usize"
-definition i8_xor :: "int ⇒ int ⇒ int result" where 
+definition i8_xor :: "int ⇒ int ⇒ int" where
   "i8_xor = scalar_xor I8"
-definition i16_xor :: "int ⇒ int ⇒ int result" where 
+definition i16_xor :: "int ⇒ int ⇒ int" where
   "i16_xor = scalar_xor I16"
-definition i32_xor :: "int ⇒ int ⇒ int result" where 
+definition i32_xor :: "int ⇒ int ⇒ int" where
   "i32_xor = scalar_xor I32"
-definition i64_xor :: "int ⇒ int ⇒ int result" where 
+definition i64_xor :: "int ⇒ int ⇒ int" where
   "i64_xor = scalar_xor I64"
-definition i128_xor :: "int ⇒ int ⇒ int result" where 
+definition i128_xor :: "int ⇒ int ⇒ int" where
   "i128_xor = scalar_xor I128"
-definition isize_xor :: "int ⇒ int ⇒ int result" where 
+definition isize_xor :: "int ⇒ int ⇒ int" where
   "isize_xor = scalar_xor Isize"
 
 (* Or Op *)
-definition u8_or :: "int ⇒ int ⇒ int result" where 
+definition u8_or :: "int ⇒ int ⇒ int" where
   "u8_or = scalar_or U8"
-definition u16_or :: "int ⇒ int ⇒ int result" where 
+definition u16_or :: "int ⇒ int ⇒ int" where
   "u16_or = scalar_or U16"
-definition u32_or :: "int ⇒ int ⇒ int result" where 
+definition u32_or :: "int ⇒ int ⇒ int" where
   "u32_or = scalar_or U32"
-definition u64_or :: "int ⇒ int ⇒ int result" where 
+definition u64_or :: "int ⇒ int ⇒ int" where
   "u64_or = scalar_or U64"
-definition u128_or :: "int ⇒ int ⇒ int result" where 
+definition u128_or :: "int ⇒ int ⇒ int" where
   "u128_or = scalar_or U128"
-definition usize_or :: "int ⇒ int ⇒ int result" where 
+definition usize_or :: "int ⇒ int ⇒ int" where
   "usize_or = scalar_or Usize"
-definition i8_or :: "int ⇒ int ⇒ int result" where 
+definition i8_or :: "int ⇒ int ⇒ int" where
   "i8_or = scalar_or I8"
-definition i16_or :: "int ⇒ int ⇒ int result" where 
+definition i16_or :: "int ⇒ int ⇒ int" where
   "i16_or = scalar_or I16"
-definition i32_or :: "int ⇒ int ⇒ int result" where 
+definition i32_or :: "int ⇒ int ⇒ int" where
   "i32_or = scalar_or I32"
-definition i64_or :: "int ⇒ int ⇒ int result" where 
+definition i64_or :: "int ⇒ int ⇒ int" where
   "i64_or = scalar_or I64"
-definition i128_or :: "int ⇒ int ⇒ int result" where 
+definition i128_or :: "int ⇒ int ⇒ int" where
   "i128_or = scalar_or I128"
-definition isize_or :: "int ⇒ int ⇒ int result" where 
+definition isize_or :: "int ⇒ int ⇒ int" where
   "isize_or = scalar_or Isize"
 
 (* And Op *)
-definition u8_and :: "int ⇒ int ⇒ int result" where 
+definition u8_and :: "int ⇒ int ⇒ int" where
   "u8_and = scalar_and U8"
-definition u16_and :: "int ⇒ int ⇒ int result" where 
+definition u16_and :: "int ⇒ int ⇒ int" where
   "u16_and = scalar_and U16"
-definition u32_and :: "int ⇒ int ⇒ int result" where 
+definition u32_and :: "int ⇒ int ⇒ int" where
   "u32_and = scalar_and U32"
-definition u64_and :: "int ⇒ int ⇒ int result" where 
+definition u64_and :: "int ⇒ int ⇒ int" where
   "u64_and = scalar_and U64"
-definition u128_and :: "int ⇒ int ⇒ int result" where 
+definition u128_and :: "int ⇒ int ⇒ int" where
   "u128_and = scalar_and U128"
-definition usize_and :: "int ⇒ int ⇒ int result" where 
+definition usize_and :: "int ⇒ int ⇒ int" where
   "usize_and = scalar_and Usize"
-definition i8_and :: "int ⇒ int ⇒ int result" where 
+definition i8_and :: "int ⇒ int ⇒ int" where
   "i8_and = scalar_and I8"
-definition i16_and :: "int ⇒ int ⇒ int result" where 
+definition i16_and :: "int ⇒ int ⇒ int" where
   "i16_and = scalar_and I16"
-definition i32_and :: "int ⇒ int ⇒ int result" where 
+definition i32_and :: "int ⇒ int ⇒ int" where
   "i32_and = scalar_and I32"
-definition i64_and :: "int ⇒ int ⇒ int result" where 
+definition i64_and :: "int ⇒ int ⇒ int" where
   "i64_and = scalar_and I64"
-definition i128_and :: "int ⇒ int ⇒ int result" where 
+definition i128_and :: "int ⇒ int ⇒ int" where
   "i128_and = scalar_and I128"
-definition isize_and :: "int ⇒ int ⇒ int result" where 
+definition isize_and :: "int ⇒ int ⇒ int" where
   "isize_and = scalar_and Isize"
 
 (* Shift Left Op *)
 definition u8_shl :: "int ⇒ int ⇒ int result" where 
-  "u8_shl = scalar_shl U8 U8"
+  "u8_shl = scalar_shl U8"
 definition u16_shl :: "int ⇒ int ⇒ int result" where 
-  "u16_shl = scalar_shl U16 U8"
+  "u16_shl = scalar_shl U16"
 definition u32_shl :: "int ⇒ int ⇒ int result" where 
-  "u32_shl = scalar_shl U32 U8"
+  "u32_shl = scalar_shl U32"
 definition u64_shl :: "int ⇒ int ⇒ int result" where 
-  "u64_shl = scalar_shl U64 U8"
+  "u64_shl = scalar_shl U64"
 definition u128_shl :: "int ⇒ int ⇒ int result" where 
-  "u128_shl = scalar_shl U128 U8"
+  "u128_shl = scalar_shl U128"
 definition usize_shl :: "int ⇒ int ⇒ int result" where 
-  "usize_shl = scalar_shl Usize U8"
+  "usize_shl = scalar_shl Usize"
 definition i8_shl :: "int ⇒ int ⇒ int result" where 
-  "i8_shl = scalar_shl I8 U8"
+  "i8_shl = scalar_shl I8"
 definition i16_shl :: "int ⇒ int ⇒ int result" where 
-  "i16_shl = scalar_shl I16 U8"
+  "i16_shl = scalar_shl I16"
 definition i32_shl :: "int ⇒ int ⇒ int result" where 
-  "i32_shl = scalar_shl I32 U8"
+  "i32_shl = scalar_shl I32"
 definition i64_shl :: "int ⇒ int ⇒ int result" where 
-  "i64_shl = scalar_shl I64 U8"
+  "i64_shl = scalar_shl I64"
 definition i128_shl :: "int ⇒ int ⇒ int result" where 
-  "i128_shl = scalar_shl I128 U8"
+  "i128_shl = scalar_shl I128"
 definition isize_shl :: "int ⇒ int ⇒ int result" where 
-  "isize_shl = scalar_shl Isize U8"
+  "isize_shl = scalar_shl Isize"
 
 (* Shift Right Op *)
 definition u8_shr :: "int ⇒ int ⇒ int result" where 
-  "u8_shr = scalar_shr U8 U8"
+  "u8_shr = scalar_shr U8"
 definition u16_shr :: "int ⇒ int ⇒ int result" where 
-  "u16_shr = scalar_shr U16 U8"
+  "u16_shr = scalar_shr U16"
 definition u32_shr :: "int ⇒ int ⇒ int result" where 
-  "u32_shr = scalar_shr U32 U8"
+  "u32_shr = scalar_shr U32"
 definition u64_shr :: "int ⇒ int ⇒ int result" where 
-  "u64_shr = scalar_shr U64 U8"
+  "u64_shr = scalar_shr U64"
 definition u128_shr :: "int ⇒ int ⇒ int result" where 
-  "u128_shr = scalar_shr U128 U8"
+  "u128_shr = scalar_shr U128"
 definition usize_shr :: "int ⇒ int ⇒ int result" where 
-  "usize_shr = scalar_shr Usize U8"
+  "usize_shr = scalar_shr Usize"
 definition i8_shr :: "int ⇒ int ⇒ int result" where 
-  "i8_shr = scalar_shr I8 U8"
+  "i8_shr = scalar_shr I8"
 definition i16_shr :: "int ⇒ int ⇒ int result" where 
-  "i16_shr = scalar_shr I16 U8"
+  "i16_shr = scalar_shr I16"
 definition i32_shr :: "int ⇒ int ⇒ int result" where 
-  "i32_shr = scalar_shr I32 I8"
+  "i32_shr = scalar_shr I32"
 definition i64_shr :: "int ⇒ int ⇒ int result" where 
-  "i64_shr = scalar_shr I64 U8"
+  "i64_shr = scalar_shr I64"
 definition i128_shr :: "int ⇒ int ⇒ int result" where 
-  "i128_shr = scalar_shr I128 U8"
+  "i128_shr = scalar_shr I128"
 definition isize_shr :: "int ⇒ int ⇒ int result" where 
-  "isize_shr = scalar_shr Isize U8"
+  "isize_shr = scalar_shr Isize"
 
 (* Not Op *)
-definition u8_not :: "int ⇒ int result" where 
+definition u8_not :: "int ⇒ int" where
   "u8_not = scalar_not U8"
-definition u16_not :: "int ⇒ int result" where 
+definition u16_not :: "int ⇒ int" where
   "u16_not = scalar_not U16"
-definition u32_not :: "int ⇒ int result" where 
+definition u32_not :: "int ⇒ int" where
   "u32_not = scalar_not U32"
-definition u64_not :: "int ⇒ int result" where 
+definition u64_not :: "int ⇒ int" where
   "u64_not = scalar_not U64"
-definition u128_not :: "int ⇒ int result" where 
+definition u128_not :: "int ⇒ int" where
   "u128_not = scalar_not U128"
-definition usize_not :: "int ⇒ int result" where 
+definition usize_not :: "int ⇒ int" where
   "usize_not = scalar_not Usize"
-definition i8_not :: "int ⇒ int result" where 
+definition i8_not :: "int ⇒ int" where
   "i8_not = scalar_not I8"
-definition i16_not :: "int ⇒ int result" where 
+definition i16_not :: "int ⇒ int" where
   "i16_not = scalar_not I16"
-definition i32_not :: "int ⇒ int result" where 
+definition i32_not :: "int ⇒ int" where
   "i32_not = scalar_not I32"
-definition i64_not :: "int ⇒ int result" where 
+definition i64_not :: "int ⇒ int" where
   "i64_not = scalar_not I64"
-definition i128_not :: "int ⇒ int result" where 
+definition i128_not :: "int ⇒ int" where
   "i128_not = scalar_not I128"
-definition isize_not :: "int ⇒ int result" where 
+definition isize_not :: "int ⇒ int" where
   "isize_not = scalar_not Isize"
 
 (* Less Than Op *)
@@ -853,25 +984,49 @@ type_synonym 'a slice = "'a list"
 type_synonym 'a alloc_vec_Vec = "'a list"
 
 (* Arrays *)
-axiomatization mk_array :: "usize ⇒ 'a list ⇒ 'a array result"
-axiomatization array_repeat :: "usize ⇒ 'a ⇒ 'a array result"
-axiomatization array_index_usize :: "'a array ⇒ usize ⇒ 'a result"
-axiomatization array_update_usize :: "'a array ⇒ usize ⇒ 'a ⇒ 'a array result"
+definition mk_array :: "usize ⇒ 'a list ⇒ 'a array" where
+  "mk_array _ xs = xs"
+definition array_repeat :: "usize ⇒ 'a ⇒ 'a array" where
+  "array_repeat n x = replicate (nat n) x"
 
-axiomatization array_index_mut_usize :: "'a array ⇒ usize ⇒ ('a × ('a ⇒ 'a array)) result"
-(*
-primrec (nonexhaustive) array_index_mut_usize :: "'a array ⇒ usize ⇒ ('a × ('a ⇒ 'a array)) result" where
-  "array_index_mut_usize a i = (
-    array_index_usize a i >>= (λx.
-    return (x, (λnx. (case array_update_usize a i nx of Ok a' ⇒ a'))) 
-  ))" *)
-(* | Fail e ⇒ undefined (* Or panics *) *)
+(* Array lengths are erased from Isabelle types but remain explicit term
+   arguments at call sites.  The primitive interfaces therefore accept the
+   length and may use it for consistency checks in future refinements. *)
+definition array_index_usize ::
+  "usize ⇒ 'a array ⇒ usize ⇒ 'a result" where
+  "array_index_usize _ a i =
+    (if 0 ≤ i ∧ i < int (length a)
+     then return (a ! nat i)
+     else fail Failure)"
 
+definition array_update_usize ::
+  "usize ⇒ 'a array ⇒ usize ⇒ 'a ⇒ 'a array result" where
+  "array_update_usize _ a i x =
+    (if 0 ≤ i ∧ i < int (length a)
+     then return (list_update a (nat i) x)
+     else fail Failure)"
+
+definition array_index_mut_usize ::
+  "usize ⇒ 'a array ⇒ usize ⇒ ('a × ('a ⇒ 'a array)) result" where
+  "array_index_mut_usize _ a i =
+    (if 0 ≤ i ∧ i < int (length a)
+     then return (a ! nat i, λx. list_update a (nat i) x)
+     else fail Failure)"
 (* Slices *)
 definition slice_len :: "'a slice ⇒ usize" where
   "slice_len s = (let n = of_nat (length s) in if  n ≤ usize_max then n else 0  )" (* Should be safe *)
-axiomatization slice_index_usize :: "'a slice ⇒ usize ⇒ 'a result"
-axiomatization slice_update_usize :: "'a slice ⇒ usize ⇒ 'a ⇒ 'a slice result"
+definition slice_index_usize :: "'a slice ⇒ usize ⇒ 'a result" where
+  "slice_index_usize s i =
+    (if 0 ≤ i ∧ i < int (length s)
+     then return (s ! nat i)
+     else fail Failure)"
+
+definition slice_update_usize ::
+  "'a slice ⇒ usize ⇒ 'a ⇒ 'a slice result" where
+  "slice_update_usize s i x =
+    (if 0 ≤ i ∧ i < int (length s)
+     then return (list_update s (nat i) x)
+     else fail Failure)"
 
 definition slice_index_mut_usize :: "'a slice ⇒ usize ⇒ ('a × ('a ⇒ 'a slice)) result" where
   "slice_index_mut_usize s i = (
@@ -880,11 +1035,13 @@ definition slice_index_mut_usize :: "'a slice ⇒ usize ⇒ ('a × ('a ⇒ 'a sl
   ))"
 
 (* Subslices *)
-definition array_to_slice :: "'a array ⇒ 'a slice" where "array_to_slice a = a"
+definition array_to_slice :: "usize ⇒ 'a array ⇒ 'a slice" where
+  "array_to_slice _ a = a"
 definition array_from_slice :: "'a array ⇒ 'a slice ⇒ 'a array" where "array_from_slice _ s = s"
 
-definition array_to_slice_mut :: "'a array ⇒ 'a slice × ('a slice ⇒ 'a array)" where
-  "array_to_slice_mut a = (array_to_slice a, array_from_slice a)"
+definition array_to_slice_mut ::
+  "usize ⇒ 'a array ⇒ 'a slice × ('a slice ⇒ 'a array)" where
+  "array_to_slice_mut n a = (array_to_slice n a, array_from_slice a)"
 
 axiomatization array_subslice :: "'a array ⇒ 'a core_ops_range_Range ⇒ 'a slice result"
 axiomatization array_update_subslice :: "'a array ⇒ 'a core_ops_range_Range ⇒ 'a slice ⇒ 'a array result"

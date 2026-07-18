@@ -916,7 +916,11 @@ let unop_name (unop : unop) : string =
           | Some _ -> "~~~"
         end
       | Coq -> if Option.is_none ty then "negb" else "scalar_not"
-      | HOL4 | Isabelle -> "~")
+      | HOL4 -> "~"
+      | Isabelle -> (
+          match ty with
+          | None -> "~"
+          | Some int_ty -> int_name int_ty ^ "_not"))
   | Neg (int_ty : integer_type) -> (
       match backend () with
       | Lean -> "-."
@@ -1460,7 +1464,7 @@ let builtin_pure_functions () : (pure_builtin_fun_id * string) list =
         (FuelEqZero, "is_zero");
         (UpdateAtIndex Slice, "slice_update_usize");
         (UpdateAtIndex Array, "array_update_usize");
-        (ToResult, "");
+        (ToResult, "return");
       ]
 
 let names_map_init () : names_map_init =
