@@ -635,11 +635,10 @@ and extract_generic_args (span : Meta.span) (ctx : extraction_ctx)
           types;
         F.pp_print_string fmt ")");
       
-      (* TODO: General constant generics are handled separately from type
-         arguments.  The Isabelle representation is still to be defined. *)
-      if const_generics <> [] then
-        [%save_error] span
-          "Constant generics are not supported yet when generating code for Isabelle";
+      (* Isabelle/HOL has no dependent types.  Const generic arguments are
+         therefore erased from type applications.  They are kept as explicit
+         term arguments on functions and globals whenever their values are
+         needed by the translated program. *)
     | _ ->
       if types <> [] then (
         F.pp_print_space fmt ();
@@ -1837,10 +1836,7 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
      supported yet when generating code for HOL4";
   (* Print the generic parameters *)
   if backend () = Isabelle then (
-    if cg_params <> [] then
-      [%save_error] span
-        "Constant generic parameters on Isabelle type declarations are not \
-         supported";
+    (* Const generic parameters are erased from Isabelle type constructors. *)
     if trait_clauses <> [] then
       [%save_error] span
         "Trait clauses on Isabelle type declarations are not supported")
@@ -1904,14 +1900,11 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
 let extract_type_decl_isabelle_opaque (ctx : extraction_ctx) (fmt : F.formatter) (def : type_decl) : unit =
   let span = def.item_meta.span in
   let def_name = ctx_get_local_type span def.def_id ctx in
-  let _, type_params, cg_params, trait_clauses =
+  let _, type_params, _cg_params, trait_clauses =
     ctx_add_generic_params span def.item_meta.name Item def.llbc_generics
       def.generics ctx
   in
-  if cg_params <> [] then
-    [%save_error] span
-      "Constant generic parameters on Isabelle type declarations are not \
-       supported";
+  (* Const generic parameters are erased from Isabelle type constructors. *)
   if trait_clauses <> [] then
     [%save_error] span
       "Trait clauses on Isabelle type declarations are not supported";
@@ -1952,14 +1945,11 @@ let extract_type_decl_isabelle_empty_enum (ctx : extraction_ctx)
     of their values. *)
 let extract_type_decl_isabelle_empty_record (ctx : extraction_ctx) (fmt : F.formatter) (def : type_decl) : unit =
   let def_name = ctx_get_local_type def.item_meta.span def.def_id ctx in
-  let _, type_params, cg_params, trait_clauses =
+  let _, type_params, _cg_params, trait_clauses =
     ctx_add_generic_params def.item_meta.span def.item_meta.name Item
       def.llbc_generics def.generics ctx
   in
-  if cg_params <> [] then
-    [%save_error] def.item_meta.span
-      "Constant generic parameters on Isabelle type declarations are not \
-       supported";
+  (* Const generic parameters are erased from Isabelle type constructors. *)
   if trait_clauses <> [] then
     [%save_error] def.item_meta.span
       "Trait clauses on Isabelle type declarations are not supported";
