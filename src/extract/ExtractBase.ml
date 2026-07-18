@@ -1380,6 +1380,8 @@ let builtin_variants () : (builtin_ty * VariantId.id * string) list =
       [
         (TResult, result_ok_id, "Ok");
         (TResult, result_fail_id, "Fail");
+        (TLoopResult, loop_result_continue_id, "LoopContinue");
+        (TLoopResult, loop_result_break_id, "LoopBreak");
         (TError, error_failure_id, "Failure");
         (* No Fuel::Zero on purpose *)
         (* No Fuel::Succ on purpose *)
