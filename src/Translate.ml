@@ -929,6 +929,8 @@ let export_fun_decls_decreases_templates (fmt : Format.formatter)
             raise (Failure "Coq doesn't have decreases/termination clauses")
         | HOL4 ->
             raise (Failure "HOL4 doesn't have decreases/termination clauses")
+        | Isabelle ->
+            raise (Failure "Isabelle doesn't have template decreases/termination clauses")
     in
     List.iter extract_decrease decls
 
