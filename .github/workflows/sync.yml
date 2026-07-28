@@ -8,29 +8,21 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: upstream-sync-main
+  cancel-in-progress: false
+
 jobs:
   sync_latest_from_upstream:
     runs-on: ubuntu-latest
     name: Sync latest commits from upstream repo
 
     steps:
-      - name: Checkout target repo
-        uses: actions/checkout@v4 
-        with:
-          ref: main
-          fetch-depth: 0
-
-      - name: Sync Upstream
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.1
-        with:
-          target_sync_branch: main
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
-          upstream_sync_branch: main
-          upstream_sync_repo: AeneasVerif/aeneas
-          test_mode: false
-      
-      - name: Check for Failure
-        if: failure()
+      - name: Sync upstream main into main
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "[Error] Auto Synchronization failed!"
-          exit 1
+          gh api \
+            --method POST \
+            "repos/${GITHUB_REPOSITORY}/merge-upstream" \
+            --raw-field branch=main
