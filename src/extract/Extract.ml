@@ -4671,6 +4671,46 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
             impl method_id bound_fn)
       impl.methods;
 
+    (* Isabelle records do not support default field values.  Consequently,
+       when rustc omits [Clone::clone_from] from an implementation because it
+       uses the trait's default method, we still have to initialize the
+       corresponding record field.  The default implementation ignores the
+       old value and delegates to [clone] on the source value.
+
+       This is Isabelle-specific: Lean fills the structure field from its
+       default value, while the other backends keep their existing behavior. *)
+    if backend () = Isabelle then (
+      match trans_trait_decl.builtin_info with
+      | Some info when info.extract_name = "core_clone_Clone" ->
+          let find_impl_method (item_name : string) =
+            List.find_opt
+              (fun (_, name, _) -> name = item_name)
+              impl.methods
+          in
+          let clone_from_info =
+            List.assoc_opt "clone_from" info.methods
+          in
+          begin
+            match
+              ( find_impl_method "clone",
+                find_impl_method "clone_from",
+                clone_from_info )
+            with
+            | Some (_, _, clone_fn), None, Some default_info
+              when default_info.has_default ->
+                let default_clone_from () =
+                  F.pp_print_space fmt ();
+                  F.pp_print_string fmt "(λ _ source.";
+                  extract_trait_impl_method_term ctx fmt impl clone_fn;
+                  F.pp_print_space fmt ();
+                  F.pp_print_string fmt "source)"
+                in
+                extract_trait_impl_item ~before:before_isabelle_item ctx fmt
+                  default_info.extract_name default_clone_from
+            | _ -> ()
+          end
+      | _ -> ());
+
     (* Close the outer boxes for the definition, as well as the brackets *)
     F.pp_close_box fmt ();
     if backend () = Coq then (

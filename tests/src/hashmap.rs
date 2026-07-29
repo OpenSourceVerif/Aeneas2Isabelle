@@ -1,4 +1,4 @@
-//@ [!lean] skip
+//@ [!lean,isabelle] skip
 //@ [lean] subdir=Hashmap
 //@ [lean] aeneas-args=-split-files -loops-to-rec
 
