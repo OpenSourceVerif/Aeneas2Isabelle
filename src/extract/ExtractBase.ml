@@ -761,11 +761,12 @@ let id_to_string (span : Meta.span option) (id : id) (ctx : extraction_ctx) :
 
 let ctx_add (span : Meta.span) (id : id) (name : string) (ctx : extraction_ctx)
     : extraction_ctx =
-  (* In Lean, identifiers cannot contain "-". We wrap any dot-separated
-     component that contains a hyphen in French quotes (« ... »). *)
+  (* Apply the backend-specific escaping required by target identifiers. *)
   let name =
     match backend () with
     | Lean ->
+        (* In Lean, identifiers cannot contain "-". We wrap any dot-separated
+           component that contains a hyphen in French quotes (« ... »). *)
         let parts = String.split_on_char '.' name in
         let parts =
           List.map
@@ -781,7 +782,12 @@ let ctx_add (span : Meta.span) (id : id) (name : string) (ctx : extraction_ctx)
             parts
         in
         String.concat "." parts
-    | _ -> name
+    | Isabelle ->
+        (* Isabelle does not accept an identifier ending in an underscore.
+           Keep the Rust underscore and append a legal trailing prime rather
+           than deleting it, which could make [foo_] collide with [foo]. *)
+        if String.ends_with ~suffix:"_" name then name ^ "'" else name
+    | FStar | Coq | HOL4 -> name
   in
   (* Actually add the name *)
   let id_to_string (id : id) : string = id_to_string (Some span) id ctx in
