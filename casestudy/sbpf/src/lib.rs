@@ -41,6 +41,7 @@ pub mod jit;
 mod memory_management;
 pub mod memory_region;
 pub mod program;
+pub mod safe_mode;
 pub mod static_analysis;
 pub mod verifier;
 pub mod vm;
