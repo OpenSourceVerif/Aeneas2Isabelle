@@ -984,7 +984,7 @@ record ('self, 'target) core_ops_deref_DerefMut =
 
 record 'a core_ops_range_Range =
   core_ops_range_Range_start :: 'a
-  core_ops_range_Range_end_ :: 'a
+  core_ops_range_Range_end_' :: 'a
 
 (*** [alloc] *)
 
@@ -997,17 +997,27 @@ definition alloc_boxed_Box_coreopsDerefInst :: "'a ⇒ ('a, 'a) core_ops_deref_D
     core_ops_deref_Deref_deref = (λx. Ok (alloc_boxed_Box_deref x))
   |)"
 
-(*
-definition alloc_boxed_Box_coreopsDerefMutInst :: "'a ⇒ ('a, 'a) core_ops_deref_DerefMut" where
-  "alloc_boxed_Box_coreopsDerefMutInst x = (|
-    core_ops_deref_DerefMut_derefInst = alloc_boxed_Box_coreopsDerefInst (),
-    core_ops_deref_DerefMut_deref_mut = (λx. Ok (alloc_boxed_Box_deref_mut x))
-  |)" *)
+(* Names used by the builtin trait-instance table. *)
+definition core_ops_deref_DerefBoxInst ::
+  "('a, 'a) core_ops_deref_Deref" where
+  "core_ops_deref_DerefBoxInst = (|
+    core_ops_deref_Deref_deref = λx. return (alloc_boxed_Box_deref x)
+  |)"
+
+definition core_ops_deref_DerefBoxMutInst ::
+  "('a, 'a) core_ops_deref_DerefMut" where
+  "core_ops_deref_DerefBoxMutInst = (|
+    core_ops_deref_DerefMut_derefInst = core_ops_deref_DerefBoxInst,
+    core_ops_deref_DerefMut_deref_mut =
+      λx. return (alloc_boxed_Box_deref_mut x)
+  |)"
 
 
 (*** Arrays / Slices / Vectors *)
 
-(* We model all of these as simple lists for now *)
+(* We model arrays, slices and vectors as lists.  Rust's array length and the
+   usize upper bound are not part of the Isabelle type, so operations which
+   may observe a malformed value remain total and report [Failure]. *)
 type_synonym 'a array = "'a list"
 type_synonym 'a slice = "'a list"
 type_synonym 'a alloc_vec_Vec = "'a list"
@@ -1042,15 +1052,25 @@ definition array_update_usize ::
      then return (list_update a (nat i) x)
      else fail Failure)"
 
+definition array_update ::
+  "'a array ⇒ usize ⇒ 'a ⇒ 'a array" where
+  "array_update a i x =
+    (if 0 ≤ i ∧ i < int (length a)
+     then list_update a (nat i) x
+     else a)"
+
 definition array_index_mut_usize ::
   "usize ⇒ 'a array ⇒ usize ⇒ ('a × ('a ⇒ 'a array)) result" where
   "array_index_mut_usize _ a i =
     (if 0 ≤ i ∧ i < int (length a)
-     then return (a ! nat i, λx. list_update a (nat i) x)
+     then return (a ! nat i, array_update a i)
      else fail Failure)"
+
 (* Slices *)
 definition slice_len :: "'a slice ⇒ usize" where
-  "slice_len s = (let n = of_nat (length s) in if  n ≤ usize_max then n else 0  )" (* Should be safe *)
+  "slice_len s =
+    (let n = int (length s) in if n ≤ usize_max then n else 0)"
+
 definition slice_index_usize :: "'a slice ⇒ usize ⇒ 'a result" where
   "slice_index_usize s i =
     (if 0 ≤ i ∧ i < int (length s)
@@ -1064,11 +1084,18 @@ definition slice_update_usize ::
      then return (list_update s (nat i) x)
      else fail Failure)"
 
+definition slice_update ::
+  "'a slice ⇒ usize ⇒ 'a ⇒ 'a slice" where
+  "slice_update s i x =
+    (if 0 ≤ i ∧ i < int (length s)
+     then list_update s (nat i) x
+     else s)"
+
 definition slice_index_mut_usize :: "'a slice ⇒ usize ⇒ ('a × ('a ⇒ 'a slice)) result" where
-  "slice_index_mut_usize s i = (
-    slice_index_usize s i >>= (λx.
-    return (x, (λnx. (case slice_update_usize s i nx of Ok s' ⇒ s' | Fail e ⇒ undefined)))
-  ))"
+  "slice_index_mut_usize s i =
+    (if 0 ≤ i ∧ i < int (length s)
+     then return (s ! nat i, slice_update s i)
+     else fail Failure)"
 
 (* Subslices *)
 definition array_to_slice :: "usize ⇒ 'a array ⇒ 'a slice" where
@@ -1079,46 +1106,137 @@ definition array_to_slice_mut ::
   "usize ⇒ 'a array ⇒ 'a slice × ('a slice ⇒ 'a array)" where
   "array_to_slice_mut n a = (array_to_slice n a, array_from_slice a)"
 
-axiomatization array_subslice :: "'a array ⇒ 'a core_ops_range_Range ⇒ 'a slice result"
-axiomatization array_update_subslice :: "'a array ⇒ 'a core_ops_range_Range ⇒ 'a slice ⇒ 'a array result"
-axiomatization slice_subslice :: "'a slice ⇒ 'a core_ops_range_Range ⇒ 'a slice result"
-axiomatization slice_update_subslice :: "'a slice ⇒ 'a core_ops_range_Range ⇒ 'a slice ⇒ 'a slice result"
+definition slice_range_valid ::
+  "usize core_ops_range_Range ⇒ 'a slice ⇒ bool" where
+  "slice_range_valid r s ⟷
+    0 ≤ core_ops_range_Range_start r ∧
+    core_ops_range_Range_start r ≤ core_ops_range_Range_end_' r ∧
+    core_ops_range_Range_end_' r ≤ int (length s)"
+
+definition slice_subslice ::
+  "'a slice ⇒ usize core_ops_range_Range ⇒ 'a slice result" where
+  "slice_subslice s r =
+    (if slice_range_valid r s then
+       return
+         (take (nat (core_ops_range_Range_end_' r -
+                     core_ops_range_Range_start r))
+           (drop (nat (core_ops_range_Range_start r)) s))
+     else fail Failure)"
+
+definition slice_replace_range ::
+  "'a slice ⇒ usize core_ops_range_Range ⇒ 'a slice ⇒ 'a slice" where
+  "slice_replace_range s r ns =
+    (if slice_range_valid r s ∧
+        int (length ns) =
+          core_ops_range_Range_end_' r - core_ops_range_Range_start r
+     then
+       take (nat (core_ops_range_Range_start r)) s @
+       ns @
+       drop (nat (core_ops_range_Range_end_' r)) s
+     else s)"
+
+definition slice_update_subslice ::
+  "'a slice ⇒ usize core_ops_range_Range ⇒ 'a slice ⇒ 'a slice result" where
+  "slice_update_subslice s r ns =
+    (if slice_range_valid r s ∧
+        int (length ns) =
+          core_ops_range_Range_end_' r - core_ops_range_Range_start r
+     then return (slice_replace_range s r ns)
+     else fail Failure)"
+
+definition array_subslice ::
+  "'a array ⇒ usize core_ops_range_Range ⇒ 'a slice result" where
+  "array_subslice a r = slice_subslice a r"
+
+definition array_update_subslice ::
+  "'a array ⇒ usize core_ops_range_Range ⇒ 'a slice ⇒ 'a array result" where
+  "array_update_subslice a r ns = slice_update_subslice a r ns"
 
 (* Vectors *)
-definition alloc_vec_Vec_to_list :: "'a alloc_vec_Vec ⇒ 'a list" where "alloc_vec_Vec_to_list v = v"
-definition alloc_vec_Vec_length :: "'a alloc_vec_Vec ⇒ int" where "alloc_vec_Vec_length v = of_nat (length v)"
-definition alloc_vec_Vec_new :: "'a alloc_vec_Vec" where "alloc_vec_Vec_new = []"
+definition alloc_vec_Vec_to_list :: "'a alloc_vec_Vec ⇒ 'a list" where
+  "alloc_vec_Vec_to_list v = v"
 
-definition alloc_vec_Vec_len :: "'a alloc_vec_Vec ⇒ usize result" where
-  "alloc_vec_Vec_len v = mk_usize (of_nat (length v))"
+definition alloc_vec_Vec_length :: "'a alloc_vec_Vec ⇒ int" where
+  "alloc_vec_Vec_length v = int (length v)"
+
+definition alloc_vec_Vec_new :: "'a alloc_vec_Vec" where
+  "alloc_vec_Vec_new = []"
+
+(* [Vec::len] is registered as [-canFail -lift], hence it must be a pure
+   [usize], not a [usize result]. *)
+definition alloc_vec_Vec_len :: "'a alloc_vec_Vec ⇒ usize" where
+  "alloc_vec_Vec_len v =
+    (let n = int (length v) in if n ≤ usize_max then n else 0)"
 
 definition alloc_vec_Vec_push :: "'a alloc_vec_Vec ⇒ 'a ⇒ ('a alloc_vec_Vec) result" where
-  "alloc_vec_Vec_push v x = (
-    let l = v @ [x] in
-    if of_nat (length l) ≤ usize_max then return l else fail OutOfFuel
-  )"
+  "alloc_vec_Vec_push v x =
+    (let l = v @ [x] in
+     if int (length l) ≤ usize_max then return l else fail OutOfFuel)"
 
 definition alloc_vec_Vec_insert :: "'a alloc_vec_Vec ⇒ usize ⇒ 'a ⇒ ('a alloc_vec_Vec) result" where
-  "alloc_vec_Vec_insert v i x = (
-    if i < of_nat (length v) then return (list_update v (nat i) x)
-    else fail Failure
-  )"
+  "alloc_vec_Vec_insert v i x =
+    (if 0 ≤ i ∧ i < int (length v)
+     then return (list_update v (nat i) x)
+     else fail Failure)"
 
-axiomatization alloc_vec_Vec_index_usize :: "'a alloc_vec_Vec ⇒ usize ⇒ 'a result"
-axiomatization alloc_vec_Vec_update_usize :: "'a alloc_vec_Vec ⇒ usize ⇒ 'a ⇒ 'a alloc_vec_Vec result"
+definition alloc_vec_Vec_index_usize ::
+  "'a alloc_vec_Vec ⇒ usize ⇒ 'a result" where
+  "alloc_vec_Vec_index_usize v i =
+    (if 0 ≤ i ∧ i < int (length v)
+     then return (v ! nat i)
+     else fail Failure)"
+
+definition alloc_vec_Vec_update_usize ::
+  "'a alloc_vec_Vec ⇒ usize ⇒ 'a ⇒ 'a alloc_vec_Vec result" where
+  "alloc_vec_Vec_update_usize v i x =
+    (if 0 ≤ i ∧ i < int (length v)
+     then return (list_update v (nat i) x)
+     else fail Failure)"
+
+definition alloc_vec_Vec_update ::
+  "'a alloc_vec_Vec ⇒ usize ⇒ 'a ⇒ 'a alloc_vec_Vec" where
+  "alloc_vec_Vec_update v i x =
+    (if 0 ≤ i ∧ i < int (length v)
+     then list_update v (nat i) x
+     else v)"
 
 definition alloc_vec_Vec_index_mut_usize :: "'a alloc_vec_Vec ⇒ usize ⇒ ('a × ('a ⇒ 'a alloc_vec_Vec)) result" where
-  "alloc_vec_Vec_index_mut_usize v i = (
-    alloc_vec_Vec_index_usize v i >>= (λx.
-    return (x, (λnx. (case alloc_vec_Vec_update_usize v i nx of Ok v' ⇒ v' | Fail e ⇒ undefined)))
-  ))"
+  "alloc_vec_Vec_index_mut_usize v i =
+    (if 0 ≤ i ∧ i < int (length v)
+     then return (v ! nat i, alloc_vec_Vec_update v i)
+     else fail Failure)"
+
+definition alloc_vec_Vec_with_capacity ::
+  "usize ⇒ 'a alloc_vec_Vec" where
+  "alloc_vec_Vec_with_capacity _ = alloc_vec_Vec_new"
+
+definition alloc_vec_Vec_deref ::
+  "'a alloc_vec_Vec ⇒ 'a slice" where
+  "alloc_vec_Vec_deref v = v"
+
+definition alloc_vec_Vec_deref_mut ::
+  "'a alloc_vec_Vec ⇒ 'a slice × ('a slice ⇒ 'a alloc_vec_Vec)" where
+  "alloc_vec_Vec_deref_mut v = (v, λs. s)"
+
+definition core_slice_Slice_reverse ::
+  "'a slice ⇒ 'a slice" where
+  "core_slice_Slice_reverse s = rev s"
+
+fun alloc_slice_Slice_to_vec ::
+  "'a core_clone_Clone ⇒ 'a slice ⇒ 'a alloc_vec_Vec result" where
+  "alloc_slice_Slice_to_vec clone_inst [] = return []"
+| "alloc_slice_Slice_to_vec clone_inst (x # xs) =
+    (core_clone_Clone_clone clone_inst x >>= (λy.
+     alloc_slice_Slice_to_vec clone_inst xs >>= (λys.
+     return (y # ys))))"
 
 (* Trait declaration: [core::slice::index::private_slice_index::Sealed] *)
-type_synonym 'self core_slice_index_private_slice_index_Sealed = unit
+record 'self core_slice_index_private_slice_index_Sealed =
+  core_slice_index_private_slice_index_Sealed_dummy :: unit
 
 (* Trait declaration: [core::slice::index::SliceIndex] *)
 record ('self, 'T, 'output) core_slice_index_SliceIndex =
-  core_slice_index_SliceIndex_sealedInst :: "'self core_slice_index_private_slice_index_Sealed"
+  sealedInst :: "'self core_slice_index_private_slice_index_Sealed"
   core_slice_index_SliceIndex_get :: "'self ⇒ 'T ⇒ 'output option result"
   core_slice_index_SliceIndex_get_mut :: "'self ⇒ 'T ⇒ ('output option × ('output option ⇒ 'T)) result"
   core_slice_index_SliceIndex_get_unchecked :: "'self ⇒ 'T const_raw_ptr ⇒ 'output const_raw_ptr result"
@@ -1126,45 +1244,244 @@ record ('self, 'T, 'output) core_slice_index_SliceIndex =
   core_slice_index_SliceIndex_index :: "'self ⇒ 'T ⇒ 'output result"
   core_slice_index_SliceIndex_index_mut :: "'self ⇒ 'T ⇒ ('output × ('output ⇒ 'T)) result"
 
-(* ... All the SliceIndex implementations ... *)
-(* This part is highly complex and depends on many axioms. *)
-(* We'll provide axioms and instances similar to Coq. *)
+(* [core::slice::[T]::get/get_mut] and the Index/IndexMut methods. *)
+definition core_slice_Slice_get ::
+  "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒
+   'a slice ⇒ 'idx ⇒ 'output option result" where
+  "core_slice_Slice_get inst s i =
+    core_slice_index_SliceIndex_get inst i s"
 
-axiomatization core_slice_index_Slice_index
-  :: "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒ 'a slice ⇒ 'idx ⇒ 'output result"
-axiomatization core_slice_index_Slice_index_mut
-  :: "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒ 'a slice ⇒ 'idx ⇒ ('output × ('output ⇒ 'a slice)) result"
+definition core_slice_Slice_get_mut ::
+  "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒
+   'a slice ⇒ 'idx ⇒
+   ('output option × ('output option ⇒ 'a slice)) result" where
+  "core_slice_Slice_get_mut inst s i =
+    core_slice_index_SliceIndex_get_mut inst i s"
 
-axiomatization core_slice_index_SliceIndexRangeUsizeSlice_get
-  :: "'a core_ops_range_Range ⇒ 'a slice ⇒ 'a slice option result"
-axiomatization core_slice_index_SliceIndexRangeUsizeSlice_get_mut
-  :: "'a core_ops_range_Range ⇒ 'a slice ⇒ ('a slice option × ('a slice option ⇒ 'a slice)) result"
-axiomatization core_slice_index_SliceIndexRangeUsizeSlice_get_unchecked
-  :: "'a core_ops_range_Range ⇒ 'a slice const_raw_ptr ⇒ 'a slice const_raw_ptr result"
-axiomatization core_slice_index_SliceIndexRangeUsizeSlice_get_unchecked_mut
-  :: "'a core_ops_range_Range ⇒ 'a mut_raw_ptr ⇒ 'a mut_raw_ptr result"
-axiomatization core_slice_index_SliceIndexRangeUsizeSlice_index
-  :: "'a core_ops_range_Range ⇒ 'a slice ⇒ 'a slice result"
-axiomatization core_slice_index_SliceIndexRangeUsizeSlice_index_mut
-  :: "'a core_ops_range_Range ⇒ 'a slice ⇒ ('a slice × ('a slice ⇒ 'a slice)) result"
+definition core_slice_index_Slice_index ::
+  "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒
+   'a slice ⇒ 'idx ⇒ 'output result" where
+  "core_slice_index_Slice_index inst s i =
+    core_slice_index_SliceIndex_index inst i s"
+
+definition core_slice_index_Slice_index_mut ::
+  "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒
+   'a slice ⇒ 'idx ⇒ ('output × ('output ⇒ 'a slice)) result" where
+  "core_slice_index_Slice_index_mut inst s i =
+    core_slice_index_SliceIndex_index_mut inst i s"
+
+(* [SliceIndex<Range<usize>, [T]>]. *)
+definition core_slice_index_SliceIndexRangeUsizeSlice_get ::
+  "usize core_ops_range_Range ⇒ 'a slice ⇒ 'a slice option result" where
+  "core_slice_index_SliceIndexRangeUsizeSlice_get r s =
+    (if slice_range_valid r s
+     then slice_subslice s r >>= (λss. return (Some ss))
+     else return None)"
+
+definition core_slice_index_SliceIndexRangeUsizeSlice_get_mut ::
+  "usize core_ops_range_Range ⇒ 'a slice ⇒
+   ('a slice option × ('a slice option ⇒ 'a slice)) result" where
+  "core_slice_index_SliceIndexRangeUsizeSlice_get_mut r s =
+    (if slice_range_valid r s then
+       slice_subslice s r >>= (λss.
+       return
+         (Some ss,
+          λnss. case nss of
+             None ⇒ s
+           | Some ys ⇒ slice_replace_range s r ys))
+     else return (None, λ_. s))"
+
+definition core_slice_index_SliceIndexRangeUsizeSlice_get_unchecked ::
+  "usize core_ops_range_Range ⇒
+   'a slice const_raw_ptr ⇒ 'a slice const_raw_ptr result" where
+  "core_slice_index_SliceIndexRangeUsizeSlice_get_unchecked _ _ =
+    fail Failure"
+
+definition core_slice_index_SliceIndexRangeUsizeSlice_get_unchecked_mut ::
+  "usize core_ops_range_Range ⇒
+   'a slice mut_raw_ptr ⇒ 'a slice mut_raw_ptr result" where
+  "core_slice_index_SliceIndexRangeUsizeSlice_get_unchecked_mut _ _ =
+    fail Failure"
+
+definition core_slice_index_SliceIndexRangeUsizeSlice_index ::
+  "usize core_ops_range_Range ⇒ 'a slice ⇒ 'a slice result" where
+  "core_slice_index_SliceIndexRangeUsizeSlice_index r s =
+    slice_subslice s r"
+
+definition core_slice_index_SliceIndexRangeUsizeSlice_index_mut ::
+  "usize core_ops_range_Range ⇒ 'a slice ⇒
+   ('a slice × ('a slice ⇒ 'a slice)) result" where
+  "core_slice_index_SliceIndexRangeUsizeSlice_index_mut r s =
+    (slice_subslice s r >>= (λss.
+     return (ss, slice_replace_range s r)))"
 
 definition core_slice_index_private_slice_index_SealedRangeUsizeInst
   :: "usize core_ops_range_Range core_slice_index_private_slice_index_Sealed"
-  where "core_slice_index_private_slice_index_SealedRangeUsizeInst = ()"
+  where "core_slice_index_private_slice_index_SealedRangeUsizeInst =
+    (| core_slice_index_private_slice_index_Sealed_dummy = () |)"
 
-(*
-definition core_slice_index_SliceIndexRangeUsizeSliceInst :: "'a ⇒ (usize core_ops_range_Range, 'a slice, 'a slice) core_slice_index_SliceIndex"
-  where "core_slice_index_SliceIndexRangeUsizeSliceInst _ = (|
-    core_slice_index_SliceIndex_sealedInst = core_slice_index_private_slice_index_SealedRangeUsizeInst,
+definition core_slice_index_SliceIndexRangeUsizeSliceInst ::
+  "(usize core_ops_range_Range, 'a slice, 'a slice)
+   core_slice_index_SliceIndex" where
+  "core_slice_index_SliceIndexRangeUsizeSliceInst = (|
+    sealedInst = core_slice_index_private_slice_index_SealedRangeUsizeInst,
     core_slice_index_SliceIndex_get = core_slice_index_SliceIndexRangeUsizeSlice_get,
     core_slice_index_SliceIndex_get_mut = core_slice_index_SliceIndexRangeUsizeSlice_get_mut,
     core_slice_index_SliceIndex_get_unchecked = core_slice_index_SliceIndexRangeUsizeSlice_get_unchecked,
     core_slice_index_SliceIndex_get_unchecked_mut = core_slice_index_SliceIndexRangeUsizeSlice_get_unchecked_mut,
     core_slice_index_SliceIndex_index = core_slice_index_SliceIndexRangeUsizeSlice_index,
     core_slice_index_SliceIndex_index_mut = core_slice_index_SliceIndexRangeUsizeSlice_index_mut
-  |)" *)
+  |)"
 
-(* ... and so on for all trait impls ... *)
-(* This is a representative subset. *)
+(* Slice and array Index/IndexMut instances. *)
+definition core_ops_index_IndexSliceInst ::
+  "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒
+   ('a slice, 'idx, 'output) core_ops_index_Index" where
+  "core_ops_index_IndexSliceInst inst = (|
+    core_ops_index_Index_index = core_slice_index_Slice_index inst
+  |)"
+
+definition core_ops_index_IndexMutSliceInst ::
+  "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒
+   ('a slice, 'idx, 'output) core_ops_index_IndexMut" where
+  "core_ops_index_IndexMutSliceInst inst = (|
+    core_ops_index_IndexMut_indexInst = core_ops_index_IndexSliceInst inst,
+    core_ops_index_IndexMut_index_mut = core_slice_index_Slice_index_mut inst
+  |)"
+
+definition core_array_Array_index ::
+  "usize ⇒ ('a slice, 'idx, 'output) core_ops_index_Index ⇒
+   'a array ⇒ 'idx ⇒ 'output result" where
+  "core_array_Array_index _ inst a i =
+    core_ops_index_Index_index inst a i"
+
+definition core_array_Array_index_mut ::
+  "usize ⇒ ('a slice, 'idx, 'output) core_ops_index_IndexMut ⇒
+   'a array ⇒ 'idx ⇒ ('output × ('output ⇒ 'a array)) result" where
+  "core_array_Array_index_mut _ inst a i =
+    core_ops_index_IndexMut_index_mut inst a i"
+
+definition core_ops_index_IndexArrayInst ::
+  "usize ⇒ ('a slice, 'idx, 'output) core_ops_index_Index ⇒
+   ('a array, 'idx, 'output) core_ops_index_Index" where
+  "core_ops_index_IndexArrayInst n inst = (|
+    core_ops_index_Index_index = core_array_Array_index n inst
+  |)"
+
+definition core_ops_index_IndexMutArrayInst ::
+  "usize ⇒ ('a slice, 'idx, 'output) core_ops_index_IndexMut ⇒
+   ('a array, 'idx, 'output) core_ops_index_IndexMut" where
+  "core_ops_index_IndexMutArrayInst n inst = (|
+    core_ops_index_IndexMut_indexInst =
+      core_ops_index_IndexArrayInst n
+        (core_ops_index_IndexMut_indexInst inst),
+    core_ops_index_IndexMut_index_mut = core_array_Array_index_mut n inst
+  |)"
+
+(* [SliceIndex<usize, [T]>]. *)
+definition core_slice_index_usize_get ::
+  "usize ⇒ 'a slice ⇒ 'a option result" where
+  "core_slice_index_usize_get i s =
+    return
+      (if 0 ≤ i ∧ i < int (length s)
+       then Some (s ! nat i)
+       else None)"
+
+definition core_slice_index_usize_get_mut ::
+  "usize ⇒ 'a slice ⇒ ('a option × ('a option ⇒ 'a slice)) result" where
+  "core_slice_index_usize_get_mut i s =
+    return
+      (if 0 ≤ i ∧ i < int (length s)
+       then
+         (Some (s ! nat i),
+          λx. case x of None ⇒ s | Some y ⇒ slice_update s i y)
+       else (None, λ_. s))"
+
+definition core_slice_index_usize_get_unchecked ::
+  "usize ⇒ 'a slice const_raw_ptr ⇒ 'a const_raw_ptr result" where
+  "core_slice_index_usize_get_unchecked _ _ = fail Failure"
+
+definition core_slice_index_usize_get_unchecked_mut ::
+  "usize ⇒ 'a slice mut_raw_ptr ⇒ 'a mut_raw_ptr result" where
+  "core_slice_index_usize_get_unchecked_mut _ _ = fail Failure"
+
+definition core_slice_index_usize_index ::
+  "usize ⇒ 'a slice ⇒ 'a result" where
+  "core_slice_index_usize_index i s = slice_index_usize s i"
+
+definition core_slice_index_usize_index_mut ::
+  "usize ⇒ 'a slice ⇒ ('a × ('a ⇒ 'a slice)) result" where
+  "core_slice_index_usize_index_mut i s = slice_index_mut_usize s i"
+
+definition core_slice_index_private_slice_index_SealedUsizeInst ::
+  "usize core_slice_index_private_slice_index_Sealed" where
+  "core_slice_index_private_slice_index_SealedUsizeInst =
+    (| core_slice_index_private_slice_index_Sealed_dummy = () |)"
+
+definition core_slice_index_SliceIndexUsizeSliceInst ::
+  "(usize, 'a slice, 'a) core_slice_index_SliceIndex" where
+  "core_slice_index_SliceIndexUsizeSliceInst = (|
+    sealedInst = core_slice_index_private_slice_index_SealedUsizeInst,
+    core_slice_index_SliceIndex_get = core_slice_index_usize_get,
+    core_slice_index_SliceIndex_get_mut = core_slice_index_usize_get_mut,
+    core_slice_index_SliceIndex_get_unchecked =
+      core_slice_index_usize_get_unchecked,
+    core_slice_index_SliceIndex_get_unchecked_mut =
+      core_slice_index_usize_get_unchecked_mut,
+    core_slice_index_SliceIndex_index = core_slice_index_usize_index,
+    core_slice_index_SliceIndex_index_mut = core_slice_index_usize_index_mut
+  |)"
+
+(* Vec uses the same list representation as Slice, so generic indexing can
+   delegate directly to the supplied SliceIndex implementation. *)
+definition alloc_vec_Vec_index ::
+  "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒
+   'a alloc_vec_Vec ⇒ 'idx ⇒ 'output result" where
+  "alloc_vec_Vec_index inst v i =
+    core_slice_index_SliceIndex_index inst i v"
+
+definition alloc_vec_Vec_index_mut ::
+  "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒
+   'a alloc_vec_Vec ⇒ 'idx ⇒
+   ('output × ('output ⇒ 'a alloc_vec_Vec)) result" where
+  "alloc_vec_Vec_index_mut inst v i =
+    core_slice_index_SliceIndex_index_mut inst i v"
+
+definition alloc_vec_Vec_IndexInst ::
+  "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒
+   ('a alloc_vec_Vec, 'idx, 'output) core_ops_index_Index" where
+  "alloc_vec_Vec_IndexInst inst = (|
+    core_ops_index_Index_index = alloc_vec_Vec_index inst
+  |)"
+
+definition alloc_vec_Vec_IndexMutInst ::
+  "('idx, 'a slice, 'output) core_slice_index_SliceIndex ⇒
+   ('a alloc_vec_Vec, 'idx, 'output) core_ops_index_IndexMut" where
+  "alloc_vec_Vec_IndexMutInst inst = (|
+    core_ops_index_IndexMut_indexInst = alloc_vec_Vec_IndexInst inst,
+    core_ops_index_IndexMut_index_mut = alloc_vec_Vec_index_mut inst
+  |)"
+
+definition core_ops_deref_DerefVecInst ::
+  "('a alloc_vec_Vec, 'a slice) core_ops_deref_Deref" where
+  "core_ops_deref_DerefVecInst = (|
+    core_ops_deref_Deref_deref = λv. return (alloc_vec_Vec_deref v)
+  |)"
+
+definition core_ops_deref_DerefMutVecInst ::
+  "('a alloc_vec_Vec, 'a slice) core_ops_deref_DerefMut" where
+  "core_ops_deref_DerefMutVecInst = (|
+    core_ops_deref_DerefMut_derefInst = core_ops_deref_DerefVecInst,
+    core_ops_deref_DerefMut_deref_mut =
+      λv. return (alloc_vec_Vec_deref_mut v)
+  |)"
+
+definition alloc_vec_DerefVec ::
+  "('a alloc_vec_Vec, 'a slice) core_ops_deref_Deref" where
+  "alloc_vec_DerefVec = core_ops_deref_DerefVecInst"
+
+definition alloc_vec_DerefMutVec ::
+  "('a alloc_vec_Vec, 'a slice) core_ops_deref_DerefMut" where
+  "alloc_vec_DerefMutVec = core_ops_deref_DerefMutVecInst"
 
 end
