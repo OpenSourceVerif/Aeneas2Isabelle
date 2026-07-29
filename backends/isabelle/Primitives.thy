@@ -81,6 +81,7 @@ primrec (nonexhaustive) get_result :: "'a result ⇒ 'a" where
 (*** Misc *)
 
 type_synonym string = String.string
+type_synonym str = string
 type_synonym char = char
 
 (*

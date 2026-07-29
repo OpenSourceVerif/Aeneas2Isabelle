@@ -1247,6 +1247,7 @@ let keywords () =
           "notes";
           "obtains";
           "of";
+          "o";
           "partial_function";
           "primrec";
           "proof";
