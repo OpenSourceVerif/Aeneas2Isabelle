@@ -2531,6 +2531,104 @@ let extract_fun_comment (ctx : extraction_ctx) (fmt : F.formatter)
   extract_comment_with_span ctx fmt comment name
     ~public:def.item_meta.attr_info.public def.item_meta.span
 
+(** Emit the proposition-level preservation obligation associated with an
+    Isabelle function whose result contains an erased const-generic index.
+
+    Function inputs are expected to be open variables after the pure
+    micro-passes.  If this invariant does not hold, we skip the contract rather
+    than printing an ill-scoped Isabelle proposition. *)
+let extract_isabelle_fun_const_generic_wf_lemma (ctx : extraction_ctx)
+    (ctx_body : extraction_ctx) (fmt : F.formatter) (def_name : string)
+    (all_params : (explicit * string) list) (def : fun_decl) : unit =
+  match def.body with
+  | None -> ()
+  | Some body ->
+      if
+        not
+          (isabelle_ty_has_const_generic_wf ctx None def.signature.output)
+      then ()
+      else
+        let input_pats =
+          List.combine def.signature.inputs body.inputs
+        in
+        let input_vars =
+          List.map
+            (fun (input_ty, (pat : tpat)) ->
+              match pat.pat with
+              | POpen (var, _) ->
+                  Some
+                    ( input_ty,
+                      ctx_get_var def.item_meta.span var.id ctx_body )
+              | _ -> None)
+            input_pats
+        in
+        if List.exists Option.is_none input_vars then
+          [%save_error] def.item_meta.span
+            ("Could not generate the Isabelle const-generic well-formedness \
+              lemma for "
+            ^ def_name ^ ": function inputs are not simple variables")
+        else
+          let input_vars = List.filter_map Fun.id input_vars in
+          let assumptions =
+            List.filter
+              (fun (input_ty, _) ->
+                isabelle_ty_has_const_generic_wf ctx None input_ty)
+              input_vars
+          in
+          let runtime_params =
+            Collections.List.drop
+              (List.length def.signature.generics.types)
+              all_params
+          in
+          let lemma_name = def_name ^ "_const_generic_wf" in
+          F.pp_force_newline fmt ();
+          F.pp_force_newline fmt ();
+          F.pp_print_string fmt "lemma ";
+          F.pp_print_string fmt lemma_name;
+          F.pp_print_string fmt ":";
+          if assumptions <> [] then (
+            F.pp_force_newline fmt ();
+            F.pp_print_string fmt "  assumes ";
+            Collections.List.iter_link
+              (fun () ->
+                F.pp_force_newline fmt ();
+                F.pp_print_string fmt "      and ")
+              (fun (input_ty, input_name) ->
+                F.pp_open_hovbox fmt ctx.indent_incr;
+                F.pp_print_string fmt "\"";
+                extract_isabelle_ty_const_generic_wf def.item_meta.span
+                  ctx_body fmt input_ty (fun () ->
+                    F.pp_print_string fmt input_name);
+                F.pp_print_string fmt "\"";
+                F.pp_close_box fmt ())
+              assumptions);
+          F.pp_force_newline fmt ();
+          F.pp_print_string fmt "  shows ";
+          F.pp_open_hovbox fmt ctx.indent_incr;
+          F.pp_print_string fmt "\"";
+          extract_isabelle_ty_const_generic_wf def.item_meta.span ctx_body fmt
+            def.signature.output (fun () ->
+              F.pp_print_string fmt "(";
+              F.pp_print_string fmt def_name;
+              List.iter
+                (fun (_, name) ->
+                  F.pp_print_space fmt ();
+                  F.pp_print_string fmt name)
+                runtime_params;
+              List.iter
+                (fun (_, name) ->
+                  F.pp_print_space fmt ();
+                  F.pp_print_string fmt name)
+                input_vars;
+              F.pp_print_string fmt ")");
+          F.pp_print_string fmt "\"";
+          F.pp_close_box fmt ();
+          F.pp_force_newline fmt ();
+          (* The contract is intentionally emitted as a proof obligation.  In
+             simple constructor/projector cases Isabelle can discharge it by
+             simplification; general automatic proofs are future work. *)
+          F.pp_print_string fmt "  sorry"
+
 (** Extract a function declaration.
 
     This function is for all function declarations and all backends **at the
@@ -2657,6 +2755,7 @@ let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
   | FStar | Coq | Lean | HOL4 ->
       extract_fun_parameters space ctx fmt def
 in
+  let lemma_ctx_body = ref ctx_body in
   (* Print the return type - note that we have to be careful when
    * printing the input values for the decrease clause, because
    * it introduces bindings in the context... We thus "forget"
@@ -2830,6 +2929,7 @@ in
                   ctx body.inputs
           in
 
+          lemma_ctx_body := ctx_body;
           F.pp_print_space fmt ();
           F.pp_print_string fmt "= (";
           F.pp_force_newline fmt ();
@@ -2942,6 +3042,9 @@ in
     (fun_decl_kind_to_post_qualif kind);
   (* Close the outer box for the definition *)
   F.pp_close_box fmt ();
+  if backend () = Isabelle then
+    extract_isabelle_fun_const_generic_wf_lemma ctx !lemma_ctx_body fmt def_name
+      all_params def;
   (* Add breaks to insert new lines between definitions *)
   if backend () <> HOL4 || decl_is_not_last_from_group kind then
     F.pp_print_break fmt 0 0

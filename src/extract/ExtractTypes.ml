@@ -1496,6 +1496,178 @@ let extract_isabelle_type_decl_params (fmt : F.formatter)
       F.pp_print_string fmt ")";
       F.pp_print_space fmt ()
 
+(** Name of the proposition-level invariant used to recover const-generic
+    indices erased from Isabelle types. *)
+let isabelle_const_generic_wf_name (span : Meta.span) (ctx : extraction_ctx)
+    (type_id : type_id) : string =
+  ctx_get_type (Some span) type_id ctx ^ "_const_generic_wf"
+
+(** Return [true] when an Isabelle value of this type needs an additional
+    proposition-level invariant to recover an erased const-generic index.
+
+    [skip_type_id] prevents a recursive type declaration from referring to its
+    own invariant through a recursive field: such invariants require an
+    inductive/recursive predicate and are deliberately left for later. *)
+let rec isabelle_ty_has_const_generic_wf (ctx : extraction_ctx)
+    (skip_type_id : TypeDeclId.id option) (ty : ty) : bool =
+  match ty with
+  | TAdt
+      ( TBuiltin TArray,
+        { types = [ _ ]; const_generics = [ _ ]; trait_refs = [] } ) ->
+      true
+  | TAdt
+      ( TBuiltin TResult,
+        { types = [ ty ]; const_generics = []; trait_refs = [] } ) ->
+      isabelle_ty_has_const_generic_wf ctx skip_type_id ty
+  | TAdt (TAdtId id, generics) ->
+      Some id <> skip_type_id
+      && generics.const_generics <> []
+      && TypeDeclId.Map.mem id ctx.trans_types
+  | _ -> false
+
+(** Print the proposition saying that [value] is a well-formed Isabelle
+    representation of [ty], with erased const-generic indices restored as
+    term-level predicates.  The caller must first check
+    {!isabelle_ty_has_const_generic_wf}. *)
+let rec extract_isabelle_ty_const_generic_wf (span : Meta.span)
+    (ctx : extraction_ctx) (fmt : F.formatter) (ty : ty)
+    (value : unit -> unit) : unit =
+  match ty with
+  | TAdt
+      ( TBuiltin TArray,
+        {
+          types = [ _ ];
+          const_generics = [ array_len ];
+          trait_refs = [];
+        } ) ->
+      F.pp_print_string fmt "array_wf";
+      F.pp_print_space fmt ();
+      extract_const_generic span ctx fmt ~inside:true array_len;
+      F.pp_print_space fmt ();
+      value ()
+  | TAdt
+      ( TBuiltin TResult,
+        { types = [ ok_ty ]; const_generics = []; trait_refs = [] } ) ->
+      F.pp_print_string fmt "result_wf";
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt "(λwf_value.";
+      F.pp_print_space fmt ();
+      extract_isabelle_ty_const_generic_wf span ctx fmt ok_ty (fun () ->
+          F.pp_print_string fmt "wf_value");
+      F.pp_print_string fmt ")";
+      F.pp_print_space fmt ();
+      value ()
+  | TAdt (TAdtId id, generics) when generics.const_generics <> [] ->
+      F.pp_print_string fmt
+        (isabelle_const_generic_wf_name span ctx (TAdtId id));
+      List.iter
+        (fun cg ->
+          F.pp_print_space fmt ();
+          extract_const_generic span ctx fmt ~inside:true cg)
+        generics.const_generics;
+      F.pp_print_space fmt ();
+      value ()
+  | _ ->
+      (* This branch is only a defensive fallback: callers normally filter
+         such types with [isabelle_ty_has_const_generic_wf]. *)
+      F.pp_print_string fmt "True"
+
+(** Emit the invariant attached to an Isabelle type declaration whose const
+    generic parameters were erased from its type constructor.
+
+    For ordinary structures we currently recover constraints from fields whose
+    types are arrays or other non-recursive const-generic ADTs.  Empty,
+    opaque, tuple and enum representations receive [True] for now; the latter
+    two require representation-specific pattern traversal. *)
+let extract_isabelle_const_generic_type_wf (ctx : extraction_ctx)
+    (fmt : F.formatter) (def : type_decl) : unit =
+  if def.generics.const_generics <> [] then (
+    let span = def.item_meta.span in
+    let ctx_body, _, cg_params, _ =
+      ctx_add_generic_params span def.item_meta.name Item def.llbc_generics
+        def.generics ctx
+    in
+    let wf_name =
+      isabelle_const_generic_wf_name span ctx (TAdtId def.def_id)
+    in
+    let value_name = basename_to_unique ctx_body "value" in
+    let self_ty =
+      TAdt (TAdtId def.def_id, generic_args_of_params def.generics)
+    in
+    let self_ty_string =
+      F.asprintf "%t" (fun ty_fmt ->
+          F.pp_open_hovbox ty_fmt 0;
+          extract_ty span ctx_body ty_fmt TypeDeclId.Set.empty ~inside:false
+            self_ty;
+          F.pp_close_box ty_fmt ())
+    in
+    let is_tuple_struct =
+      PureUtils.type_decl_from_type_id_is_tuple_struct
+        ctx.trans_ctx.type_ctx.type_infos (TAdtId def.def_id)
+    in
+    let constraints =
+      match def.kind with
+      | Struct fields when not is_tuple_struct ->
+          List.filter_map
+            (fun (field_id, (field : field)) ->
+              if
+                isabelle_ty_has_const_generic_wf ctx_body (Some def.def_id)
+                  field.field_ty
+              then Some (field_id, field.field_ty)
+              else None)
+            (FieldId.mapi (fun field_id field -> (field_id, field)) fields)
+      | Struct _ | Enum _ | Opaque -> []
+    in
+    F.pp_print_break fmt 0 0;
+    F.pp_print_string fmt "definition ";
+    F.pp_print_string fmt wf_name;
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt "  :: \"";
+    List.iter
+      (fun (param : const_generic_param) ->
+        extract_literal_type ctx_body fmt param.ty;
+        F.pp_print_string fmt " ";
+        extract_arrow fmt ();
+        F.pp_print_string fmt " ")
+      def.generics.const_generics;
+    F.pp_print_string fmt self_ty_string;
+    F.pp_print_string fmt " ";
+    extract_arrow fmt ();
+    F.pp_print_string fmt " ";
+    F.pp_print_string fmt "bool\" where";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt "  \"";
+    F.pp_print_string fmt wf_name;
+    List.iter
+      (fun name ->
+        F.pp_print_string fmt " ";
+        F.pp_print_string fmt name)
+      cg_params;
+    F.pp_print_string fmt " ";
+    F.pp_print_string fmt value_name;
+    F.pp_print_string fmt " ⟷";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt "    ";
+    if constraints = [] then F.pp_print_string fmt "True"
+    else (
+      let constraint_to_string (field_id, field_ty) =
+        F.asprintf "%t" (fun constraint_fmt ->
+            F.pp_open_hovbox constraint_fmt 0;
+            extract_isabelle_ty_const_generic_wf span ctx_body constraint_fmt
+              field_ty (fun () ->
+                F.pp_print_string constraint_fmt "(";
+                F.pp_print_string constraint_fmt
+                  (ctx_get_field span (TAdtId def.def_id) field_id ctx_body);
+                F.pp_print_string constraint_fmt " ";
+                F.pp_print_string constraint_fmt value_name;
+                F.pp_print_string constraint_fmt ")");
+            F.pp_close_box constraint_fmt ())
+      in
+      F.pp_print_string fmt
+        (String.concat " ∧ " (List.map constraint_to_string constraints)));
+    F.pp_print_string fmt "\"";
+    F.pp_print_break fmt 0 0)
+
 (** - [as_implicits]: if [explicit] is [None], then we use this parameter to
       control whether the parameters should be extract as explicit or implicit.
 *)
@@ -2030,7 +2202,7 @@ let extract_type_decl (ctx : extraction_ctx) (fmt : F.formatter)
     | SingleNonRec | SingleRec | MutRecFirst | MutRecInner | MutRecLast -> true
     | Builtin | Declared -> false
   in
-  if extract_body then
+  (if extract_body then
     match backend () with
     | HOL4 when is_empty_record_type_decl def ->
         extract_type_decl_hol4_empty_record ctx fmt def
@@ -2045,7 +2217,20 @@ let extract_type_decl (ctx : extraction_ctx) (fmt : F.formatter)
     | FStar | Coq | Lean ->
         extract_type_decl_gen ctx fmt type_decl_group kind def extract_body
     | Isabelle -> extract_type_decl_isabelle_opaque ctx fmt def
-    | HOL4 -> extract_type_decl_hol4_opaque ctx fmt def
+    | HOL4 -> extract_type_decl_hol4_opaque ctx fmt def);
+  if
+    backend () = Isabelle
+    && def.generics.const_generics <> []
+    && not (decl_is_from_mut_rec_group kind)
+  then extract_isabelle_const_generic_type_wf ctx fmt def
+  else if
+    backend () = Isabelle
+    && def.generics.const_generics <> []
+    && decl_is_from_mut_rec_group kind
+  then
+    [%save_error] def.item_meta.span
+      "Well-formedness predicates for mutually recursive Isabelle \
+       const-generic types are not supported"
 
 (** Generate a [Argument] instruction in Coq to allow omitting implicit
     arguments for variants, fields, etc..

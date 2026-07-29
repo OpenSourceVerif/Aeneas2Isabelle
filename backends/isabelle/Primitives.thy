@@ -55,6 +55,14 @@ fun bind :: "'a result ⇒ ('a ⇒ 'b result) ⇒ 'b result" (infixl ">>=" 55) w
   "bind (Fail e) f = Fail e"
 | "bind (Ok x) f = f x"
 
+(** Lift a well-formedness predicate through the result monad.  This is used
+    by generated contracts for erased const-generic indices: a successful
+    result must satisfy the predicate, while a failure carries no value to
+    check. *)
+fun result_wf :: "('a ⇒ bool) ⇒ 'a result ⇒ bool" where
+  "result_wf P (Ok x) = P x"
+| "result_wf P (Fail e) = True"
+
 syntax
   "_do_bind" :: "[pttrn, 'a result, 'b result] ⇒ 'b result" 
     ("(2_ <- _;// _)" [0, 0, 10] 10)
@@ -1002,6 +1010,13 @@ definition alloc_boxed_Box_coreopsDerefMutInst :: "'a ⇒ ('a, 'a) core_ops_dere
 type_synonym 'a array = "'a list"
 type_synonym 'a slice = "'a list"
 type_synonym 'a alloc_vec_Vec = "'a list"
+
+(** The length index of a Rust array is erased from its Isabelle type.  The
+    generated semantic contracts use [array_wf n xs] to recover the source
+    invariant at the proposition level. *)
+definition array_wf :: "usize ⇒ 'a array ⇒ bool" where
+  "array_wf n xs ⟷
+    0 ≤ n ∧ n ≤ usize_max ∧ int (length xs) = n"
 
 (* Arrays *)
 definition mk_array :: "usize ⇒ 'a list ⇒ 'a array" where
