@@ -3834,6 +3834,21 @@ let explicit_info_drop_prefix (g1 : generic_params) (g2 : explicit_info) :
 (** Small helper.
 
     Extract the items for a method in a trait decl. *)
+let is_isabelle_polymorphic_trait_method (meth : trait_method) : bool =
+  backend () = Isabelle && meth.signature.generics.types <> []
+
+let is_isabelle_trait_record_empty (decl : trait_decl) : bool =
+  backend () = Isabelle
+  && trait_decl_is_empty
+       {
+         decl with
+         methods =
+           List.filter
+             (fun meth ->
+               not (is_isabelle_polymorphic_trait_method meth))
+             decl.methods;
+       }
+
 let extract_trait_decl_method_items_aux (ctx : extraction_ctx)
     (fmt : F.formatter) (decl : trait_decl) (meth : trait_method) : unit =
   (* Lookup the definition *)
@@ -3878,15 +3893,60 @@ let extract_trait_decl_method_items_aux (ctx : extraction_ctx)
 
 let extract_trait_decl_method_items (ctx : extraction_ctx) (fmt : F.formatter)
     (decl : trait_decl) (meth : trait_method) : unit =
-  try extract_trait_decl_method_items_aux ctx fmt decl meth
-  with CFailure _ ->
-    let fun_name =
-      ctx_get_trait_method meth.item_meta.span decl.def_id meth.method_id ctx
-    in
-    extract_trait_decl_item ctx fmt fun_name (fun () ->
-        F.pp_print_space fmt ();
-        if backend () = Isabelle then F.pp_print_string fmt "unit"
-        else extract_admit fmt)
+  if is_isabelle_polymorphic_trait_method meth then ()
+  else
+    try extract_trait_decl_method_items_aux ctx fmt decl meth
+    with CFailure _ ->
+      let fun_name =
+        ctx_get_trait_method meth.item_meta.span decl.def_id meth.method_id ctx
+      in
+      extract_trait_decl_item ctx fmt fun_name (fun () ->
+          F.pp_print_space fmt ();
+          if backend () = Isabelle then F.pp_print_string fmt "unit"
+          else extract_admit fmt)
+
+(** Isabelle/HOL cannot store a value polymorphic in a method-level type
+    parameter inside a record field.  Keep such a method as a top-level,
+    implicitly-polymorphic selector which takes the trait dictionary first.
+    This preserves the Rust/Lean/Coq [forall T] call shape without adding [T]
+    to the trait itself. *)
+let extract_isabelle_polymorphic_trait_method
+    (ctx : extraction_ctx) (fmt : F.formatter) (decl : trait_decl)
+    (trait_type_params : string list) (meth : trait_method) : unit =
+  [%sanity_check] meth.item_meta.span
+    (is_isabelle_polymorphic_trait_method meth);
+  let span = meth.item_meta.span in
+  let signature = meth.signature in
+  let method_generics = signature.generics in
+  let ctx, _, _, _ =
+    ctx_add_generic_params span meth.item_meta.name Method
+      signature.llbc_generics method_generics ctx
+  in
+  let fun_name =
+    ctx_get_trait_method span decl.def_id meth.method_id ctx
+  in
+  F.pp_print_break fmt 0 0;
+  F.pp_open_hovbox fmt ctx.indent_incr;
+  F.pp_print_string fmt "axiomatization";
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt fun_name;
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt "::";
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt "\"";
+  extract_isabelle_type_decl_params fmt trait_type_params;
+  F.pp_print_string fmt
+    (ctx_get_trait_decl span decl.def_id ctx);
+  F.pp_print_space fmt ();
+  extract_arrow fmt ();
+  F.pp_print_space fmt ();
+  extract_isabelle_runtime_generic_parameter_types span ctx fmt
+    method_generics;
+  extract_fun_input_parameters_types span ctx fmt signature.inputs;
+  extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false
+    signature.output;
+  F.pp_print_string fmt "\"";
+  F.pp_close_box fmt ()
 
 (** Extract a trait declaration *)
 let extract_trait_decl (ctx : extraction_ctx) (fmt : F.formatter)
@@ -3969,7 +4029,10 @@ let extract_trait_decl (ctx : extraction_ctx) (fmt : F.formatter)
     Option.get
       (type_decl_kind_to_qualif decl.item_meta.span SingleNonRec (Some Struct))
   in
-  let is_empty = trait_decl_is_empty decl in
+  let is_empty =
+    if backend () = Isabelle then is_isabelle_trait_record_empty decl
+    else trait_decl_is_empty decl
+  in
   if backend () = FStar && not is_empty then (
     F.pp_print_string fmt "noeq";
     F.pp_print_space fmt ());
@@ -4012,15 +4075,14 @@ let extract_trait_decl (ctx : extraction_ctx) (fmt : F.formatter)
       decl.llbc_generics generics ctx
   in
   if backend () = Isabelle then (
+    (* Isabelle/HOL record types can only be parameterized by types.  Const
+       generics are therefore erased from the trait record type, consistently
+       with [extract_trait_decl_ref], and remain explicit term parameters on
+       translated functions when they are needed.  Parent trait clauses are
+       represented by ordinary record fields below, so they do not need to be
+       record parameters either. *)
     extract_isabelle_type_decl_params fmt type_params;
-    F.pp_print_string fmt decl_name;
-    if cg_params <> [] then
-      [%save_error] decl.item_meta.span
-        "Constant generic parameters on Isabelle trait declarations are not \
-         supported";
-    if trait_clauses <> [] then
-      [%save_error] decl.item_meta.span
-        "Parent trait clauses on Isabelle trait declarations are not supported")
+    F.pp_print_string fmt decl_name)
   else
     extract_generic_params decl.item_meta.span ctx fmt TypeDeclId.Set.empty Item
       generics (Some decl.explicit_info) type_params cg_params trait_clauses;
@@ -4122,6 +4184,13 @@ let extract_trait_decl (ctx : extraction_ctx) (fmt : F.formatter)
         F.pp_print_space fmt ();
         F.pp_print_string fmt "}");
   F.pp_close_box fmt ();
+  if backend () = Isabelle then
+    List.iter
+      (fun meth ->
+        if is_isabelle_polymorphic_trait_method meth then
+          extract_isabelle_polymorphic_trait_method ctx fmt decl type_params
+            meth)
+      decl.methods;
   (* Add breaks to insert new lines between definitions *)
   F.pp_print_break fmt 0 0
 
@@ -4199,6 +4268,53 @@ let extract_trait_decl_extra_info (ctx : extraction_ctx) (fmt : F.formatter)
   | Coq -> extract_trait_decl_coq_arguments ctx fmt trait_decl
   | _ -> ()
 
+(** Print the function stored in a trait implementation method field. *)
+let extract_trait_impl_method_term (ctx : extraction_ctx) (fmt : F.formatter)
+    (impl : trait_impl) (fn : fun_decl_ref binder) : unit =
+  let span = impl.item_meta.span in
+  let method_decl_id = fn.binder_value.fun_id in
+  let trans =
+    [%unwrap_with_span] span
+      (ctx_lookup_fun_decl_info ctx method_decl_id)
+      "Could not lookup the translated function, probably because of an error \
+       which happened before"
+  in
+  (* Extract the generics - we need to quantify over the generics which
+     are specific to the method, and call it with all the generics
+     (trait impl + method generics). *)
+  let method_generics = fn.binder_generics in
+  let method_llbc_generics = fn.binder_llbc_generics in
+  let method_explicit_info = fn.binder_explicit_info in
+  let ctx, method_tys, method_cgs, method_tcs =
+    ctx_add_generic_params span trans.f.item_meta.name Method
+      method_llbc_generics method_generics ctx
+  in
+  let use_fun = method_generics <> empty_generic_params in
+  if backend () = Isabelle then (
+    let runtime_params = method_cgs @ method_tcs in
+    if runtime_params <> [] then (
+      F.pp_print_string fmt "λ";
+      List.iter
+        (fun name ->
+          F.pp_print_space fmt ();
+          F.pp_print_string fmt name)
+        runtime_params;
+      F.pp_print_string fmt "."))
+  else
+    extract_generic_params span ctx fmt TypeDeclId.Set.empty ~use_fun Method
+      method_generics (Some method_explicit_info) method_tys method_cgs
+      method_tcs;
+  if use_fun && backend () <> Isabelle then (
+    F.pp_print_space fmt ();
+    F.pp_print_string fmt "=>");
+
+  F.pp_print_space fmt ();
+  let fun_name = ctx_get_local_function span method_decl_id None ctx in
+  F.pp_print_string fmt fun_name;
+  extract_call_generic_args span ctx fmt
+    ~explicit:(Some trans.f.signature.explicit_info)
+    fn.binder_value.fun_generics
+
 (** Small helper.
 
     Extract the items for a method in a trait impl. *)
@@ -4207,56 +4323,10 @@ let extract_trait_impl_method_items_aux ~(before : unit -> unit)
     (method_id : trait_method_id) (fn : fun_decl_ref binder) : unit =
   let span = impl.item_meta.span in
   let trait_decl_id = impl.impl_trait.trait_decl_id in
-  let method_decl_id = fn.binder_value.fun_id in
-  (* Lookup the definition *)
-  let trans =
-    [%unwrap_with_span] span
-      (ctx_lookup_fun_decl_info ctx method_decl_id)
-      "Could not lookup the translated function, probably because of an error \
-       which happened before"
-  in
-  (* Extract the items *)
   let fun_name = ctx_get_trait_method span trait_decl_id method_id ctx in
-  let ty () =
-    (* Extract the generics - we need to quantify over the generics which
-       are specific to the method, and call it will all the generics
-       (trait impl + method generics) *)
-    let method_generics = fn.binder_generics in
-    let method_llbc_generics = fn.binder_llbc_generics in
-    let method_explicit_info = fn.binder_explicit_info in
-    let ctx, method_tys, method_cgs, method_tcs =
-      ctx_add_generic_params span trans.f.item_meta.name Method
-        method_llbc_generics method_generics ctx
-    in
-    let use_fun = method_generics <> empty_generic_params in
-    if backend () = Isabelle then (
-      let runtime_params = method_cgs @ method_tcs in
-      if runtime_params <> [] then (
-        F.pp_print_string fmt "λ";
-        List.iter
-          (fun name ->
-            F.pp_print_space fmt ();
-            F.pp_print_string fmt name)
-          runtime_params;
-        F.pp_print_string fmt "."))
-    else
-      extract_generic_params span ctx fmt TypeDeclId.Set.empty ~use_fun Method
-        method_generics (Some method_explicit_info) method_tys method_cgs
-        method_tcs;
-    if use_fun && backend () <> Isabelle then (
-      F.pp_print_space fmt ();
-      F.pp_print_string fmt "=>");
 
-    (* Extract the function call *)
-    F.pp_print_space fmt ();
-    let fun_name = ctx_get_local_function span method_decl_id None ctx in
-    F.pp_print_string fmt fun_name;
-    extract_call_generic_args span ctx fmt
-      ~explicit:(Some trans.f.signature.explicit_info)
-      fn.binder_value.fun_generics
-  in
-
-  extract_trait_impl_item ~before ctx fmt fun_name ty
+  extract_trait_impl_item ~before ctx fmt fun_name (fun () ->
+      extract_trait_impl_method_term ctx fmt impl fn)
 
 let extract_trait_impl_method_items ~(before : unit -> unit)
     (ctx : extraction_ctx) (fmt : F.formatter) (impl : trait_impl)
@@ -4268,14 +4338,64 @@ let extract_trait_impl_method_items ~(before : unit -> unit)
         method_id ctx
     in
     extract_trait_impl_item ~before ctx fmt fun_name (fun () ->
-        F.pp_print_space fmt ();
-        extract_admit fmt)
+      F.pp_print_space fmt ();
+      extract_admit fmt)
+
+(** Connect an Isabelle top-level polymorphic selector to the concrete method
+    function of a trait implementation.  Equality between the two curried
+    functions quantifies implicitly over the method-level type parameters. *)
+let extract_isabelle_polymorphic_trait_impl_method_axiom
+    (ctx : extraction_ctx) (fmt : F.formatter) (impl : trait_impl)
+    (impl_name : string) (impl_runtime_params : string list)
+    (method_id : trait_method_id) (fn : fun_decl_ref binder) : unit =
+  let span = impl.item_meta.span in
+  let selector_name =
+    ctx_get_trait_method span impl.impl_trait.trait_decl_id method_id ctx
+  in
+  F.pp_print_break fmt 0 0;
+  F.pp_open_hovbox fmt ctx.indent_incr;
+  F.pp_print_string fmt "axiomatization where";
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt
+    (impl_name ^ "_" ^ selector_name ^ "_poly_eq");
+  F.pp_print_string fmt ":";
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt "\"";
+  F.pp_print_string fmt selector_name;
+  F.pp_print_space fmt ();
+  if impl_runtime_params <> [] then F.pp_print_string fmt "(";
+  F.pp_print_string fmt impl_name;
+  List.iter
+    (fun name ->
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt name)
+    impl_runtime_params;
+  if impl_runtime_params <> [] then F.pp_print_string fmt ")";
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt "=";
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt "(";
+  extract_trait_impl_method_term ctx fmt impl fn;
+  F.pp_print_string fmt ")\"";
+  F.pp_close_box fmt ()
 
 (** Extract a trait implementation *)
 let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
     ~(is_rec : bool) (impl : trait_impl) : unit =
   [%ltrace name_to_string ctx impl.item_meta.name];
   let span = impl.item_meta.span in
+  let trans_trait_decl =
+    TraitDeclId.Map.find impl.impl_trait.trait_decl_id ctx.trans_trait_decls
+  in
+  let is_polymorphic_method_id (method_id : trait_method_id) : bool =
+    match
+      List.find_opt
+        (fun (meth : trait_method) -> meth.method_id = method_id)
+        trans_trait_decl.methods
+    with
+    | Some meth -> is_isabelle_polymorphic_trait_method meth
+    | None -> false
+  in
   (* Retrieve the impl name *)
   let impl_name = ctx_get_trait_impl span impl.def_id ctx in
   (* Add a break before *)
@@ -4379,14 +4499,24 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
     ctx_add_generic_params span impl.item_meta.name Item impl.llbc_generics
       impl.generics ctx
   in
-  extract_generic_params span ctx fmt TypeDeclId.Set.empty Item impl.generics
-    (Some impl.explicit_info) type_params cg_params trait_clauses;
+  (* Isabelle does not accept term binders between the constant name and its
+     type in a [definition] command:
+
+       definition f (dict :: "C") :: "T"
+
+     Runtime generic parameters are instead included in the complete function
+     type below and are bound on the LHS of the defining equation. *)
+  if backend () <> Isabelle then
+    extract_generic_params span ctx fmt TypeDeclId.Set.empty Item impl.generics
+      (Some impl.explicit_info) type_params cg_params trait_clauses;
 
   (* Print the type *)
   F.pp_print_space fmt ();
   F.pp_print_string fmt (if backend () = Isabelle then "::" else ":");
   F.pp_print_space fmt ();
   if backend () = Isabelle then F.pp_print_string fmt "\"";
+  if backend () = Isabelle then
+    extract_isabelle_runtime_generic_parameter_types span ctx fmt impl.generics;
   extract_trait_decl_ref span ctx fmt TypeDeclId.Set.empty ~inside:false
     impl.impl_trait;
   if backend () = Isabelle then F.pp_print_string fmt "\"";
@@ -4455,6 +4585,11 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
           F.pp_print_string fmt ",";
           F.pp_print_space fmt ())
     in
+    if is_isabelle_trait_record_empty trans_trait_decl then (
+      before_isabelle_item ();
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt
+        (ctx_get_trait_decl span trait_decl_id ctx ^ "_dummy = ()"));
 
     (* The constants *)
     List.iter
@@ -4531,8 +4666,9 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
     (* The methods *)
     List.iter
       (fun (method_id, _name, bound_fn) ->
-        extract_trait_impl_method_items ~before:before_isabelle_item ctx fmt impl
-          method_id bound_fn)
+        if not (is_polymorphic_method_id method_id) then
+          extract_trait_impl_method_items ~before:before_isabelle_item ctx fmt
+            impl method_id bound_fn)
       impl.methods;
 
     (* Close the outer boxes for the definition, as well as the brackets *)
@@ -4547,6 +4683,13 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
       F.pp_print_space fmt ();
       F.pp_print_string fmt "}"));
   F.pp_close_box fmt ();
+  if backend () = Isabelle then
+    List.iter
+      (fun (method_id, _name, bound_fn) ->
+        if is_polymorphic_method_id method_id then
+          extract_isabelle_polymorphic_trait_impl_method_axiom ctx fmt impl
+            impl_name (cg_params @ trait_clauses) method_id bound_fn)
+      impl.methods;
   (* Add breaks to insert new lines between definitions *)
   F.pp_print_break fmt 0 0
 
