@@ -1,4 +1,4 @@
-//@ [!lean] skip
+//@ [!lean,isabelle] skip
 use std::vec::Vec;
 
 pub fn iter(max: u32) -> u32 {

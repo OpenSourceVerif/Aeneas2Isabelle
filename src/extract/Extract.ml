@@ -1590,7 +1590,7 @@ and extract_Lambda (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
   in
   let with_type =
     match backend () with
-    | Coq | Isabelle -> true
+    | Coq -> true
     | _ -> false
   in
   let ctx =

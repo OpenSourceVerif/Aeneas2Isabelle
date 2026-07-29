@@ -2245,7 +2245,12 @@ let ctx_compute_var_basename (span : Meta.span) (ctx : extraction_ctx)
       | Lean -> basename
       | FStar | Coq | HOL4 -> to_snake_case basename
       | Isabelle ->
-          escape_isabelle_standard_library_name (to_snake_case basename))
+          let basename = to_snake_case basename in
+          let basename =
+            if String.starts_with ~prefix:"_" basename then "v" ^ basename
+            else basename
+          in
+          escape_isabelle_standard_library_name basename)
   | None -> (
       (* No basename: we use the first letter of the type *)
       match ty with
