@@ -1,4 +1,4 @@
-//@ [!lean] skip
+//@ [!lean,isabelle] skip
 use std::mem::discriminant;
 
 pub enum EmptyEnum {}
