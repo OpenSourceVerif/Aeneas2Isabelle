@@ -25,26 +25,6 @@ datatype 'a result =
     Ok 'a
   | Fail error
 
-(** The result of one loop-body iteration.  The first type parameter is the
-    state supplied to the next iteration; the second is the value returned by
-    a break. *)
-datatype ('state, 'break) control_flow =
-    LoopContinue 'state
-  | LoopBreak 'break
-
-(** Rust loops need not terminate, whereas every Isabelle/HOL function is
-    total.  We therefore keep the general loop fixed point abstract and expose
-    its unfolding equation.  Terminating executions are characterized by this
-    equation; divergent executions intentionally remain unspecified. *)
-axiomatization loop ::
-  "('state ⇒ (('state, 'break) control_flow) result) ⇒ 'state ⇒ 'break result"
-where loop_unfold:
-  "loop body state =
-    (case body state of
-       Fail e ⇒ Fail e
-     | Ok (LoopContinue next) ⇒ loop body next
-     | Ok (LoopBreak value) ⇒ Ok value)"
-
 definition return :: "'a ⇒ 'a result" where
   "return x ≡ Ok x"
 
@@ -77,6 +57,26 @@ definition massert :: "bool ⇒ unit result" where
 primrec (nonexhaustive) get_result :: "'a result ⇒ 'a" where
   "get_result (Ok x) = x" (*
 | "get_result (Fail e) = undefined" *)
+
+(** The result of one loop-body iteration.  The first type parameter is the
+    state supplied to the next iteration; the second is the value returned by
+    a break. *)
+datatype ('state, 'break) control_flow =
+    LoopContinue 'state
+  | LoopBreak 'break
+
+(** Rust loops need not terminate, whereas every Isabelle/HOL function is
+    total.  We therefore keep the general loop fixed point abstract and expose
+    its unfolding equation.  Terminating executions are characterized by this
+    equation; divergent executions intentionally remain unspecified. *)
+axiomatization loop ::
+  "('state ⇒ (('state, 'break) control_flow) result) ⇒ 'state ⇒ 'break result"
+where loop_unfold:
+  "loop body state =
+    (case body state of
+       Fail e ⇒ Fail e
+     | Ok (LoopContinue next) ⇒ loop body next
+     | Ok (LoopBreak value) ⇒ Ok value)"
 
 (*** Misc *)
 
