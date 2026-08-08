@@ -823,6 +823,28 @@ and extract_trait_clause_type (span : Meta.span) (ctx : extraction_ctx)
      *)
     extract_generic_args span ctx fmt no_params_tys clause.generics)
 
+let isabelle_type_decl_has_const_generic_fields (ctx : extraction_ctx)
+    (def : type_decl) : bool =
+  backend () = Isabelle
+  && def.generics.const_generics <> []
+  && (match def.kind with
+     | Struct (_ :: _) -> true
+     | Struct [] | Enum _ | Opaque -> false)
+  && not
+       (TypesUtils.type_decl_from_decl_id_is_tuple_struct
+          ctx.trans_ctx.type_ctx.type_infos def.def_id)
+  &&
+  let info =
+    TypeDeclId.Map.find def.def_id ctx.trans_ctx.type_ctx.type_infos
+  in
+  not info.TypesAnalysis.is_rec
+
+let ctx_compute_isabelle_const_generic_field_name (ctx : extraction_ctx)
+    (def : type_decl) (param : const_generic_param) : string =
+  StringUtils.capitalize_first_letter
+    (ctx_compute_type_name_no_suffix ctx def.item_meta def.item_meta.name
+    ^ "_" ^ param.name)
+
 (** Compute the names for all the top-level identifiers used in a type
     definition (type name, variant names, field names, etc. but not type
     parameters).
@@ -1243,6 +1265,18 @@ let extract_type_decl_struct_body (ctx : extraction_ctx) (fmt : F.formatter)
         if in_datatype then F.pp_print_string fmt ")";
         F.pp_close_box fmt ()
       in
+      let print_const_generic_field (param : const_generic_param) : unit =
+        F.pp_open_box fmt ctx.indent_incr;
+        F.pp_print_string fmt
+          (ctx_compute_isabelle_const_generic_field_name ctx def param);
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt "::";
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt "\"";
+        extract_literal_type ctx fmt param.ty;
+        F.pp_print_string fmt "\"";
+        F.pp_close_box fmt ()
+      in
       let fields = FieldId.mapi (fun fid f -> (fid, f)) fields in
       if fields = [] then (
         (* Empty records are normally handled by
@@ -1263,6 +1297,12 @@ let extract_type_decl_struct_body (ctx : extraction_ctx) (fmt : F.formatter)
       else (
         F.pp_print_break fmt 1 ctx.indent_incr;
         F.pp_open_vbox fmt 0;
+        if isabelle_type_decl_has_const_generic_fields ctx def then
+          List.iter
+            (fun param ->
+              print_const_generic_field param;
+              F.pp_print_space fmt ())
+            def.generics.const_generics;
         Collections.List.iter_link (F.pp_print_space fmt)
           (fun (fid, f) -> print_field false fid f)
           fields;
@@ -1648,8 +1688,16 @@ let extract_isabelle_const_generic_type_wf (ctx : extraction_ctx)
     F.pp_print_string fmt " ⟷";
     F.pp_force_newline fmt ();
     F.pp_print_string fmt "    ";
-    if constraints = [] then F.pp_print_string fmt "True"
-    else (
+    let ghost_constraints =
+      if isabelle_type_decl_has_const_generic_fields ctx def then
+        List.map2
+          (fun (param : const_generic_param) cg_name ->
+            ctx_compute_isabelle_const_generic_field_name ctx_body def param
+            ^ " " ^ value_name ^ " = " ^ cg_name)
+          def.generics.const_generics cg_params
+      else []
+    in
+    let field_constraints =
       let constraint_to_string (field_id, field_ty) =
         F.asprintf "%t" (fun constraint_fmt ->
             F.pp_open_hovbox constraint_fmt 0;
@@ -1663,8 +1711,11 @@ let extract_isabelle_const_generic_type_wf (ctx : extraction_ctx)
                 F.pp_print_string constraint_fmt ")");
             F.pp_close_box constraint_fmt ())
       in
-      F.pp_print_string fmt
-        (String.concat " ∧ " (List.map constraint_to_string constraints)));
+      List.map constraint_to_string constraints
+    in
+    let constraints = ghost_constraints @ field_constraints in
+    if constraints = [] then F.pp_print_string fmt "True"
+    else F.pp_print_string fmt (String.concat " ∧ " constraints);
     F.pp_print_string fmt "\"";
     F.pp_print_break fmt 0 0)
 

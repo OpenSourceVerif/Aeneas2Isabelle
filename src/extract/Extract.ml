@@ -2004,6 +2004,22 @@ and extract_StructUpdate (span : Meta.span) (ctx : extraction_ctx)
         && ctx_get_struct span supd.struct_id ctx <> ""
     | _ -> false
   in
+  let isabelle_const_generic_updates =
+    match (backend (), supd.init, supd.struct_id, ty) with
+    | ( Isabelle,
+        None,
+        TAdtId adt_id,
+        TAdt (TAdtId ty_id, generics) )
+      when adt_id = ty_id ->
+        let def = TypeDeclId.Map.find adt_id ctx.trans_types in
+        if isabelle_type_decl_has_const_generic_fields ctx def then
+          List.map2
+            (fun param cg ->
+              (ctx_compute_isabelle_const_generic_field_name ctx def param, cg))
+            def.generics.const_generics generics.const_generics
+        else []
+    | _ -> []
+  in
   if extract_as_unit then
     (* Remark: this is only valid for HOL4 (for instance the Coq unit value is [tt]) *)
     F.pp_print_string fmt "()"
@@ -2132,6 +2148,17 @@ and extract_StructUpdate (span : Meta.span) (ctx : extraction_ctx)
           | FStar -> "="
           | Isabelle -> (if supd.init = None then "=" else ":=")
         in
+        List.iter
+          (fun (field_name, cg) ->
+            F.pp_open_hovbox fmt ctx.indent_incr;
+            F.pp_print_string fmt field_name;
+            F.pp_print_string fmt (" " ^ assign);
+            F.pp_print_space fmt ();
+            extract_const_generic span ctx fmt ~inside:true cg;
+            F.pp_close_box fmt ();
+            F.pp_print_string fmt delimiter;
+            F.pp_print_space fmt ())
+          isabelle_const_generic_updates;
         Collections.List.iter_link
           (fun () ->
             F.pp_print_string fmt delimiter;
@@ -2539,7 +2566,8 @@ let extract_fun_comment (ctx : extraction_ctx) (fmt : F.formatter)
     than printing an ill-scoped Isabelle proposition. *)
 let extract_isabelle_fun_const_generic_wf_lemma (ctx : extraction_ctx)
     (ctx_body : extraction_ctx) (fmt : F.formatter) (def_name : string)
-    (all_params : (explicit * string) list) (def : fun_decl) : unit =
+    (all_params : (explicit * string) list) (kind : decl_kind) (def : fun_decl) :
+    unit =
   match def.body with
   | None -> ()
   | Some body ->
@@ -2624,10 +2652,46 @@ let extract_isabelle_fun_const_generic_wf_lemma (ctx : extraction_ctx)
           F.pp_print_string fmt "\"";
           F.pp_close_box fmt ();
           F.pp_force_newline fmt ();
-          (* The contract is intentionally emitted as a proof obligation.  In
-             simple constructor/projector cases Isabelle can discharge it by
-             simplification; general automatic proofs are future work. *)
-          F.pp_print_string fmt "  sorry"
+          let rec record_wf_def_name ty =
+            match ty with
+            | TAdt
+                ( TBuiltin TResult,
+                  { types = [ ty ]; const_generics = []; trait_refs = [] } ) ->
+                record_wf_def_name ty
+            | TAdt (TAdtId id, generics)
+              when generics.const_generics <> [] ->
+                let type_def = TypeDeclId.Map.find id ctx.trans_types in
+                if isabelle_type_decl_has_const_generic_fields ctx type_def then
+                  Some
+                    (isabelle_const_generic_wf_name def.item_meta.span ctx
+                       (TAdtId id)
+                    ^ "_def")
+                else None
+            | _ -> None
+          in
+          let wf_defs =
+            List.filter_map record_wf_def_name
+              (def.signature.output :: def.signature.inputs)
+            |> List.sort_uniq String.compare
+          in
+          if kind = SingleNonRec && wf_defs <> [] then (
+            if assumptions <> [] then (
+              F.pp_print_string fmt "  using assms";
+              F.pp_force_newline fmt ());
+            F.pp_open_hovbox fmt 4;
+            F.pp_print_string fmt "  by (simp add: ";
+            F.pp_print_string fmt (def_name ^ "_def");
+            List.iter
+              (fun name ->
+                F.pp_print_space fmt ();
+                F.pp_print_string fmt name)
+              wf_defs;
+            F.pp_print_string fmt ")";
+            F.pp_close_box fmt ())
+          else
+            (* General array-preservation and recursive obligations require
+               semantic lemmas about the operations in their bodies. *)
+            F.pp_print_string fmt "  sorry"
 
 (** Extract a function declaration.
 
@@ -3044,7 +3108,7 @@ in
   F.pp_close_box fmt ();
   if backend () = Isabelle then
     extract_isabelle_fun_const_generic_wf_lemma ctx !lemma_ctx_body fmt def_name
-      all_params def;
+      all_params kind def;
   (* Add breaks to insert new lines between definitions *)
   if backend () <> HOL4 || decl_is_not_last_from_group kind then
     F.pp_print_break fmt 0 0
