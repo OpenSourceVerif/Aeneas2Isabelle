@@ -1,0 +1,15 @@
+Rust's ownership and borrowing discipline prevents broad classes of memory errors, but does not establish functional correctness.
+Aeneas addresses this gap by translating a subset of safe Rust into pure functional models for several interactive theorem provers.
+We present \texttt{Rust2Isabelle}, an Isabelle/HOL backend for Charon--Aeneas that translates Aeneas's typed Pure AST into Isabelle theories.
+
+The backend structurally translates types, expressions, functions, globals, and algebraic data types, while providing Isabelle-specific encodings for Rust features without direct counterparts.
+In particular, it preserves Aeneas's forward--backward functional representation of mutable borrows, represents traits using explicit record dictionaries, and represents const generics as ghost fields in records and explicit term parameters in functions, with well-formedness predicates capturing the erased constraints.
+A companion \rprelude{} theory supplies result-valued computations, checked and wrapping machine arithmetic, and list-based models of arrays, slices, and vectors.
+The translation also makes source-opaque declarations, unsupported built-ins, and unresolved recursion or termination obligations explicit through abstract declarations or admitted proofs.
+
+We implement the backend in OCaml and evaluate it using the Aeneas regression suite and adapted components of the Solana blockchain virtual machine.
+Isabelle successfully processes 23 generated regression theories covering the principal constructs of the supported fragment.
+% 2 critical (real world) module
+% 有效性
+% The case study translates a safe x86 instruction encoder and a modified  model into Isabelle theories, while exposing 35 abstract declarations for library operations not yet defined in the \rprelude{}.
+These results demonstrate the feasibility and current coverage of automatically generating Isabelle/HOL models from substantial safe Rust programs.

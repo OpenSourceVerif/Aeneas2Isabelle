@@ -8,4 +8,7 @@
 pub mod jit;
 pub mod x86;
 
-pub use jit::{JitCompilerModel, JitModelError, OperandSize};
+pub use jit::{
+    AluOperation, JitCompilerModel, JitInstruction, JitModelError, JumpCondition, OperandSize,
+    ShiftOperation,
+};

@@ -1,0 +1,55 @@
+\section{Introduction}
+\label{sec:introduction}
+
+Rust prevents broad classes of memory errors through its ownership and borrowing disciplines and has gained increasing adoption in systems software~\cite{jung2017rustbelt,li2024empirical}.
+However, memory safety alone does not guarantee functional correctness or security~\cite{xu2021memory}. A memory-safe Rust program may still overflow, violate a protocol invariant, or produce an incorrect result~\cite{Edera}.
+Formal verification provides a rigorous way to establish such functional-correctness properties by proving that a program satisfies a precise specification.
+
+% Rust formal verification, Verus, Prusti Cresuot ... ATP,  for ITP, Charon-Aeneas LLBC benifits xxx supports xxx, currently not Isabelle/HOL.
+
+% we select Rust2isabelle/HOL. Isabelle benifits xxx, 
+
+% Cresuot-why3-Isabelle/HOL (why3 common experssion), Autocorrede (manually model in Isabelle/HOL). We select charon-Aeneas path xxx for the reason xxx.
+
+Isabelle/HOL~\cite{nipkow2002isabelle} is a mature interactive theorem prover based on classical higher-order logic.
+It supports recursive definitions, algebraic datatypes, reusable theorem libraries, and substantial proof automation~\cite{bohme2010sledgehammer,nelson2019scaling}.
+In addition, it has supported several large-scale systems verification efforts~\cite{alkassar2008formal,becker2026nitro,zhao2019rely}, most notably the functional-correctness verification of the seL4 microkernel~\cite{sel4-sosp}.
+These features make Isabelle/HOL a natural target for reasoning about the functional correctness of Rust programs.
+
+
+However, manually constructing and maintaining a faithful Isabelle/HOL model of Rust programs requires considerable effort. 
+% Such a model must account for Rust's rich type system. 
+% A direct translation must handle ownership and borrowing without reintroducing unnecessary memory reasoning.
+In particular, a direct translation need preserve Rust's ownership and borrowing discipline without reintroducing an explicit memory model.
+The Charon--Aeneas~\cite{ho2025charon,ho2022aeneas} toolchain provides a reusable foundation for automating this process.
+% We therefore build on the relatively mature Charon--Aeneas toolchain rather than developing the entire translation infrastructure 
+% About the toolchain, 
+Charon translates Rust compiler Mid-level Intermediate Representation (MIR) into the Low-Level Borrow Calculus (LLBC), a typed and structured intermediate representation designed for downstream program analysis.
+Aeneas then consumes LLBC and uses symbolic execution to eliminate ownership and borrowing constructs, producing a Pure functional AST suitable for verification.
+Aeneas currently provides extraction backends for F$^\star$~\cite{swamy2016dependent}, Rocq~\cite{bertot2013interactive}, HOL4~\cite{slind2008brief}, and Lean4~\cite{moura2021lean}, but it lacks support for Isabelle/HOL.
+
+In this paper, we present \texttt{Rust2Isabelle}, an Isabelle/HOL backend for the Charon--Aeneas toolchain.
+It translates the typed Pure AST produced by Aeneas into Isabelle/HOL theory files and reuses Aeneas's functional encoding of mutable borrows through forward and backward functions.
+Pure constructs with direct HOL counterparts are translated structurally. For operations without direct counterparts, we define an Isabelle/HOL support library that provides the required semantics.
+%\TODO{The backend addresses the Isabelle-specific challenges of translating Pure types and algebraic datatypes, modeling fixed-width integers and safe arithmetic, encoding loops through the \texttt{Rust2Isabelle} library, translating traits, and modeling required built-ins.}
+%
+We provide the following contributions.
+\begin{itemize}
+    \item \textbf{Rust2Isabelle Translation Rules}: We define translation rules from Rust to Isabelle/HOL. 
+    These rules cover several Rust features, including types, expressions, mutable borrows, traits, const generics, and control flow.
+    \item \textbf{Aeneas-Isabelle Prototype}: We implement a new Isabelle/HOL backend for Aeneas. 
+    This backend generates complete Isabelle/HOL theory files from Rust code. 
+    Our implementation is written in OCaml and integrates easily into the existing Aeneas ecosystem.
+    \item \textbf{Evaluation}: We evaluate our approach and implementation using the official Aeneas test suite. 
+    Additionally, we apply our tool to a key component of the real-world Solana~\cite{SolanaRBPF2} blockchain virtual machine as a case study.
+\end{itemize}
+
+% 1. Translation rules from Rust 2 Isabelle
+% 2. compiler tool implementation + intergration
+% 3. evaluation
+
+{
+\def\sectionautorefname{Section}
+The rest of the paper is organized as follows.
+\autoref{sec:background} reviews the relevant features of Rust, Aeneas's Pure AST, and Isabelle/HOL. \autoref{sec:design} presents the \texttt{Rust2Isabelle} workflow and the translation rules by language construct. \autoref{sec:evaluation} combines construct-level coverage with an SBPF (Solana eBPF) virtual machine case study, Isabelle acceptance, and selected semantic properties.  Related work and the remaining limitations follow in~\autoref{sec:related} and~\autoref{sec:conclusion}.
+}

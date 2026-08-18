@@ -1,0 +1,22 @@
+\section{Related Work}
+\label{sec:related}
+
+A substantial body of work investigates formal verification for Rust. One line of research focuses on automated verification.
+Prusti~\cite{astrauskas2019leveraging} and Creusot~\cite{denis2022creusot} translate Rust programs and specifications into verification conditions discharged by SMT-based backends.
+Verus~\cite{lattuada2023verus} integrates specifications and ghost code with executable Rust, while Kani~\cite{kani} applies bounded model checking~\cite{vanhattum2022verifying}.
+These tools can discharge many proof obligations with limited user interaction.
+However, SMT-based verification is restricted to properties expressible within its supported specification and solver fragments, while bounded model checking explores executions only up to a chosen bound.
+This limits the flexibility and extensibility of proofs that require custom abstractions or reasoning outside these fragments.
+Recent work uses AI agents to reduce the effort of interactive formal development, but still assumes that a formal program model is already available in the target prover~\cite{fang2026trustworthy}.
+
+Another line of work constructs Rust program models for interactive proof assistants.
+Electrolysis~\cite{ullrich2016simple} introduced a functional translation of a Rust subset into Lean, and hax~\cite{bhargavan2024hax} generates models for proof-oriented languages including F* and Coq.
+Aeneas~\cite{aeneas_project,ho2022aeneas} further develops this direction by translating a substantial safe-Rust fragment into pure functions and providing backends for F*, Coq, HOL4, and Lean.
+RustBelt~\cite{jung2017rustbelt} and RefinedRust~\cite{gaher2024refinedrust} instead use separation logic in Coq to reason about Rust memory and ownership explicitly.
+In contrast to these existing target choices, \texttt{Rust2Isabelle} translates Aeneas's functional representation into Isabelle/HOL theories, enabling Rust programs to be studied using Isabelle's higher-order logic and interactive proof facilities.
+
+Isabelle/HOL is an attractive verification target because it combines an expressive logic with mature libraries and proof automation.
+AutoCorres~\cite{greenaway2014don} translates C programs into abstract monadic models for Isabelle proofs.
+AutoCorrode~\cite{autocorrode_aws} provides separation-logic infrastructure for \(\mu\)Rust, a restricted Rust-like language embedded in Isabelle/HOL, and therefore requires programs to be modeled in that language.
+Neither approach automatically translates Rust source code into Aeneas's value-based functional representation.
+\texttt{Rust2Isabelle} fills this missing connection by extending the Aeneas toolchain with an Isabelle/HOL backend and the semantic support required by the generated theories.

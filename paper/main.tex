@@ -1,0 +1,81 @@
+\documentclass[runningheads]{llncs}
+\usepackage[T1]{fontenc}
+\DeclareUnicodeCharacter{21D2}{\ensuremath{\Rightarrow}}
+\DeclareUnicodeCharacter{00D7}{\ensuremath{\times}}
+\DeclareUnicodeCharacter{03BB}{\ensuremath{\lambda}}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor,xspace}
+\usepackage{minted}
+\usepackage[hidelinks]{hyperref}
+\usepackage{newunicodechar}
+\newunicodechar{⟷}{\ensuremath{\leftrightarrow}}
+
+\newcommand{\ie}{\emph{i.e.,}\xspace}
+\newcommand{\eg}{\emph{e.g.,}\xspace}
+\newcommand{\ofs}{o\!f\!s}
+\newcommand{\car}{\texttt{Cargo}\xspace}
+\newcommand{\IR}{Isabelle2Rust\xspace}
+\newcommand{\hol}{Isabelle/HOL\xspace}
+\newcommand{\coq}{Rocq\xspace}
+\newcommand{\thi}{Thingol\xspace}
+\newcommand{\oml}{OCaml\xspace}
+\newcommand{\TODO}[1]{{\textcolor{violet}{TODO: #1}}}
+\newcommand{\yes}{\checkmark}
+\newcommand{\partialyes}{$\triangle$}
+\newcommand{\no}{$\times$}
+
+\newcommand{\rprelude}{\textsc{Prelude}}
+
+\setminted{
+  fontsize=\scriptsize,
+  breaklines=true,
+  autogobble=true,
+  frame=single,
+  framesep=2mm,
+  tabsize=2
+}
+
+% SETTA uses double-blind review.  Switch this flag to false for the
+% camera-ready version.
+\newif\ifanonymousreview
+\anonymousreviewtrue
+
+\begin{document}
+
+\title{Rust2Isabelle: A Rust-to-Isabelle/HOL Backend for Aeneas}
+\ifanonymousreview
+\author{Anonymous Authors}
+\institute{Anonymous Institution}
+\else
+\author{Zefeng Cheng \and Jun Liu \and Jiayi Lu \and Shenghao Yuan  \and Yongwang Zhao \and David Sanan}
+%\authorrunning{F. Author et al.}
+\institute{Zhejiang University, Hangzhou, China \and
+\email{chengzf0898@gmail.com} \and
+%\url{https://github.com/AeneasVerif/aeneas} \and
+%\url{https://github.com/OpenSourceVerif/Aeneas2Isabelle}}
+\fi
+\date{August 2026}
+
+\maketitle
+
+\begin{abstract}
+    \input{sections/abstract}
+    \keywords{Rust \and Isabelle/HOL \and Aeneas \and Formal Verification \and Functional Translation \and Code Generation}
+\end{abstract}
+
+\input{sections/1-introduction}
+\input{sections/2-background}
+\input{sections/3-design}
+\input{sections/4-result}
+\input{sections/5-related}
+\input{sections/6-conclusion}
+
+\bibliographystyle{splncs04} % splncs04.bst
+\bibliography{ref}
+
+\end{document}

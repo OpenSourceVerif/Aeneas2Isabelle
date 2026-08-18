@@ -1,0 +1,45 @@
+\section{Background}
+\label{sec:background}
+
+This section reviews the source language, the functional representation produced by Aeneas, and the target logic used by \texttt{Rust2Isabelle}.
+
+\subsection{Rust}
+
+Rust is a systems programming language designed to provide memory safety
+without garbage collection. Its type system assigns each value a unique
+owner and controls access through borrowing.
+A shared reference \texttt{\&T} permits read-only access and may be duplicated, whereas a mutable reference \texttt{\&mut T} permits exclusive access.
+The borrow checker uses lifetimes to ensure that references do not outlive their owners and that mutable and shared access do not overlap in unsafe ways.
+For safe Rust, these rules prevent errors such as use-after-free and unsynchronized data races without requiring a runtime memory manager~\cite{jung2017rustbelt}.
+
+Rust programs also make extensive use of algebraic data types, pattern matching, traits, parametric polymorphism, and const generics.
+These features are relevant to functional verification because they affect both the types of translated functions and the evidence passed to generic code.
+Mutable borrows present the main semantic difficulty: an update through \texttt{\&mut T} must eventually be reflected in the value owned by the caller.
+Rust's compiler represents checked programs using the MIR, a typed control-flow graph~\cite{rustc-mir} intended for compiler analyses and optimization rather than interactive proofs.
+
+\subsection{Aeneas's Pure AST}
+
+Aeneas takes as input LLBC, the typed and structured representation of Rust MIR produced by Charon~\cite{ho2025charon}. It symbolically executes LLBC using an ownership-centric semantics.
+For its supported safe-Rust fragment, this process removes places, loans, and lifetime annotations and produces a side-effect-free functional representation called the Pure AST~\cite{ho2022aeneas}.
+Shared borrows become ordinary values. A mutable borrow may produce a forward value together with a backward function.
+After the borrowed value is updated, the backward function reconstructs the corresponding owner.
+This representation captures the effect of mutation without carrying an explicit heap into the theorem prover.
+
+The Pure AST also makes failures explicit. Operations that may panic or fail, such as checked arithmetic and bounds-checked indexing, return a result value.
+Its declarations include types, functions, globals, trait declarations and implementations, const-generic parameters, and recursive groups.
+Aeneas orders these declarations by dependency before passing them to a backend.
+\texttt{Rust2Isabelle} starts at this boundary. It does not repeat Rust borrow checking or the symbolic execution from LLBC to Pure.
+
+\subsection{Isabelle/HOL}
+
+Isabelle is a generic interactive theorem prover that supports different
+object logics.
+Isabelle/HOL instantiates it with classical higher-order logic and is the logic used in this work~\cite{nipkow2002isabelle}.
+An Isabelle theory contains named declarations and proofs and may import other theories.
+Isabelle/HOL provides polymorphic types, datatypes, records, higher-order functions, and support for recursive and inductive definitions.
+Its proof environment also offers automation tools such as Sledgehammer~\cite{bohme2010sledgehammer}.
+
+Several properties of Isabelle/HOL affect the translation of the Pure AST.
+Functions are total, and every HOL type is nonempty.
+Declarations use commands such as \texttt{datatype}, \texttt{record}, \texttt{definition}, and \texttt{function}, and referenced types and constants must already be in scope.
+These constraints shape the representation and translation choices presented in the next section.

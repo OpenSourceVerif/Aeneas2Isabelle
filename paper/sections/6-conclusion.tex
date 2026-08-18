@@ -1,0 +1,21 @@
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+We presented \texttt{Rust2Isabelle}, an Isabelle/HOL backend for the Charon--Aeneas toolchain.
+It combines Aeneas's functional translation with Isabelle-specific representations and semantic support.
+Our evaluation demonstrates the feasibility of the approach and delineates its current coverage.
+
+\paragraph{Limitations.}
+The prototype inherits Aeneas's restrictions on unsafe code and interior mutability.
+Some built-ins, nested borrows, and complex control flow remain unsupported and machine-integer bounds and array lengths require well-formedness predicates rather than encoded directly in HOL types.
+Loops and recursive definitions may introduce \texttt{axiomatization} or termination obligations. The backend is not verified by a semantics-preservation proof and does not yet generate functional-correctness specifications or proofs.
+
+\paragraph{Future work.}
+Future work will broaden the accepted Rust fragment by extending the \rprelude{} and completing support for missing types, library built-ins, and complex borrowing and control-flow patterns.
+It will also reduce the current proof assumptions by generating termination proofs, handling mutually recursive definitions, and extending automatic well-formedness proofs.
+Longer-term work includes proving semantics preservation for the backend and translating Rust specifications into Isabelle statements for functional-correctness verification.
+Unsafe code and interior mutability would require a separate memory-aware extension to the current value-based representation.
+
+% i) missing features
+% ii) rust subset semantic preservation 
+e.g. translation validation ~\cite{Pnueli1998}
