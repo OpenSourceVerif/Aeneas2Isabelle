@@ -7,7 +7,7 @@ This section presents the translation from Aeneas's Pure AST to Isabelle/HOL. We
 \subsection{Translation Overview}
 \label{sec:workflow}
 
-\autoref{fig:overview} presents the architecture of \texttt{Rust2Isabelle} within the Charon--Aeneas toolchain. Charon extracts LLBC from Rust, and Aeneas translates LLBC into a typed Pure AST together with the metadata required by subsequent extraction. These existing components are shown in grey. The Pure AST marks the boundary between Aeneas and the Isabelle backend.
+\autoref{fig:overview} presents the architecture of \texttt{Rust2Isabelle} within the Charon--Aeneas toolchain. Charon extracts LLBC from Rust, and Aeneas translates LLBC into a typed Pure AST together with the metadata required by subsequent extraction. These existing components are shown in grey. The Pure AST marks the boundary between Aeneas and the Isabelle/HOL backend.
 
 \begin{figure}[!ht]
   \centering
@@ -15,12 +15,12 @@ This section presents the translation from Aeneas's Pure AST to Isabelle/HOL. We
   \caption{Architecture of \texttt{Rust2Isabelle} within the Charon--Aeneas toolchain. Highlighted components show the Isabelle-specific extensions, and the dashed connection indicates dependency relation on the Prelude library.} 
   \label{fig:overview}
 \end{figure}
-\texttt{Rust2Isabelle} first constructs an Isabelle extraction context containing the Pure declarations, target names, built-in mappings, and dependency information.
-The backend uses this context to translate each output module into an Isabelle theory.
+\texttt{Rust2Isabelle} first constructs an Isabelle/HOL extraction context containing the Pure declarations, target names, built-in mappings, and dependency information.
+The backend uses this context to translate each output module into an Isabelle/HOL theory.
 Then, it emits the \texttt{theory} header and imports the prelude library, denoted by \rprelude{}, together with any user-specified theories.
 Finally, it places the declarations in the dependency order supplied by Aeneas.
 
-Pure constructs with direct Isabelle counterparts are translated into the corresponding types, terms, and declarations.
+Pure constructs with direct Isabelle/HOL counterparts are translated into the corresponding types, terms, and declarations.
 The backend represents Rust-specific features that require additional definitions using the predefined datatypes and built-in operations provided by the \rprelude{}, described in \autoref{sec:primitives}.
 
 The backend uses \texttt{axiomatization} for external functions and globals that have only signatures, unsupported built-ins, generic trait methods, and mutually recursive groups not covered by the current termination rules.
@@ -32,7 +32,7 @@ The evaluation reports these assumptions separately from concrete definitions.
 \label{sec:primitives}
 
 Following Aeneas's backend design, we implement the \rprelude{} as a fixed Isabelle/HOL theory that provides target-side supports for the basic Rust primitives.
-Recognized built-ins are mapped to definitions in the \rprelude{} or Isabelle/HOL. For example, Rust's \texttt{Option<T>} reuses Isabelle's \texttt{'a option} type and its \texttt{None} and \texttt{Some} constructors.
+Recognized built-ins are mapped to definitions in the \rprelude{} or Isabelle/HOL. For example, Rust's \texttt{Option<T>} reuses Isabelle/HOL's \texttt{'a option} type and its \texttt{None} and \texttt{Some} constructors.
 
 We next present the result monad, machine integers, and primitives for arrays, slices, and vectors.
 
@@ -237,7 +237,7 @@ The backend translates both type expressions and type declarations. The principa
   \label{tab:type-map}
   \begin{tabular}{@{}p{0.39\textwidth}p{0.54\textwidth}@{}}
     \toprule
-    \textbf{Pure/Rust construct} & \textbf{Isabelle representation} \\
+    \textbf{Pure/Rust construct} & \textbf{Isabelle/HOL representation} \\
     \midrule
     \multicolumn{2}{@{}l}{\emph{Type expressions}}\\
     Boolean, character, unit
@@ -266,7 +266,7 @@ The backend translates both type expressions and type declarations. The principa
   \end{tabular}
 \end{table}
 Boolean, character, unit, tuple, and function types map directly to their corresponding HOL types.
-Rust type parameters such as \texttt{T} are translated to Isabelle type variables such as \texttt{'a}, making the generated functions polymorphic.
+Rust type parameters such as \texttt{T} are translated to Isabelle/HOL type variables such as \texttt{'a}, making generated functions polymorphic.
 \autoref{fig:type-declaration-example} illustrates the translation of three representative Rust type declarations.
 
 \begin{figure}[!ht]
@@ -327,8 +327,8 @@ type_synonym Pair_t =
 \caption{Translation of representative Rust type declarations.}
 \label{fig:type-declaration-example}
 \end{figure}
-Each variant of the Rust enum becomes a constructor of the Isabelle datatype.
-The recursive \texttt{Node} declaration is also translated into a datatype, since Isabelle records cannot be recursive. Its named constructor arguments retain the source field names.
+Each variant of the Rust enum becomes a constructor of the Isabelle/HOL datatype.
+The recursive \texttt{Node} declaration is also translated into a datatype, since Isabelle/HOL records cannot be recursive. Its named constructor arguments retain the source field names.
 In contrast, the non-recursive \texttt{Point} declaration becomes a record, and its \texttt{x, y} fields are represented by record selectors.
 
 Tuple structs are represented by product types, while empty structs use
@@ -339,8 +339,8 @@ Isabelle/HOL type is nonempty.
 \subsection{Expression Translation}
 \label{sec:expressions}
 
-Typed Pure expressions are translated recursively into Isabelle terms.
-The translation follows the structure of the Pure AST and maps each expression form to its corresponding Isabelle syntax.~\autoref{tab:expression-map} summarizes the main translation rules.
+Typed Pure expressions are translated recursively into Isabelle/HOL terms.
+The translation follows the structure of the Pure AST and maps each expression form to its corresponding Isabelle/HOL syntax.~\autoref{tab:expression-map} summarizes the main translation rules.
 
 \begin{table}[!ht]
   \centering
@@ -349,7 +349,7 @@ The translation follows the structure of the Pure AST and maps each expression f
   \small
   \begin{tabular}{@{}p{0.42\textwidth}p{0.56\textwidth}@{}}
     \toprule
-    \textbf{Pure expression} & \textbf{Isabelle term} \\
+    \textbf{Pure expression} & \textbf{Isabelle/HOL term} \\
     \midrule
     Variable or literal
       & \texttt{x} or \texttt{c} \\
@@ -377,9 +377,9 @@ The translation follows the structure of the Pure AST and maps each expression f
   \end{tabular}
 \end{table}
 
-Most expression forms are translated structurally, with function and constructor arguments retaining their order in the Pure AST. Field access is a target-specific exception. Since Isabelle record selectors are functions, an access \texttt{r.f} is translated into \texttt{f r}. Record updates use Isabelle's form \texttt{r(\textbar{} f := e \textbar{})}. Parentheses are added when necessary to preserve the grouping of nested expressions.
+Most expression forms are translated structurally, with function and constructor arguments retaining their order in the Pure AST. Field access is a target-specific exception. Since Isabelle/HOL record selectors are functions, an access \texttt{r.f} is translated into \texttt{f r}. Record updates use Isabelle/HOL's form \texttt{r(\textbar{} f := e \textbar{})}. Parentheses are added when necessary to preserve the grouping of nested expressions.
 
-Pure let-expressions are translated either as ordinary Isabelle
+Pure let-expressions are translated either as ordinary Isabelle/HOL
 \texttt{let}-bindings or, when marked as monadic in the Pure AST, using the do-bind notation described in \autoref{sec:primitives}.
 
 \subsection{Mutable Borrows}
@@ -396,7 +396,7 @@ owners.
 
 The function in \autoref{backward translation} demonstrates why the backward function is necessary. Depending on \texttt{b}, the returned mutable reference refers either to \texttt{x} or to \texttt{y}.  The backward function records this choice so that a later update can be propagated to the correct argument.
 
-To avoid name collisions, the backend appends a trailing prime to Rust identifiers that conflict with Isabelle keywords or predefined constants.
+To avoid name collisions, the backend appends a trailing prime to Rust identifiers that conflict with Isabelle/HOL keywords or predefined constants.
 For example, in \autoref{backward translation}, the Rust function \texttt{choose} is renamed to \texttt{choose'}.
 
 \begin{figure}[H]
@@ -438,14 +438,14 @@ where
 \end{figure}
 
 The first component of the returned pair is the selected value, and the second is its backward function.  When \texttt{b} is true, updating the borrowed value to \(x'\) and applying the backward function produces \((x',y)\).  When \texttt{b} is false, an updated value \(y'\) produces \((x,y')\).
-The update therefore reaches exactly the selected owner.  The Isabelle backend preserves this functional representation directly, without introducing a target heap or a separate alias relation.
+The update therefore reaches exactly the selected owner.  The Isabelle/HOL backend preserves this functional representation directly, without introducing a target heap or a separate alias relation.
 
 \subsection{Control flow and Recursion}
 \label{sec:recursion}
 
-Conditionals and pattern matching translate directly into Isabelle \texttt{if} and \texttt{case} expressions, as shown in \autoref{tab:expression-map}.
+Conditionals and pattern matching translate directly into Isabelle/HOL \texttt{if} and \texttt{case} expressions, as shown in \autoref{tab:expression-map}.
 Loops and recursive functions require separate treatment because Isabelle/HOL requires recursive definitions to be terminating.
-Termination is undecidable in general, but Isabelle can prove it for many common cases when supplied with a variant, namely a value in a well-founded order that strictly decreases on every recursive call or continuing loop iteration.
+Termination is undecidable in general, but Isabelle/HOL can prove it for many common cases when supplied with a variant, namely a value in a well-founded order that strictly decreases on every recursive call or continuing loop iteration.
 The backend currently derives suitable measures for structural recursion and selected integer-countdown patterns.
 More general termination measures are not yet inferred.
 
@@ -475,7 +475,7 @@ Executions that continue indefinitely remain unspecified, so this encoding does 
 
 A variant-based proof applies only to terminating programs.
 Preserving genuinely divergent executions would instead require an explicit divergence-aware representation, as provided by the HOL4 backend.
-The current Isabelle loop operator leaves such executions unspecified.
+The current Isabelle/HOL loop operator leaves such executions unspecified.
 
 \begin{figure}[!ht]
 \centering
@@ -574,16 +574,16 @@ else
 % \end{figure}
 In \autoref{fig:loop-translation}, the current value of \texttt{i} is the loop state. The generated body either continues with the incremented value or breaks with the final value. The backend additionally generates a wrapper that applies \texttt{loop} to this body and an entry definition that supplies the initial state.
 
-Non-recursive functions use Isabelle's \texttt{definition} command.
+Non-recursive functions use Isabelle/HOL's \texttt{definition} command.
 Recursive functions use \texttt{function}, while mutually recursive functions are emitted together as a joint function group.
 For the currently supported structural and integer-countdown patterns, the backend supplies a well-founded measure and discharges the resulting termination obligations automatically.
 
 \subsection{Generics and Traits}
 \label{sec:traits}
 
-Rust type parameters become polymorphic Isabelle type variables and require no runtime representation.
+Rust type parameters become polymorphic Isabelle/HOL type variables and require no runtime representation.
 Const generics require a different treatment because Isabelle/HOL types cannot take const generics as type parameters.
-We therefore translate a const-generic Rust structure into an Isabelle record, retaining \texttt{N} as a ghost field of type \texttt{usize}, while occurrences of \texttt{N} in function signatures become explicit \texttt{usize} parameters. \autoref{fig:const-generic-translation} illustrates this translation.
+We therefore translate a const-generic Rust structure into an Isabelle/HOL record, retaining \texttt{N} as a ghost field of type \texttt{usize}, while occurrences of \texttt{N} in function signatures become explicit \texttt{usize} parameters. \autoref{fig:const-generic-translation} illustrates this translation.
 
 \begin{figure}[!ht]
 \centering
@@ -724,7 +724,7 @@ It states that if the input list represents an array of length \texttt{n}, then 
 % \end{figure}
 
 Trait bounds are represented using explicit dictionaries.  A Rust trait
-becomes an Isabelle record whose type parameters represent \texttt{Self} and its associated types.  Required methods and associated constants become record fields, while supertrait bounds become fields containing the corresponding parent dictionaries.  A trait implementation becomes a record-valued definition that supplies these fields.  Consequently, a generic function with a trait bound receives the required dictionary as an explicit argument.
+becomes an Isabelle/HOL record whose type parameters represent \texttt{Self} and its associated types.  Required methods and associated constants become record fields, while supertrait bounds become fields containing the corresponding parent dictionaries.  A trait implementation becomes a record-valued definition that supplies these fields.  Consequently, a generic function with a trait bound receives the required dictionary as an explicit argument.
 
 \begin{figure}[!ht]
 \centering
@@ -785,7 +785,7 @@ where
      ToU64_t_to_u64 dict x"
 \end{minted}
 \end{minipage}
-\caption{A Rust trait, its implementation, and a trait-bounded generic function represented using an explicit Isabelle dictionary.}
+\caption{A Rust trait, its implementation, and a trait-bounded generic function represented using an explicit Isabelle/HOL dictionary.}
 \label{fig:trait-dictionary}
 \end{figure}
 
@@ -796,10 +796,9 @@ The bound \texttt{T: ToU64} becomes an explicit dictionary parameter of \texttt{
 The current backend supports ordinary trait bounds, associated types,
 associated constants, default items, implementations, and supertrait
 dictionaries.  Trait clauses attached directly to type declarations are notyet supported.  Methods with their own type parameters cannot be stored
-polymorphically in an Isabelle record and are currently handled using
-top-level axiomatizations.  Trait objects are supported only for the restricted
-forms represented by the existing \texttt{Dyn} encoding.  More general
-\texttt{dyn Trait} combinations remain unsupported.
+polymorphically in an Isabelle/HOL record and are currently handled using
+top-level axiomatizations.
+Trait objects are supported only for the restricted forms represented by the existing \texttt{Dyn} encoding.  More general \texttt{dyn Trait} combinations remain unsupported.
 
 % \subsection{Functions and Global Values}
 % \label{sec:functions}

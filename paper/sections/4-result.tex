@@ -2,32 +2,32 @@
 \label{sec:evaluation}
 
 This section describes the integration of \texttt{Rust2Isabelle} into Aeneas and evaluates its translation coverage.
-The Aeneas regression suite is used to examine specific Rust features, while the case study considers larger components from a real-world system, Solona Berkeley Packet Filter (SBPF) blockchain virtual machine.
-The evaluation concerns generation and acceptance of Isabelle theories.
+The Aeneas regression suite is used to examine specific Rust features, while the case study considers components from a real-world system, Solona Berkeley Packet Filter (SBPF) blockchain virtual machine.
+The evaluation concerns generation and acceptance of Isabelle/HOL theories.
 
 \subsection{Integration and Feature Coverage}
 
 \texttt{Rust2Isabelle} is integrated into Aeneas as an Isabelle/HOL backend and selected using the option \texttt{-backend isabelle}.
-The regression tests invoke this backend to generate complete Isabelle theories importing the \rprelude{}.
+The regression tests invoke this backend to generate complete Isabelle/HOL theories importing the \rprelude{}.
 
-The Isabelle backend adds approximately 2.7~kLoC of OCaml to Aeneas.
+The Isabelle/HOL backend adds approximately 2.7~kLoC of OCaml to Aeneas.
 It implements Isabelle-specific naming and built-in mappings, together with the translation of Pure declarations into complete theory files.
 The accompanying \rprelude{} comprises approximately 1.5~kLoC of Isabelle/HOL definitions for Rust primitives and predefined library operations.
 
 We evaluated the backend using regression tests from Aeneas.
-Isabelle successfully processed 26 generated theories, covering the Rust features summarized in \autoref{tab:feature-coverage}.
+It successfully processed 26 generated theories, covering the Rust features summarized in \autoref{tab:feature-coverage}.
 Since Isabelle/HOL and HOL4 are closely related HOL-based theorem provers, the table also compares the feature support of their Aeneas backends.
 The HOL4 results are based on its implementation and previously generated theories because it is not currently enabled in the Aeneas test suite.
 
 \begin{table}[!ht]
   \centering
-  \caption{Feature comparison between the Isabelle and HOL4 backends. \checkmark~denotes full support, $\triangle$ partial support, and $\times$ unsupported features.}
+  \caption{Feature comparison between the Isabelle/HOL and HOL4 backends. \checkmark~denotes full support, $\triangle$ partial support, and $\times$ unsupported features.}
   \label{tab:feature-coverage}
   \small
   \begin{tabular}{@{}p{0.58\textwidth}>{\centering\arraybackslash}m{0.16\textwidth}>{\centering\arraybackslash}m{0.16\textwidth}@{}}
     \toprule
     \textbf{Rust feature} &
-    \textbf{Isabelle} &
+    \textbf{Isabelle/HOL} &
     \textbf{HOL4} \\
     \midrule
     Basic types and type parameters
@@ -63,13 +63,13 @@ The HOL4 results are based on its implementation and previously generated theori
   \end{tabular}
 \end{table}
 
-The results show that the Isabelle backend supports the main Pure types, expressions, borrowing constructs, and control-flow forms covered by the selected tests.
+The results show that the Isabelle/HOL backend supports the main Pure types, expressions, borrowing constructs, and control-flow forms covered by the selected tests.
 It matches the HOL4 backend on their shared features and provides broader support for const generics, trait dictionaries, scalar operations, arrays, and nested borrowing and control flow.
 Both backends reuse Aeneas's functional representation of mutable borrows.
 
 The remaining disadvantage relative to HOL4 concerns potentially diverging functions.
 The HOL4 result type distinguishes successful execution, failure, and divergence, allowing recursive functions to be represented without first proving termination.
-The Isabelle backend supports singly and mutually recursive functions when Isabelle can establish termination, but it does not yet represent genuinely divergent executions explicitly.
+The Isabelle/HOL backend supports singly and mutually recursive functions when Isabelle/HOL can establish termination, but it does not yet represent genuinely divergent executions explicitly.
 
 These results confirm that the backend implements the translation described in \autoref{sec:design} across the supported features.
 A mechanized end-to-end proof of semantics preservation remains outside the scope of this work.
@@ -98,7 +98,7 @@ Charon starts from these functions and retains only the declarations on which th
   \small
   \renewcommand{\arraystretch}{1.1}
   \begin{tabular*}{0.92\linewidth}
-    {@{\extracolsep{\fill}}lrrr@{}}
+    {@{\extracolsep{\fill}}lccc@{}}
     \toprule
     \textbf{Component} &
     \multicolumn{1}{c}{\textbf{Rust LOC}} &
@@ -122,7 +122,7 @@ Charon starts from these functions and retains only the declarations on which th
 % Consequently, its 817 lines of Rust produce a shorter theory of 673 lines.
 
 
-Both components are successfully processed by Charon and Aeneas and produce Isabelle theories.
+Both components are successfully processed by Charon and Aeneas and produce Isabelle/HOL theories.
 The Rust LOC counts only local source lines referenced by the generated declarations, with overlapping ranges counted once.
 It excludes untranslated parts of the source files and Rust standard-library code.
 In contrast, the Theory LOC includes every declaration in the generated \texttt{.thy} file, including required library types and operations, whether they have concrete definitions or are introduced by \texttt{axiomatization}.
@@ -147,7 +147,7 @@ For the JIT model, the 1,141 Rust lines comprise 680 lines of JIT logic, 441 lin
 Unlike the encoder entry point, the JIT entry point reaches many functions for decoding instruction classes, selecting x86 instructions, emitting bytes, recording jump targets, and resolving relative offsets.
 The translation represents every instruction branch as an explicit conditional or case expression, chains operations that may fail through the result monad, and expresses changes to the compiler state as record updates.
 Loops also introduce separate definitions for the loop body and its invocation.
-Together with the required x86 and SBPF declarations, these explicit representations expand the model to 3,483 lines of Isabelle.
+Together with the required x86 and SBPF declarations, these explicit representations expand the model to 3,483 lines of Isabelle/HOL.
 
 
 The two theories contain 11 and 24 \texttt{axiomatization} commands, respectively, for required library operations that lack definitions in the current \rprelude{}.

@@ -2,18 +2,20 @@
 \label{sec:conclusion}
 
 We presented \texttt{Rust2Isabelle}, an Isabelle/HOL backend for the Charon--Aeneas toolchain.
-It combines Aeneas's functional translation with Isabelle-specific representations and semantic support.
+It combines Aeneas's functional translation with Isabelle-specific representations and primitives' support.
 Our evaluation demonstrates the feasibility of the approach and delineates its current coverage.
 
 \paragraph{Limitations.}
 The prototype inherits Aeneas's restrictions on unsafe code and interior mutability.
-Some built-ins, nested borrows, and complex control flow remain unsupported and machine-integer bounds and array lengths require well-formedness predicates rather than encoded directly in HOL types.
-Loops and recursive definitions may introduce \texttt{axiomatization} or termination obligations. The backend is not verified by a semantics-preservation proof and does not yet generate functional-correctness specifications or proofs.
+Floating-point operations and some Rust library built-ins remain unsupported, and the backend does not explicitly represent computations that diverge.
+Generated theories may still use \texttt{axiomatization} for external declarations without bodies and unsupported operations.
+The translation does not yet have a mechanized end-to-end semantics-preservation proof, and the backend does not generate functional-correctness specifications or proofs.
+
 
 \paragraph{Future work.}
 Future work will broaden the accepted Rust fragment by adding floating-point types and definitions for more Rust library built-ins to the \rprelude{}.
 An explicit representation of divergence is also needed for computations that may not terminate.
 
-Longer-term work can use translation validation to establish semantic preservation by generating Isabelle proof obligations for each Pure-to-Isabelle translation, rather than proving the entire translator correct~\cite{Pnueli1998}.
-Rust specifications could also be translated into Isabelle statements for functional-correctness proofs.
+Longer-term work can use translation validation to establish semantic preservation by generating Isabelle/HOL proof obligations for each Pure-to-Isabelle translation, rather than proving the entire translator correct~\cite{Pnueli1998}.
+Rust specifications could also be translated into Isabelle/HOL statements for functional-correctness proofs.
 Supporting unsafe code and interior mutability is more challenging, because it would require an explicit memory model.
