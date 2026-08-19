@@ -84,8 +84,10 @@ build-bin-dir: build-bin build-lib build-runner
 	cp -f tests/test_runner/_build/default/run_isabelle.exe bin/isabelle_test_runner
 	mkdir -p bin/backends/fstar
 	mkdir -p bin/backends/coq
+	mkdir -p bin/backends/isabelle
 	cp -rf backends/fstar/*.fst* bin/backends/fstar/
 	cp -rf backends/coq/*.v bin/backends/coq/
+	cp -f backends/isabelle/*.thy bin/backends/isabelle/
 
 .PHONY: extract-lean-std
 extract-lean-std:

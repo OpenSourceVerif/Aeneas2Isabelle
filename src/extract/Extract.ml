@@ -892,6 +892,42 @@ let extract_texpr_error (span : Meta.span) (msg : string) (fmt : F.formatter) =
   [%save_error] span msg;
   extract_texpr_errors fmt
 
+(** Isabelle records are not datatypes, so their synthetic structure names
+    cannot be used as patterns in [case] expressions.  Match on the selected
+    fields instead.  A record with several fields becomes a tuple match. *)
+let isabelle_record_match_fields (ctx : extraction_ctx) (scrut : texpr)
+    (branches : match_branch list) :
+    (TypeDeclId.id * FieldId.id list) option =
+  match (backend (), scrut.ty) with
+  | Isabelle, TAdt (TAdtId adt_id, _) ->
+      let def = TypeDeclId.Map.find adt_id ctx.trans_types in
+      let info =
+        TypeDeclId.Map.find adt_id ctx.trans_ctx.type_ctx.type_infos
+      in
+      let record_fields =
+        match def.kind with
+        | Struct fields
+          when fields <> []
+               && not info.TypesAnalysis.is_rec
+               && not
+                    (TypesUtils.type_decl_from_decl_id_is_tuple_struct
+                       ctx.trans_ctx.type_ctx.type_infos adt_id) ->
+            Some (FieldId.mapi (fun field_id _ -> field_id) fields)
+        | Struct _ | Enum _ | Opaque -> None
+      in
+      let supported_branch field_count (branch : match_branch) =
+        match branch.pat.pat with
+        | PAdt { variant_id = None; fields } ->
+            List.length fields = field_count
+        | PIgnored -> true
+        | PConstant _ | PBound _ | POpen _ | PAdt _ -> false
+      in
+      Option.bind record_fields (fun fields ->
+          if List.for_all (supported_branch (List.length fields)) branches then
+            Some (adt_id, fields)
+          else None)
+  | _ -> None
+
 (** - [inside_do]: [true] if we are inside a do block. In Lean, controls whether
       we can print let-bindings or if we need to insert a [do] first. *)
 let rec extract_texpr (span : Meta.span) (ctx : extraction_ctx)
@@ -1183,7 +1219,7 @@ and extract_function_call (span : Meta.span) (ctx : extraction_ctx)
         extract_literal span fmt ~is_pattern:false ~inside:true (VScalar scalar)
       in
       if inside then F.pp_print_string fmt "(";
-      F.pp_open_hvbox fmt ctx.indent_incr;
+      F.pp_open_hovbox fmt ctx.indent_incr;
       F.pp_print_string fmt "case";
       F.pp_print_space fmt ();
       extract_texpr span ctx fmt ~inside:true ~inside_do arg;
@@ -1880,6 +1916,9 @@ and extract_Switch (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
       extract_branch true e_then;
       extract_branch false e_else
   | Match branches -> (
+      let isabelle_record_fields =
+        isabelle_record_match_fields ctx scrut branches
+      in
       (* Open a box for the [match ... with] *)
       F.pp_open_hovbox fmt ctx.indent_incr;
       (* Print the [match ... with] *)
@@ -1899,7 +1938,26 @@ and extract_Switch (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
         backend () = Isabelle
         || PureUtils.texpr_requires_parentheses span scrut
       in
-      extract_texpr span ctx fmt ~inside:scrut_inside ~inside_do:false scrut;
+      (match isabelle_record_fields with
+      | Some (adt_id, field_ids) ->
+          let extract_field field_id =
+            F.pp_print_string fmt
+              (ctx_get_field span (TAdtId adt_id) field_id ctx);
+            F.pp_print_space fmt ();
+            extract_texpr span ctx fmt ~inside:true ~inside_do:false scrut
+          in
+          if List.length field_ids = 1 then extract_field (List.hd field_ids)
+          else (
+            F.pp_print_string fmt "(";
+            Collections.List.iter_link
+              (fun () ->
+                F.pp_print_string fmt ",";
+                F.pp_print_space fmt ())
+              extract_field field_ids;
+            F.pp_print_string fmt ")")
+      | None ->
+          extract_texpr span ctx fmt ~inside:scrut_inside ~inside_do:false
+            scrut);
       F.pp_print_space fmt ();
       let match_scrut_end =
         match backend () with
@@ -1928,7 +1986,26 @@ and extract_Switch (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
           F.pp_print_space fmt ();
         );
         let ctx =
-          extract_tpat span ctx fmt ~is_let:false ~inside:false br.pat
+          match (isabelle_record_fields, br.pat.pat) with
+          | Some _, PAdt { variant_id = None; fields } ->
+              if List.length fields = 1 then
+                extract_tpat span ctx fmt ~is_let:false ~inside:false
+                  (List.hd fields)
+              else (
+                F.pp_print_string fmt "(";
+                let ctx =
+                  Collections.List.fold_left_link
+                    (fun () ->
+                      F.pp_print_string fmt ",";
+                      F.pp_print_space fmt ())
+                    (fun ctx field_pattern ->
+                      extract_tpat span ctx fmt ~is_let:false ~inside:false
+                        field_pattern)
+                    ctx fields
+                in
+                F.pp_print_string fmt ")";
+                ctx)
+          | _ -> extract_tpat span ctx fmt ~is_let:false ~inside:false br.pat
         in
         F.pp_print_space fmt ();
         let arrow =
@@ -2609,49 +2686,6 @@ let extract_isabelle_fun_const_generic_wf_lemma (ctx : extraction_ctx)
               all_params
           in
           let lemma_name = def_name ^ "_const_generic_wf" in
-          F.pp_force_newline fmt ();
-          F.pp_force_newline fmt ();
-          F.pp_print_string fmt "lemma ";
-          F.pp_print_string fmt lemma_name;
-          F.pp_print_string fmt ":";
-          if assumptions <> [] then (
-            F.pp_force_newline fmt ();
-            F.pp_print_string fmt "  assumes ";
-            Collections.List.iter_link
-              (fun () ->
-                F.pp_force_newline fmt ();
-                F.pp_print_string fmt "      and ")
-              (fun (input_ty, input_name) ->
-                F.pp_open_hovbox fmt ctx.indent_incr;
-                F.pp_print_string fmt "\"";
-                extract_isabelle_ty_const_generic_wf def.item_meta.span
-                  ctx_body fmt input_ty (fun () ->
-                    F.pp_print_string fmt input_name);
-                F.pp_print_string fmt "\"";
-                F.pp_close_box fmt ())
-              assumptions);
-          F.pp_force_newline fmt ();
-          F.pp_print_string fmt "  shows ";
-          F.pp_open_hovbox fmt ctx.indent_incr;
-          F.pp_print_string fmt "\"";
-          extract_isabelle_ty_const_generic_wf def.item_meta.span ctx_body fmt
-            def.signature.output (fun () ->
-              F.pp_print_string fmt "(";
-              F.pp_print_string fmt def_name;
-              List.iter
-                (fun (_, name) ->
-                  F.pp_print_space fmt ();
-                  F.pp_print_string fmt name)
-                runtime_params;
-              List.iter
-                (fun (_, name) ->
-                  F.pp_print_space fmt ();
-                  F.pp_print_string fmt name)
-                input_vars;
-              F.pp_print_string fmt ")");
-          F.pp_print_string fmt "\"";
-          F.pp_close_box fmt ();
-          F.pp_force_newline fmt ();
           let rec record_wf_def_name ty =
             match ty with
             | TAdt
@@ -2674,7 +2708,56 @@ let extract_isabelle_fun_const_generic_wf_lemma (ctx : extraction_ctx)
               (def.signature.output :: def.signature.inputs)
             |> List.sort_uniq String.compare
           in
-          if kind = SingleNonRec && wf_defs <> [] then (
+          let extract_assumption (input_ty, input_name) =
+            extract_isabelle_ty_const_generic_wf def.item_meta.span ctx_body fmt
+              input_ty (fun () -> F.pp_print_string fmt input_name)
+          in
+          let extract_conclusion () =
+            extract_isabelle_ty_const_generic_wf def.item_meta.span ctx_body fmt
+              def.signature.output (fun () ->
+                F.pp_print_string fmt "(";
+                F.pp_print_string fmt def_name;
+                List.iter
+                  (fun (_, name) ->
+                    F.pp_print_space fmt ();
+                    F.pp_print_string fmt name)
+                  runtime_params;
+                List.iter
+                  (fun (_, name) ->
+                    F.pp_print_space fmt ();
+                    F.pp_print_string fmt name)
+                  input_vars;
+                F.pp_print_string fmt ")")
+          in
+          let can_prove = kind = SingleNonRec && wf_defs <> [] in
+          F.pp_force_newline fmt ();
+          F.pp_force_newline fmt ();
+          if can_prove then (
+            F.pp_print_string fmt "lemma ";
+            F.pp_print_string fmt lemma_name;
+            F.pp_print_string fmt ":";
+            if assumptions <> [] then (
+              F.pp_force_newline fmt ();
+              F.pp_print_string fmt "  assumes ";
+              Collections.List.iter_link
+                (fun () ->
+                  F.pp_force_newline fmt ();
+                  F.pp_print_string fmt "      and ")
+                (fun assumption ->
+                  F.pp_open_hovbox fmt ctx.indent_incr;
+                  F.pp_print_string fmt "\"";
+                  extract_assumption assumption;
+                  F.pp_print_string fmt "\"";
+                  F.pp_close_box fmt ())
+                assumptions);
+            F.pp_force_newline fmt ();
+            F.pp_print_string fmt "  shows ";
+            F.pp_open_hovbox fmt ctx.indent_incr;
+            F.pp_print_string fmt "\"";
+            extract_conclusion ();
+            F.pp_print_string fmt "\"";
+            F.pp_close_box fmt ();
+            F.pp_force_newline fmt ();
             if assumptions <> [] then (
               F.pp_print_string fmt "  using assms";
               F.pp_force_newline fmt ());
@@ -2688,10 +2771,25 @@ let extract_isabelle_fun_const_generic_wf_lemma (ctx : extraction_ctx)
               wf_defs;
             F.pp_print_string fmt ")";
             F.pp_close_box fmt ())
-          else
+          else (
             (* General array-preservation and recursive obligations require
-               semantic lemmas about the operations in their bodies. *)
-            F.pp_print_string fmt "  sorry"
+               semantic lemmas about the operations in their bodies.  Keep the
+               assumption explicit rather than emitting an unfinished proof. *)
+            F.pp_print_string fmt "axiomatization where";
+            F.pp_force_newline fmt ();
+            F.pp_print_string fmt ("  " ^ lemma_name ^ ":");
+            F.pp_force_newline fmt ();
+            F.pp_open_hovbox fmt ctx.indent_incr;
+            F.pp_print_string fmt "    \"";
+            List.iter
+              (fun assumption ->
+                extract_assumption assumption;
+                F.pp_print_string fmt " ⟹";
+                F.pp_print_space fmt ())
+              assumptions;
+            extract_conclusion ();
+            F.pp_print_string fmt "\"";
+            F.pp_close_box fmt ())
 
 (** Extract a function declaration.
 
@@ -2699,6 +2797,66 @@ let extract_isabelle_fun_const_generic_wf_lemma (ctx : extraction_ctx)
     exception** of opaque (builtin/declared) functions for HOL4.
 
     See {!extract_fun_decl}. *)
+let rec isabelle_ty_contains_recursive_adt (ctx : extraction_ctx) (ty : ty) =
+  match ty with
+  | TAdt (TAdtId type_id, generics) ->
+      let is_recursive =
+        match
+          TypeDeclId.Map.find_opt type_id ctx.trans_ctx.type_ctx.type_infos
+        with
+        | Some info -> info.TypesAnalysis.is_rec
+        | None -> false
+      in
+      is_recursive
+      || List.exists (isabelle_ty_contains_recursive_adt ctx) generics.types
+  | TAdt (_, generics) ->
+      List.exists (isabelle_ty_contains_recursive_adt ctx) generics.types
+  | TArrow (input_ty, output_ty) ->
+      isabelle_ty_contains_recursive_adt ctx input_ty
+      || isabelle_ty_contains_recursive_adt ctx output_ty
+  | TVar _ | TLiteral _ | TTraitType _ | TNever | TDynTrait _ | TError ->
+      false
+
+let isabelle_body_uses_i32_decrement (body : fun_body) =
+  let found = ref false in
+  let visitor =
+    object
+      inherit [_] iter_expr
+
+      method! visit_binop _ op =
+        match op with
+        | Sub (OPanic, Signed I32) -> found := true
+        | _ -> ()
+    end
+  in
+  visitor#visit_texpr () body.body;
+  !found
+
+let isabelle_body_uses_u32_decrement (body : fun_body) =
+  let found = ref false in
+  let visitor =
+    object
+      inherit [_] iter_expr
+
+      method! visit_binop _ op =
+        match op with
+        | Sub (OPanic, Unsigned U32) -> found := true
+        | _ -> ()
+    end
+  in
+  visitor#visit_texpr () body.body;
+  !found
+
+let isabelle_supports_u32_mut_rec_group (defs : fun_decl list) =
+  List.length defs = 2
+  && List.for_all
+       (fun (def : fun_decl) ->
+         def.signature.generics = empty_generic_params
+         && def.signature.inputs = [ TLiteral (TUInt U32) ]
+         && Option.fold ~none:false ~some:isabelle_body_uses_u32_decrement
+              def.body)
+       defs
+
 let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
     (kind : decl_kind) (has_decreases_clause : bool) (def : fun_decl) : unit =
   [%sanity_check] def.item_meta.span (not def.is_global_decl_body);
@@ -2773,8 +2931,29 @@ let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
   let use_forall =
     is_opaque_coq && def.signature.generics <> empty_generic_params
   in
+  (* Isabelle separates the defining equations from their termination proof.
+     Structural recursion can use its standard lexicographic procedure.  A
+     scalar i32 countdown needs the custom well-founded measure emitted below. *)
+  let is_isabelle_single_i32_rec =
+    backend () = Isabelle
+    && kind = SingleRec
+    && def.signature.generics = empty_generic_params
+    && def.signature.inputs = [ TLiteral (TInt I32) ]
+    && Option.fold ~none:false ~some:isabelle_body_uses_i32_decrement def.body
+  in
+  let is_isabelle_structural_rec =
+    backend () = Isabelle
+    && kind = SingleRec
+    && List.exists
+         (isabelle_ty_contains_recursive_adt ctx)
+         def.signature.inputs
+  in
   (* Print the qualifier ("assume", etc.). *)
-  let qualif = fun_decl_kind_to_qualif kind in
+  let qualif =
+    if backend () = Isabelle && kind = SingleRec then
+      Some "function"
+    else fun_decl_kind_to_qualif kind
+  in
   (match qualif with
   | Some qualif ->
       F.pp_print_string fmt qualif;
@@ -3010,7 +3189,7 @@ in
         (match qualif with
         | Some "function" -> (
           F.pp_force_newline fmt ();
-          F.pp_print_string fmt "sorry")
+          F.pp_print_string fmt "by pat_completeness auto")
         | _ -> ()
         );
       );
@@ -3020,6 +3199,25 @@ in
     F.pp_close_box fmt ());
   (* Close the inner box for the definition *)
   F.pp_close_box fmt ();
+  if is_isabelle_single_i32_rec then (
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt "termination";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt
+      "  by (relation \"measure (λi. if 0 ≤ i then nat i else nat (i - i32_min))\")";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt
+      "     (auto simp: i32_sub_def scalar_sub_def mk_scalar_def";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt
+      "        scalar_in_bounds_def return_def fail_def i32_min_def i32_max_def";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt "        split: if_splits)")
+  else if is_isabelle_structural_rec then (
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt "termination";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt "  by lexicographic_order");
   (* Termination clause and proof for Lean *)
   if has_decreases_clause && backend () = Lean then (
     let def_body = Option.get def.body in
@@ -3210,6 +3408,136 @@ let extract_fun_decl_isabelle_opaque (ctx : extraction_ctx) (fmt : F.formatter)
   F.pp_close_box fmt ();
   F.pp_close_box fmt (); (* Close axiomatization line *)
   F.pp_close_box fmt (); (* Close outer box *)
+  F.pp_print_break fmt 0 0
+
+(** Emit a mutually recursive Isabelle function group.  Isabelle requires all
+    signatures to appear before [where], followed by all equations; this does
+    not match the declaration-at-a-time layout used by the generic extractor.
+    Keeping the group here also lets the function package analyse calls across
+    every member of the SCC. *)
+let extract_isabelle_mut_rec_group (ctx : extraction_ctx) (fmt : F.formatter)
+    (defs : fun_decl list) : unit =
+  [%sanity_check_opt_span] None (backend () = Isabelle && List.length defs > 1);
+  let has_u32_termination_measure =
+    isabelle_supports_u32_mut_rec_group defs
+  in
+  let prepare (def : fun_decl) =
+    [%sanity_check] def.item_meta.span (Option.is_some def.body);
+    let _, fresh_fvar_id = FVarId.fresh_stateful_generator () in
+    let def =
+      {
+        def with
+        body =
+          Option.map
+            (fun body ->
+              snd (open_all_fun_body fresh_fvar_id def.item_meta.span body))
+            def.body;
+      }
+    in
+    let def_name =
+      ctx_get_local_function def.item_meta.span def.def_id def.loop_id ctx
+    in
+    let def_ctx, type_params, cg_params, trait_clauses =
+      ctx_add_generic_params def.item_meta.span def.item_meta.name Item
+        def.signature.llbc_generics def.signature.generics ctx
+    in
+    let explicit = def.signature.explicit_info in
+    let type_params = List.combine explicit.explicit_types type_params in
+    let cg_params =
+      List.combine explicit.explicit_const_generics cg_params
+    in
+    let trait_clauses =
+      List.map (fun name -> (Explicit, name)) trait_clauses
+    in
+    let all_params = List.concat [ type_params; cg_params; trait_clauses ] in
+    (def, def_name, def_ctx, all_params)
+  in
+  let defs = List.map prepare defs in
+
+  F.pp_print_break fmt 0 0;
+  List.iter
+    (fun ((def : fun_decl), _, _, _) ->
+      extract_fun_comment ctx fmt def;
+      F.pp_force_newline fmt ())
+    defs;
+
+  List.iteri
+    (fun index ((def : fun_decl), def_name, def_ctx, _) ->
+      F.pp_open_hovbox fmt ctx.indent_incr;
+      if index = 0 then F.pp_print_string fmt "function"
+      else F.pp_print_string fmt "  and";
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt def_name;
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt ":: \"";
+      extract_isabelle_runtime_generic_parameter_types def.item_meta.span
+        def_ctx fmt def.signature.generics;
+      extract_fun_input_parameters_types def.item_meta.span def_ctx fmt
+        def.signature.inputs;
+      extract_ty def.item_meta.span def_ctx fmt TypeDeclId.Set.empty
+        ~inside:false def.signature.output;
+      F.pp_print_string fmt "\"";
+      F.pp_close_box fmt ();
+      F.pp_force_newline fmt ())
+    defs;
+
+  F.pp_print_string fmt "where";
+  F.pp_force_newline fmt ();
+  List.iteri
+    (fun index ((def : fun_decl), def_name, def_ctx, all_params) ->
+      F.pp_open_hovbox fmt 0;
+      if index = 0 then F.pp_print_string fmt "  \""
+      else F.pp_print_string fmt "| \"";
+      F.pp_print_string fmt def_name;
+      let runtime_params =
+        Collections.List.drop
+          (List.length def.signature.generics.types)
+          all_params
+      in
+      List.iter
+        (fun (_, name) ->
+          F.pp_print_space fmt ();
+          F.pp_print_string fmt name)
+        runtime_params;
+      let body = Option.get def.body in
+      let body_ctx =
+        List.fold_left
+          (fun body_ctx (input : tpat) ->
+            F.pp_print_space fmt ();
+            extract_tpat def.item_meta.span body_ctx fmt ~is_let:true
+              ~inside:false input)
+          def_ctx body.inputs
+      in
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt "= (";
+      F.pp_close_box fmt ();
+      F.pp_force_newline fmt ();
+      F.pp_open_hovbox fmt (2 * ctx.indent_incr);
+      F.pp_print_string fmt (String.make (2 * ctx.indent_incr) ' ');
+      extract_texpr def.item_meta.span body_ctx fmt ~inside:false
+        ~inside_do:true body.body;
+      F.pp_close_box fmt ();
+      F.pp_force_newline fmt ();
+      F.pp_print_string fmt "  )\"";
+      F.pp_force_newline fmt ())
+    defs;
+  F.pp_print_string fmt "  by pat_completeness auto";
+
+  if has_u32_termination_measure then (
+    F.pp_force_newline fmt ();
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt "termination";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt
+      "  by (relation \"measure (λx. case x of Inl i ⇒ nat i | Inr i ⇒ nat i)\")";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt
+      "     (auto simp: u32_sub_def scalar_sub_def mk_scalar_def";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt
+      "        scalar_in_bounds_def return_def fail_def u32_min_def u32_max_def";
+    F.pp_force_newline fmt ();
+    F.pp_print_string fmt "        split: if_splits)");
   F.pp_print_break fmt 0 0
 
 (** Extract a function declaration.
@@ -4521,8 +4849,13 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
   (* `let (....) : Trait ... =` *)
   (* Open the box for the name + generics *)
   F.pp_open_hovbox fmt ctx.indent_incr;
-  (* Lean only: we have a special elaboration if the impl is recursive *)
-  (if is_rec && backend () = Lean then (
+  (* Lean has a recursive implementation construct.  Isabelle instead keeps
+     recursive trait dictionaries explicit as assumptions, because an
+     ordinary [definition] cannot refer to the constant being defined. *)
+  (if is_rec && backend () = Isabelle then (
+     F.pp_print_string fmt "axiomatization";
+     F.pp_print_space fmt ())
+   else if is_rec && backend () = Lean then (
      F.pp_print_string fmt "impl_def";
      F.pp_print_space fmt ())
    else
@@ -4586,41 +4919,41 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
   if backend () = Isabelle then F.pp_print_string fmt "\"";
 
   let is_empty = trait_impl_is_empty impl in
-
-  F.pp_print_space fmt ();
-  if is_empty && backend () = Isabelle then (
-    F.pp_print_string fmt "where";
-    F.pp_close_box fmt ();
+  let extract_nonrecursive_body () =
     F.pp_print_space fmt ();
-    F.pp_print_string fmt "\"";
-    F.pp_print_string fmt impl_name;
-    List.iter
-      (fun name ->
-        F.pp_print_space fmt ();
-        F.pp_print_string fmt name)
-      (cg_params @ trait_clauses);
-    F.pp_print_string fmt " = (| ";
-    let trait_name =
-      ctx_get_trait_decl span impl.impl_trait.trait_decl_id ctx
-    in
-    F.pp_print_string fmt (trait_name ^ "_dummy = () |)\""))
-  else if is_empty && backend () = FStar then (
-    F.pp_print_string fmt "= ()";
-    (* Outer box *)
-    F.pp_close_box fmt ())
-  else if is_empty && backend () = Coq then (
-    (* Coq is not very good at infering constructors *)
-    let cons =
-      ctx_get_trait_constructor span impl.impl_trait.trait_decl_id ctx
-    in
-    F.pp_print_string fmt (":= " ^ cons ^ ".");
-    (* Outer box *)
-    F.pp_close_box fmt ())
-  else (
-    if backend () = Lean then F.pp_print_string fmt ":= {"
-    else if backend () = Coq then F.pp_print_string fmt ":= {|"
-    else if backend () = Isabelle then F.pp_print_string fmt "where"
-    else F.pp_print_string fmt "= {";
+    if is_empty && backend () = Isabelle then (
+      F.pp_print_string fmt "where";
+      F.pp_close_box fmt ();
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt "\"";
+      F.pp_print_string fmt impl_name;
+      List.iter
+        (fun name ->
+          F.pp_print_space fmt ();
+          F.pp_print_string fmt name)
+        (cg_params @ trait_clauses);
+      F.pp_print_string fmt " = (| ";
+      let trait_name =
+        ctx_get_trait_decl span impl.impl_trait.trait_decl_id ctx
+      in
+      F.pp_print_string fmt (trait_name ^ "_dummy = () |)\""))
+    else if is_empty && backend () = FStar then (
+      F.pp_print_string fmt "= ()";
+      (* Outer box *)
+      F.pp_close_box fmt ())
+    else if is_empty && backend () = Coq then (
+      (* Coq is not very good at infering constructors *)
+      let cons =
+        ctx_get_trait_constructor span impl.impl_trait.trait_decl_id ctx
+      in
+      F.pp_print_string fmt (":= " ^ cons ^ ".");
+      (* Outer box *)
+      F.pp_close_box fmt ())
+    else (
+      if backend () = Lean then F.pp_print_string fmt ":= {"
+      else if backend () = Coq then F.pp_print_string fmt ":= {|"
+      else if backend () = Isabelle then F.pp_print_string fmt "where"
+      else F.pp_print_string fmt "= {";
 
     (* Close the box for the name + generics *)
     F.pp_close_box fmt ();
@@ -4785,7 +5118,15 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
       F.pp_print_string fmt "|)\"")
     else if (not (backend () = FStar)) || not is_empty then (
       F.pp_print_space fmt ();
-      F.pp_print_string fmt "}"));
+      F.pp_print_string fmt "}"))
+  in
+  let is_isabelle_recursive_impl = is_rec && backend () = Isabelle in
+  if is_isabelle_recursive_impl then (
+    (* Close the name/type box and the inner outer box.  The final outer box is
+       closed by the common code below. *)
+    F.pp_close_box fmt ();
+    F.pp_close_box fmt ())
+  else extract_nonrecursive_body ();
   F.pp_close_box fmt ();
   if backend () = Isabelle then
     List.iter

@@ -1,4 +1,4 @@
-//@ [!lean] skip
+//@ [!lean,isabelle] skip
 //! This module contains functions with nested borrows in their signatures.
 #![feature(register_tool)]
 #![register_tool(aeneas)]

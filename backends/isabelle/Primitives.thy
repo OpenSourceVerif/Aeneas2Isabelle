@@ -35,6 +35,15 @@ fun bind :: "'a result ⇒ ('a ⇒ 'b result) ⇒ 'b result" (infixl ">>=" 55) w
   "bind (Fail e) f = Fail e"
 | "bind (Ok x) f = f x"
 
+(** The function package uses this congruence rule when collecting recursive
+    calls beneath a monadic bind.  The continuation is evaluated only when the
+    first computation succeeds, so its termination assumptions may use the
+    equation [m = Ok x]. *)
+lemma result_bind_cong [fundef_cong]:
+  assumes "m = m'" and "⋀x. m' = Ok x ⟹ f x = g x"
+  shows "bind m f = bind m' g"
+  using assms by (cases m') auto
+
 (** Lift a well-formedness predicate through the result monad.  This is used
     by generated contracts for erased const-generic indices: a successful
     result must satisfy the predicate, while a failure carries no value to
@@ -928,20 +937,47 @@ axiomatization core_num_Isize_MAX :: isize
 
 (*** core *)
 
+(** Trait declaration: [core::convert::From].  Aeneas passes trait evidence as
+    an explicit dictionary, with the target type first and the source type
+    second. *)
+record ('self, 'source) core_convert_From =
+  from_' :: "'source ⇒ 'self result"
+
+(** The blanket [Into] implementation delegates to its [From] dictionary. *)
+definition core_convert_Into_Blanket_into ::
+  "('u, 't) core_convert_From ⇒ 't ⇒ 'u result" where
+  "core_convert_Into_Blanket_into from_inst x = from_' from_inst x"
+
+(** Widening conversion from [u16] to [u32]. *)
+definition core_convert_num_FromU32U16_from :: "u16 ⇒ u32 result" where
+  "core_convert_num_FromU32U16_from x = scalar_cast U16 U32 x"
+
+definition core_convert_FromU32U16 :: "(u32, u16) core_convert_From" where
+  "core_convert_FromU32U16 = (|
+    from_' = core_convert_num_FromU32U16_from
+  |)"
+
 (** Trait declaration: [core::clone::Clone] *)
 record 'self core_clone_Clone =
   core_clone_Clone_clone :: "'self ⇒ 'self result"
   core_clone_Clone_clone_from :: "'self ⇒ 'self ⇒ 'self result"
 
 definition core_clone_impls_CloneUsize_clone :: "usize ⇒ usize" where "core_clone_impls_CloneUsize_clone x = x"
-(* ... other scalar clone impls ... *)
+definition core_clone_impls_CloneU8_clone :: "u8 ⇒ u8" where
+  "core_clone_impls_CloneU8_clone x = x"
 
 definition core_clone_CloneUsize :: "usize core_clone_Clone" where
   "core_clone_CloneUsize = (|
     core_clone_Clone_clone = (λx. return (core_clone_impls_CloneUsize_clone x)),
     core_clone_Clone_clone_from = (λ _ y. return y)
   |)"
-(* ... other scalar clone instances ... *)
+
+definition core_clone_CloneU8 :: "u8 core_clone_Clone" where
+  "core_clone_CloneU8 = (|
+    core_clone_Clone_clone = (λx. return (core_clone_impls_CloneU8_clone x)),
+    core_clone_Clone_clone_from = (λ _ y. return y)
+  |)"
+
 axiomatization core_clone_CloneI8 :: "i8 core_clone_Clone"
 axiomatization core_clone_CloneU32 :: "u32 core_clone_Clone"
 (* ... *)

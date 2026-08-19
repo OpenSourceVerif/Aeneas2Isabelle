@@ -1,4 +1,4 @@
-//@ [!lean] skip
+//@ [!lean,isabelle] skip
 //@ [lean] aeneas-args=-loops-to-rec
 
 use std::vec::Vec;

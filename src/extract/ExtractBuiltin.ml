@@ -463,15 +463,22 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
             (Some ("core.marker.Copy" ^ StringUtils.capitalize_first_letter ty))
           ())
       all_int_names
+  (* Isabelle emits scalar comparison dictionaries next to their generated
+     trait records instead of assuming that the Prelude defines them. *)
   (* PartialEq<INT, INT> *)
-  @ List.map
-      (fun ty ->
-        fmt
-          ("core::cmp::PartialEq<" ^ ty ^ "," ^ ty ^ ">")
-          ~extract_name:
-            (Some ("core.cmp.PartialEq" ^ StringUtils.capitalize_first_letter ty))
-          ())
-      all_int_names
+  @ (match backend () with
+    | Isabelle -> []
+    | FStar | Coq | Lean | HOL4 ->
+        List.map
+          (fun ty ->
+            fmt
+              ("core::cmp::PartialEq<" ^ ty ^ "," ^ ty ^ ">")
+              ~extract_name:
+                (Some
+                   ("core.cmp.PartialEq"
+                  ^ StringUtils.capitalize_first_letter ty))
+              ())
+          all_int_names)
   (* Eq<INT> *)
   @ List.map
       (fun ty ->
@@ -482,15 +489,19 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
           ())
       all_int_names
   (* PartialOrd<INT, INT> *)
-  @ List.map
-      (fun ty ->
-        fmt
-          ("core::cmp::PartialOrd<" ^ ty ^ "," ^ ty ^ ">")
-          ~extract_name:
-            (Some
-               ("core.cmp.PartialOrd" ^ StringUtils.capitalize_first_letter ty))
-          ())
-      all_int_names
+  @ (match backend () with
+    | Isabelle -> []
+    | FStar | Coq | Lean | HOL4 ->
+        List.map
+          (fun ty ->
+            fmt
+              ("core::cmp::PartialOrd<" ^ ty ^ "," ^ ty ^ ">")
+              ~extract_name:
+                (Some
+                   ("core.cmp.PartialOrd"
+                  ^ StringUtils.capitalize_first_letter ty))
+              ())
+          all_int_names)
   (* Ord<INT> *)
   @ List.map
       (fun ty ->
@@ -614,6 +625,15 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
                ^ ".from"))
           ~can_fail:false ())
       int_and_smaller_list
+  (* The Isabelle Prelude implements the blanket [Into] method by invoking the
+     explicit [From] dictionary.  Keep the other backends unchanged. *)
+  @ (match backend () with
+    | Isabelle ->
+        [
+          mk_fun "core::convert::{core::convert::Into<@T, @U>}::into"
+            ~extract_name:(Some "core.convert.Into_Blanket.into") ();
+        ]
+    | FStar | Coq | Lean | HOL4 -> [])
   (* Leading zeros *)
   @ mk_scalar_fun
       (fun ty -> "core::num::{" ^ ty ^ "}::leading_zeros")
