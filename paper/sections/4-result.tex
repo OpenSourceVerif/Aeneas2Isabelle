@@ -2,24 +2,20 @@
 \label{sec:evaluation}
 
 This section describes the integration of \texttt{Rust2Isabelle} into Aeneas and evaluates its translation coverage.
-The Aeneas regression suite is used to examine individual Rust features, while the SBPF case study considers larger components adapted from a real-world system.
-The evaluation concerns the generation and acceptance of Isabelle theories rather than semantic correctness.
+The Aeneas regression suite is used to examine specific Rust features, while the case study considers larger components from a real-world system, Solona Berkeley Packet Filter (SBPF) blockchain virtual machine.
+The evaluation concerns generation and acceptance of Isabelle theories.
 
 \subsection{Integration and Feature Coverage}
 
-% development is based on Aeneas ../..
-We implement \texttt{Rust2Isabelle} by extending Aeneas with an Isabelle/HOL backend.
-It reuses Charon's extraction from Rust to LLBC and Aeneas's functional translation from LLBC to the Pure AST.
-The backend then translates the dependency-ordered Pure declarations and assembles them into an Isabelle theory importing the \rprelude{}.
+\texttt{Rust2Isabelle} is integrated into Aeneas as an Isabelle/HOL backend and selected using the option \texttt{-backend isabelle}.
+The regression tests invoke this backend to generate complete Isabelle theories importing the \rprelude{}.
 
-The Isabelle backend comprises approximately 2.3~kLoC of OCaml, including extensions to the test harness.
-The implementation adds Isabelle-specific translation of type expressions and declarations, name generation, and built-in mappings.
-Most of the translation is implemented in the main extraction module, which handles expressions, functions, globals, traits, and the assembly of complete Isabelle theories.
-In addition, we define the \rprelude{} in approximately 1.5~kLoC of Isabelle/HOL to provide semantic support for translated Rust primitives and built-ins.
-Generated theories and case-study source files are excluded from these figures.
+The Isabelle backend adds approximately 2.7~kLoC of OCaml to Aeneas.
+It implements Isabelle-specific naming and built-in mappings, together with the translation of Pure declarations into complete theory files.
+The accompanying \rprelude{} comprises approximately 1.5~kLoC of Isabelle/HOL definitions for Rust primitives and predefined library operations.
 
 We evaluated the backend using regression tests from Aeneas.
-Isabelle successfully processed 23 generated theories, covering the Rust features summarized in \autoref{tab:feature-coverage}.
+Isabelle successfully processed 26 generated theories, covering the Rust features summarized in \autoref{tab:feature-coverage}.
 Since Isabelle/HOL and HOL4 are closely related HOL-based theorem provers, the table also compares the feature support of their Aeneas backends.
 The HOL4 results are based on its implementation and previously generated theories because it is not currently enabled in the Aeneas test suite.
 
@@ -54,90 +50,45 @@ The HOL4 results are based on its implementation and previously generated theori
       & \yes & \no \\
     Non-nested loops
       & \yes & \yes \\
+    Nested borrowing and control flow
+      & \yes & \partialyes \\
     \midrule
-    Singly recursive functions
+    Singly and Mutually recursive functions
       & \partialyes & \yes \\
-    Mutually recursive functions
-      & \no & \yes \\
     Standard-library built-ins
       & \partialyes & \partialyes \\
-    Nested borrowing and control flow
-      & \no & \partialyes \\
     Floating-point and unsafe operations
       & \no & \no \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-% \begin{table}[!ht]
-%   \centering
-%   \caption{Rust feature coverage in the Aeneas regression suite.}
-%   \label{tab:feature-coverage}
-%   \small
-%   \begin{tabular}{@{}p{0.72\textwidth}p{0.20\textwidth}@{}}
-%     \toprule
-%     \textbf{Rust feature} & \textbf{Status} \\
-%     \midrule
-%     Basic types and type parameters
-%       & Supported \\
-%     Structs, enums, and recursive data types
-%       & Supported \\
-%     Scalar arithmetic, comparisons, casts, and bitwise operations
-%       & Supported \\
-%     Expressions, pattern matching, and closures
-%       & Supported \\
-%     Arrays, slices, and vectors
-%       & Supported \\
-%     Shared and non-nested mutable borrows
-%       & Supported \\
-%     Basic trait declarations and implementations
-%       & Supported \\
-%     Const-generic records and functions
-%       & Supported \\
-%     Non-nested loops
-%       & Supported \\
-%     \midrule
-%     Singly recursive functions
-%       & Partial \\
-%     Advanced traits and standard-library built-ins
-%       & Partial \\
-%     \midrule
-%     Mutually recursive functions
-%       & Unsupported \\
-%     Nested mutable borrows and nested loops
-%       & Unsupported \\
-%     Floating-point and unsafe operations
-%       & Unsupported \\
-%     \bottomrule
-%   \end{tabular}
-% \end{table}
+The results show that the Isabelle backend supports the main Pure types, expressions, borrowing constructs, and control-flow forms covered by the selected tests.
+It matches the HOL4 backend on their shared features and provides broader support for const generics, trait dictionaries, scalar operations, arrays, and nested borrowing and control flow.
+Both backends reuse Aeneas's functional representation of mutable borrows.
 
-The results show that the Isabelle backend supports the main types, expressions, borrowing constructs, and data structures exercised by the selected tests.
-Compared with the existing HOL4 backend, it provides broader support for the current Pure AST, particularly for const generics, trait dictionaries, scalar operations, and array, slice, and vector primitives.
-Both backends preserve Aeneas's functional representation of mutable borrows.
+The remaining disadvantage relative to HOL4 concerns potentially diverging functions.
+The HOL4 result type distinguishes successful execution, failure, and divergence, allowing recursive functions to be represented without first proving termination.
+The Isabelle backend supports singly and mutually recursive functions when Isabelle can establish termination, but it does not yet represent genuinely divergent executions explicitly.
 
-The HOL4 backend currently provides stronger support for recursion.
-Its result type distinguishes successful execution, failure, and divergence, allowing singly and mutually recursive functions to be represented without first establishing termination.
-The Isabelle backend does not yet represent divergence explicitly, retains termination obligations for singly recursive functions, and does not generate mutually recursive function definitions.
+These results confirm that the backend implements the translation described in \autoref{sec:design} across the supported features.
+A mechanized end-to-end proof of semantics preservation remains outside the scope of this work.
 
 % we plan to support the unsupported features in Isabelle/HOL
 % semantic preservation => future work
 
-% The remaining Isabelle failures mainly involve unsupported library built-ins and more complex nested borrowing or control-flow structures.
 % The evaluation therefore demonstrates translation coverage for the supported fragment, but does not establish semantic preservation.
 
-% core components of solana Blockchain
-% x86 encoder(dependency) & just-in-time compiler -- with a slight modifying(reason)
 \subsection{Case Study: Solana JIT Compiler}
 \label{sec:SBPF-case-study}
 
-% safe-mode 干掉
-The SBPF virtual machine is a core component used to execute programs in the Solana blockchain.
-It contains an interpreter, a verifier, an x86-64 just-in-time (JIT) compiler, and its supporting instruction encoder~\cite{anza2026SBPF}.
-The production JIT uses raw pointers, executable memory, and function pointers, which are outside the safe-Rust fragment supported by Aeneas.
-We therefore adapt the x86 encoder and construct a safe-mode model of the JIT.
-The encoder preserves the production encoding logic but returns bytes in a \texttt{Vec<u8>} instead of writing through raw pointers.
-The JIT model supports selected decoded SBPF instructions and replaces executable memory and raw addresses with owned vectors and integer offsets.
+Our case study considers the SBPF just-in-time (JIT) compiler, a core component of the Solana blockchain virtual machine that translates SBPF instructions into x86-64 code~\cite{anza2026SBPF}.
+Because the x86 instruction encoder is a direct dependency of the compiler, we translate both components.
+Their production implementations use unsafe Rust for raw pointers, executable memory, and function pointers, which lie outside the fragment supported by Aeneas.
+We therefore retain their principal encoding and compilation logic while replacing these operations with safe Rust representations.
+The encoder returns bytes in a \texttt{Vec<u8>}, while the JIT uses owned vectors and integer offsets instead of executable memory and raw addresses.
+To restrict extraction to these adapted components, we select \texttt{X86Instruction::encode} and \texttt{compile\_sbpf} as translation entry points.
+Charon starts from these functions and retains only the declarations on which they depend.
 \autoref{tab:SBPF-results} summarizes their translation results.
 
 \begin{table}[!ht]
@@ -152,10 +103,10 @@ The JIT model supports selected decoded SBPF instructions and replaces executabl
     \textbf{Component} &
     \multicolumn{1}{c}{\textbf{Rust LOC}} &
     \multicolumn{1}{c}{\textbf{Theory LOC}} &
-    \multicolumn{1}{c}{\textbf{Abstract decls.}} \\
+    \multicolumn{1}{c}{\textbf{Axiomatizations}} \\
     \midrule
-    x86 encoder & 817  & 673  & 11 \\
-    JIT model   & 1008 & 5455 & 24 \\
+    x86 encoder & 163  & 551  & 11 \\
+    JIT model   & 1141 & 3483 & 24 \\
     \bottomrule
   \end{tabular*}
 \end{table}
@@ -164,45 +115,43 @@ The JIT model supports selected decoded SBPF instructions and replaces executabl
 % Rust LOC explain the code being translated
 
 % The translated code is not very idiomatic because xxx, Aeneas front xxx.
-Both adapted components are successfully processed by Charon and Aeneas and produce Isabelle theories.
-The reported line counts are physical source and theory lines, so they do not imply a one-to-one correspondence.
-For the x86 encoder, extraction starts from the encoding function and retains only the declarations required by that function.
-Source-level comments, test code, and declarations unrelated to this entry point do not appear in the generated theory.
-Consequently, its 817 lines of Rust produce a shorter theory of 673 lines.
+% Both adapted components are successfully processed by Charon and Aeneas and produce Isabelle theories.
+% The reported line counts are physical source and theory lines, so they do not imply a one-to-one correspondence.
+% For the x86 encoder, extraction starts from the encoding function and retains only the declarations required by that function.
+% Source-level comments, test code, and declarations unrelated to this entry point do not appear in the generated theory.
+% Consequently, its 817 lines of Rust produce a shorter theory of 673 lines.
 
-% put result first: 1000 LOC to 5000 LOC
-% then reasons
-The JIT entry point requires substantially more supporting declarations.
-Its theory includes the decoded SBPF instruction types and constants, functions that translate SBPF instructions into x86 instructions, the byte-encoding functions for these x86 instructions, and jump-relocation logic.
-Moreover, Charon and Aeneas transform Rust control flow and fallible operations into explicit functional constructs, including pattern matches, result-valued computations, and separate loop body definitions.
-These dependencies and explicit representations expand the 1008-line safe JIT model into 5455 lines of Isabelle.
 
-Despite this successful translation, the generated theories are not assumption-free.
-They contain 35 abstract declarations in total, represented by Isabelle \texttt{axiomatization} commands for referenced library operations that lack concrete definitions in the current \rprelude{}.
-In addition, the safe model also excludes executable-memory allocation, raw memory access, indirect function invocation, instruction metering, and unsupported SBPF instructions.
+Both components are successfully processed by Charon and Aeneas and produce Isabelle theories.
+The Rust LOC counts only local source lines referenced by the generated declarations, with overlapping ranges counted once.
+It excludes untranslated parts of the source files and Rust standard-library code.
+In contrast, the Theory LOC includes every declaration in the generated \texttt{.thy} file, including required library types and operations, whether they have concrete definitions or are introduced by \texttt{axiomatization}.
+The separately imported \rprelude{} is not included.
+
+% % put result first: 1000 LOC to 5000 LOC
+% % then reasons
+% The JIT entry point requires substantially more supporting declarations.
+% Its theory includes the decoded SBPF instruction types and constants, functions that translate SBPF instructions into x86 instructions, the byte-encoding functions for these x86 instructions, and jump-relocation logic.
+% Moreover, Charon and Aeneas transform Rust control flow and fallible operations into explicit functional constructs, including pattern matches, result-valued computations, and separate loop body definitions.
+% These dependencies and explicit representations expand the 1008-line safe JIT model into 5455 lines of Isabelle.
+
+% Despite this successful translation, the generated theories are not assumption-free.
+% They contain 35 abstract declarations in total, represented by Isabelle \texttt{axiomatization} commands for referenced library operations that lack concrete definitions in the current \rprelude{}.
+% In addition, the safe model also excludes executable-memory allocation, raw memory access, indirect function invocation, instruction metering, and unsupported SBPF instructions.
+% The case study therefore demonstrates automatic translation of a substantial safe subset of the SBPF JIT, rather than verification of its complete production implementation.
+
+
+For the x86 encoder, the 163 Rust lines consist of 151 lines from the encoder and 12 lines defining an operand-size dependency.
+Its 551-line theory additionally introduces the library types, traits, and operations required by the encoding function.
+For the JIT model, the 1,141 Rust lines comprise 680 lines of JIT logic, 441 lines of x86 encoding code, and 20 lines of SBPF instruction definitions.
+Unlike the encoder entry point, the JIT entry point reaches many functions for decoding instruction classes, selecting x86 instructions, emitting bytes, recording jump targets, and resolving relative offsets.
+The translation represents every instruction branch as an explicit conditional or case expression, chains operations that may fail through the result monad, and expresses changes to the compiler state as record updates.
+Loops also introduce separate definitions for the loop body and its invocation.
+Together with the required x86 and SBPF declarations, these explicit representations expand the model to 3,483 lines of Isabelle.
+
+
+The two theories contain 11 and 24 \texttt{axiomatization} commands, respectively, for required library operations that lack definitions in the current \rprelude{}.
+Each command introduces a typed constant without a function body, so these commands account for only a small part of the increase in line count.
+Most of the increase comes from concrete definitions and from expressing Rust operations explicitly in functional form.
+The components still exclude executable-memory allocation, raw memory access, indirect function invocation, instruction metering, and unsupported SBPF instructions.
 The case study therefore demonstrates automatic translation of a substantial safe subset of the SBPF JIT, rather than verification of its complete production implementation.
-
-% \begin{table}[!ht]
-%   \centering
-%   \caption{Static results for the adapted SBPF case study.}
-%   \label{tab:SBPF-results}
-%   \small
-%   \begin{tabular}{@{}p{0.20\textwidth}rrp{0.39\textwidth}r@{}}
-%     \toprule
-%     \textbf{Component} &
-%     \textbf{Rust LOC} &
-%     \textbf{Theory LOC} &
-%     \textbf{types funcs loops} &
-%     \textbf{Axioms} \\
-%     \midrule
-%     Safe x86 encoder
-%       & 817 & 673
-%       & Instruction data types and byte encoding
-%       & 11 \\
-%     Safe JIT model
-%       & 239 & 481
-%       & Offsets, anchors, program counters, and jump relocation
-%       & 10 \\
-%     \bottomrule
-%   \end{tabular}
-% \end{table}

@@ -1,15 +1,11 @@
 Rust's ownership and borrowing discipline prevents broad classes of memory errors, but does not establish functional correctness.
 Aeneas addresses this gap by translating a subset of safe Rust into pure functional models for several interactive theorem provers.
-We present \texttt{Rust2Isabelle}, an Isabelle/HOL backend for Charon--Aeneas that translates Aeneas's typed Pure AST into Isabelle theories.
+We present \texttt{Rust2Isabelle}, an Isabelle/HOL backend for Charon--Aeneas that translates Aeneas's typed functional intermediate representation, called the Pure AST into Isabelle theories.
 
-The backend structurally translates types, expressions, functions, globals, and algebraic data types, while providing Isabelle-specific encodings for Rust features without direct counterparts.
-In particular, it preserves Aeneas's forward--backward functional representation of mutable borrows, represents traits using explicit record dictionaries, and represents const generics as ghost fields in records and explicit term parameters in functions, with well-formedness predicates capturing the erased constraints.
-A companion \rprelude{} theory supplies result-valued computations, checked and wrapping machine arithmetic, and list-based models of arrays, slices, and vectors.
-The translation also makes source-opaque declarations, unsupported built-ins, and unresolved recursion or termination obligations explicit through abstract declarations or admitted proofs.
+The backend maps Pure constructs to corresponding Isabelle/HOL definitions while retaining Aeneas's functional representation of mutable borrows.
+We also provide an Isabelle/HOL library, called the \rprelude{}, that defines the Rust primitives and library operations required by the generated theories.
 
-We implement the backend in OCaml and evaluate it using the Aeneas regression suite and adapted components of the Solana blockchain virtual machine.
-Isabelle successfully processes 23 generated regression theories covering the principal constructs of the supported fragment.
-% 2 critical (real world) module
-% 有效性
-% The case study translates a safe x86 instruction encoder and a modified  model into Isabelle theories, while exposing 35 abstract declarations for library operations not yet defined in the \rprelude{}.
-These results demonstrate the feasibility and current coverage of automatically generating Isabelle/HOL models from substantial safe Rust programs.
+We implement the backend in OCaml and evaluate it in two settings.
+On the Aeneas regression suite, Isabelle accepts 23 generated theories that cover the main constructs of the supported Rust fragment.
+In a complementary case study, \texttt{Rust2Isabelle} translates two components of Solana blockchain virtual machine into Isabelle/HOL theories.
+Together, these results demonstrate the feasibility of automatically generating Isabelle/HOL models from supported safe Rust code and reveal gaps in the current library support.

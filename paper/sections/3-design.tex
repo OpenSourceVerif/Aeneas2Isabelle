@@ -2,42 +2,36 @@
 \label{sec:design}
 
 % predefined library with rust datatype modeled in Isabelle/HOL
-This section presents the translation from Aeneas's Pure AST to Isabelle/HOL. We first describe the overall workflow and semantic support library, and then present the translation of types, expressions, mutable borrows, control flow, recursion, generics, and traits.
+This section presents the translation from Aeneas's Pure AST to Isabelle/HOL. We first describe the overall workflow and a predefined library, and then present the translation of types, expressions, mutable borrows, control flow, recursion, generics, and traits.
 
 \subsection{Translation Overview}
 \label{sec:workflow}
 
 \autoref{fig:overview} presents the architecture of \texttt{Rust2Isabelle} within the Charon--Aeneas toolchain. Charon extracts LLBC from Rust, and Aeneas translates LLBC into a typed Pure AST together with the metadata required by subsequent extraction. These existing components are shown in grey. The Pure AST marks the boundary between Aeneas and the Isabelle backend.
 
-% fix semantic support
 \begin{figure}[!ht]
   \centering
   \includegraphics[width=\linewidth]{figure/structure.png}
-  \caption{Architecture of \texttt{Rust2Isabelle} within the Charon--Aeneas toolchain. Highlighted components show the Isabelle-specific extensions, and the dashed connection indicates semantic support from the Prelude library.} 
+  \caption{Architecture of \texttt{Rust2Isabelle} within the Charon--Aeneas toolchain. Highlighted components show the Isabelle-specific extensions, and the dashed connection indicates dependency relation on the Prelude library.} 
   \label{fig:overview}
 \end{figure}
 \texttt{Rust2Isabelle} first constructs an Isabelle extraction context containing the Pure declarations, target names, built-in mappings, and dependency information.
-Using this context, the backend translates each output module into an Isabelle theory.
-% expressions
-For each module, it then generates a \texttt{theory} header, imports the prelude library (denoted by \rprelude{}) and any user-specified theories, and places declarations in the dependency order supplied by Aeneas.
+The backend uses this context to translate each output module into an Isabelle theory.
+Then, it emits the \texttt{theory} header and imports the prelude library, denoted by \rprelude{}, together with any user-specified theories.
+Finally, it places the declarations in the dependency order supplied by Aeneas.
 
-Pure constructs with direct Isabelle counterparts are translated into the corresponding types, terms, and declarations. For example, non-recursive functions and globals become typed \texttt{definition}s, whereas opaque declarations are introduced using \texttt{axiomatization}.
-% rust specific feature make use of the predefined datatype and built-ins provided in the Prelude library
-Operations without direct counterparts rely on the target-specific semantic support provided by the \rprelude{}, described in \autoref{sec:primitives}.
+Pure constructs with direct Isabelle counterparts are translated into the corresponding types, terms, and declarations.
+The backend represents Rust-specific features that require additional definitions using the predefined datatypes and built-in operations provided by the \rprelude{}, described in \autoref{sec:primitives}.
 
-The current translation remains partial in several cases.
-Termination obligations for singly recursive functions are admitted using Isabelle's \texttt{sorry}.
-% no represented abstractly
-% where we use axiomatization is 1.../2...
-General loops and mutually recursive functions are currently represented abstractly, while unsupported built-ins may introduce \texttt{axiomatization} commands.
-% Source-opaque
-Source-opaque declarations are also abstract by design.
-We distinguish these assumptions from fully defined translations in the evaluation.
+The backend uses \texttt{axiomatization} for external functions and globals that have only signatures, unsupported built-ins, generic trait methods, and mutually recursive groups not covered by the current termination rules.
+It cannot yet represent recursive functions that may diverge.
+The evaluation reports these assumptions separately from concrete definitions.
+
 
 \subsection{Rust Primitives in Isabelle/HOL}
 \label{sec:primitives}
 
-Following Aeneas's backend design, we implement the \rprelude{} as a fixed Isabelle/HOL theory that provides target-side semantics for the basic Rust primitives.
+Following Aeneas's backend design, we implement the \rprelude{} as a fixed Isabelle/HOL theory that provides target-side supports for the basic Rust primitives.
 Recognized built-ins are mapped to definitions in the \rprelude{} or Isabelle/HOL. For example, Rust's \texttt{Option<T>} reuses Isabelle's \texttt{'a option} type and its \texttt{None} and \texttt{Some} constructors.
 
 We next present the result monad, machine integers, and primitives for arrays, slices, and vectors.
@@ -452,7 +446,8 @@ The update therefore reaches exactly the selected owner.  The Isabelle backend p
 Conditionals and pattern matching translate directly into Isabelle \texttt{if} and \texttt{case} expressions, as shown in \autoref{tab:expression-map}.
 Loops and recursive functions require separate treatment because Isabelle/HOL requires recursive definitions to be terminating.
 Termination is undecidable in general, but Isabelle can prove it for many common cases when supplied with a variant, namely a value in a well-founded order that strictly decreases on every recursive call or continuing loop iteration.
-The current backend does not obtain such variants from the Rust source or generate the corresponding decreasingness proofs.
+The backend currently derives suitable measures for structural recursion and selected integer-countdown patterns.
+More general termination measures are not yet inferred.
 
 A translated loop consists of a body function describing one iteration and the abstract \texttt{loop} operator provided by the \rprelude{}.
 The body either propagates a failure, continues with a new state, or terminates with a break value:
@@ -580,8 +575,8 @@ else
 In \autoref{fig:loop-translation}, the current value of \texttt{i} is the loop state. The generated body either continues with the incremented value or breaks with the final value. The backend additionally generates a wrapper that applies \texttt{loop} to this body and an entry definition that supplies the initial state.
 
 Non-recursive functions use Isabelle's \texttt{definition} command.
-Singly recursive functions use \texttt{function}, which generates a termination obligation requiring every recursive call to decrease according to a well-founded relation.
-Mutually recursive groups are currently represented by typed \texttt{axiomatization}s because the backend does not yet generate joint recursive definitions.
+Recursive functions use \texttt{function}, while mutually recursive functions are emitted together as a joint function group.
+For the currently supported structural and integer-countdown patterns, the backend supplies a well-founded measure and discharges the resulting termination obligations automatically.
 
 \subsection{Generics and Traits}
 \label{sec:traits}
@@ -800,8 +795,7 @@ The bound \texttt{T: ToU64} becomes an explicit dictionary parameter of \texttt{
 
 The current backend supports ordinary trait bounds, associated types,
 associated constants, default items, implementations, and supertrait
-dictionaries.  Trait clauses attached directly to type declarations are not
-yet supported.  Methods with their own type parameters cannot be stored
+dictionaries.  Trait clauses attached directly to type declarations are notyet supported.  Methods with their own type parameters cannot be stored
 polymorphically in an Isabelle record and are currently handled using
 top-level axiomatizations.  Trait objects are supported only for the restricted
 forms represented by the existing \texttt{Dyn} encoding.  More general

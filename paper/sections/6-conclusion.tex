@@ -11,11 +11,9 @@ Some built-ins, nested borrows, and complex control flow remain unsupported and 
 Loops and recursive definitions may introduce \texttt{axiomatization} or termination obligations. The backend is not verified by a semantics-preservation proof and does not yet generate functional-correctness specifications or proofs.
 
 \paragraph{Future work.}
-Future work will broaden the accepted Rust fragment by extending the \rprelude{} and completing support for missing types, library built-ins, and complex borrowing and control-flow patterns.
-It will also reduce the current proof assumptions by generating termination proofs, handling mutually recursive definitions, and extending automatic well-formedness proofs.
-Longer-term work includes proving semantics preservation for the backend and translating Rust specifications into Isabelle statements for functional-correctness verification.
-Unsafe code and interior mutability would require a separate memory-aware extension to the current value-based representation.
+Future work will broaden the accepted Rust fragment by adding floating-point types and definitions for more Rust library built-ins to the \rprelude{}.
+An explicit representation of divergence is also needed for computations that may not terminate.
 
-% i) missing features
-% ii) rust subset semantic preservation 
-e.g. translation validation ~\cite{Pnueli1998}
+Longer-term work can use translation validation to establish semantic preservation by generating Isabelle proof obligations for each Pure-to-Isabelle translation, rather than proving the entire translator correct~\cite{Pnueli1998}.
+Rust specifications could also be translated into Isabelle statements for functional-correctness proofs.
+Supporting unsafe code and interior mutability is more challenging, because it would require an explicit memory model.

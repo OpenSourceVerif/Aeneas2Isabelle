@@ -28,11 +28,9 @@ Charon translates Rust compiler Mid-level Intermediate Representation (MIR) into
 Aeneas then consumes LLBC and uses symbolic execution to eliminate ownership and borrowing constructs, producing a Pure functional AST suitable for verification.
 Aeneas currently provides extraction backends for F$^\star$~\cite{swamy2016dependent}, Rocq~\cite{bertot2013interactive}, HOL4~\cite{slind2008brief}, and Lean4~\cite{moura2021lean}, but it lacks support for Isabelle/HOL.
 
-In this paper, we present \texttt{Rust2Isabelle}, an Isabelle/HOL backend for the Charon--Aeneas toolchain.
-It translates the typed Pure AST produced by Aeneas into Isabelle/HOL theory files and reuses Aeneas's functional encoding of mutable borrows through forward and backward functions.
-Pure constructs with direct HOL counterparts are translated structurally. For operations without direct counterparts, we define an Isabelle/HOL support library that provides the required semantics.
-%\TODO{The backend addresses the Isabelle-specific challenges of translating Pure types and algebraic datatypes, modeling fixed-width integers and safe arithmetic, encoding loops through the \texttt{Rust2Isabelle} library, translating traits, and modeling required built-ins.}
-%
+To fill this gap, we develop \texttt{Rust2Isabelle} as a new extraction backend for Aeneas.
+It combines automatic generation of Isabelle/HOL theories with a companion library defining the Rust primitives used in the output.
+
 We provide the following contributions.
 \begin{itemize}
     \item \textbf{Rust2Isabelle Translation Rules}: We define translation rules from Rust to Isabelle/HOL. 
@@ -51,5 +49,8 @@ We provide the following contributions.
 {
 \def\sectionautorefname{Section}
 The rest of the paper is organized as follows.
-\autoref{sec:background} reviews the relevant features of Rust, Aeneas's Pure AST, and Isabelle/HOL. \autoref{sec:design} presents the \texttt{Rust2Isabelle} workflow and the translation rules by language construct. \autoref{sec:evaluation} combines construct-level coverage with an SBPF (Solana eBPF) virtual machine case study, Isabelle acceptance, and selected semantic properties.  Related work and the remaining limitations follow in~\autoref{sec:related} and~\autoref{sec:conclusion}.
+\autoref{sec:background} reviews the relevant features of Rust, Aeneas's Pure AST, and Isabelle/HOL. 
+\autoref{sec:design} presents the \texttt{Rust2Isabelle} workflow and the translation rules by language construct.
+\autoref{sec:evaluation} combines construct-level coverage with an SBPF (Solana eBPF) virtual machine case study, Isabelle acceptance, and selected semantic properties.
+Related work and the remaining limitations follow in~\autoref{sec:related} and~\autoref{sec:conclusion}.
 }
