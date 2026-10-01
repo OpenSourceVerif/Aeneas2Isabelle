@@ -1,4 +1,4 @@
-# About this fork (X-Bulow/aeneas_isabelle)
+# About this fork (OpenSourceVerif/Aeneas2Isabelle)
 
 This repository is a fork of [AeneasVerif/aeneas](https://github.com/AeneasVerif/aeneas)
 whose only purpose is to add an **Isabelle/HOL backend** (`-backend isabelle`).
@@ -9,9 +9,11 @@ Everything else is kept identical to upstream so that syncing stays cheap.
 | Branch | Role |
 |--------|------|
 | `main` | Upstream `main` **plus** the Isabelle backend. This is the branch to build and to base work on. |
-| `dev`  | Scratch/feature branch. Normally equal to `main`; open feature work lives here before it is merged into `main`. |
+| `test` | Scratch/feature branch. Normally equal to `main`; open feature work lives here before it is merged into `main`. |
 
-There is no branch that mirrors upstream verbatim; use the `upstream` remote for that.
+The canonical repository is `OpenSourceVerif/Aeneas2Isabelle`; `X-Bulow/aeneas_isabelle`
+is a personal mirror of it (branches `main` and `dev`). There is no branch that mirrors
+upstream verbatim; use the `upstream` remote (`AeneasVerif/aeneas`) for that.
 
 ## Isabelle-specific files
 
