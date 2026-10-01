@@ -1716,7 +1716,12 @@ let ctx_compute_field_name (def : type_decl) (field_meta : Meta.attr_info)
   match backend () with
   | Lean | HOL4 -> name
   | Coq | FStar -> StringUtils.lowercase_first_letter name
-  | Isabelle -> StringUtils.capitalize_first_letter name
+  | Isabelle ->
+      (* Isabelle type names carry the suffix [_t], so the projector of a
+         field named [t] would clash with its own type name ([Key_t]):
+         disambiguate it with a trailing prime. *)
+      let name = StringUtils.capitalize_first_letter name in
+      if field_name_s = "t" then name ^ "'" else name
 
 (** Inputs:
     - type name
@@ -2068,7 +2073,19 @@ let ctx_compute_trait_parent_clause_name (ctx : extraction_ctx)
   in
   let clause =
     if !Config.record_fields_short_names then clause
-    else ctx_compute_trait_decl_name ctx trait_decl ^ "_" ^ clause
+    else
+      let decl_name = ctx_compute_trait_decl_name ctx trait_decl in
+      (* The clause name computed above is already prefixed with the trait
+         name (see [ctx_compute_trait_clause_name]): for Isabelle don't
+         prefix it a second time, which would give names like
+         [core_cmp_PartialOrd_tcore_cmp_PartialOrd_t_PartialEqInst]. *)
+      if backend () = Isabelle
+         && (String.starts_with ~prefix:decl_name clause
+            || String.starts_with
+                 ~prefix:(StringUtils.lowercase_first_letter decl_name)
+                 clause)
+      then clause
+      else decl_name ^ "_" ^ clause
   in
   let clause = clause ^ "Inst" in
   match backend () with

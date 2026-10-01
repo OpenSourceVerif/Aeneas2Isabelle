@@ -3649,9 +3649,10 @@ let extract_trait_decl_register_parent_clause_names (ctx : extraction_ctx)
         List.map
           (fun (c : trait_param) ->
             let name = ctx_compute_trait_parent_clause_name ctx trait_decl c in
-            (* Add a prefix if necessary *)
+            (* Add a prefix if necessary.  For Isabelle the name computed
+               above is already prefixed with the trait name. *)
             let name =
-              if !record_fields_short_names then name
+              if !record_fields_short_names || backend () = Isabelle then name
               else ctx_compute_trait_decl_name ctx trait_decl ^ name
             in
             (c.clause_id, name))
