@@ -574,8 +574,7 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
         fmt
           ("core::cmp::PartialOrd<" ^ ty ^ "," ^ ty ^ ">")
           ~extract_name:
-            (Some
-               ("core.cmp.PartialOrd" ^ StringUtils.capitalize_first_letter ty))
+            (Some ("core.cmp.PartialOrd" ^ StringUtils.capitalize_first_letter ty))
           ())
       all_int_names
   (* Ord<INT> *)
@@ -701,6 +700,15 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
                ^ ".from"))
           ~can_fail:false ())
       int_and_smaller_list
+  (* The Isabelle Prelude implements the blanket [Into] method by invoking the
+     explicit [From] dictionary.  Keep the other backends unchanged. *)
+  @ (match backend () with
+    | Isabelle ->
+        [
+          mk_fun "core::convert::{core::convert::Into<@T, @U>}::into"
+            ~extract_name:(Some "core.convert.Into_Blanket.into") ();
+        ]
+    | FStar | Coq | Lean | HOL4 -> [])
   (* Leading zeros *)
   @ mk_scalar_fun
       (fun ty -> "core::num::{" ^ ty ^ "}::leading_zeros")

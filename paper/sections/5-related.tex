@@ -16,7 +16,7 @@ RustBelt~\cite{jung2017rustbelt} and RefinedRust~\cite{gaher2024refinedrust} ins
 In contrast to these existing target choices, \texttt{Rust2Isabelle} translates Aeneas's functional representation into Isabelle/HOL theories, enabling Rust programs to be studied using Isabelle's higher-order logic and interactive proof facilities.
 
 Isabelle/HOL is an attractive verification target because it combines an expressive logic with mature libraries and proof automation.
-AutoCorres~\cite{greenaway2014don} translates C programs into abstract monadic models for Isabelle proofs.
+AutoCorres~\cite{greenaway2014don} translates C programs into abstract monadic models for Isabelle/HOL proofs.
 AutoCorrode~\cite{autocorrode_aws} provides separation-logic infrastructure for \(\mu\)Rust, a restricted Rust-like language embedded in Isabelle/HOL, and therefore requires programs to be modeled in that language.
 Neither approach automatically translates Rust source code into Aeneas's value-based functional representation.
-\texttt{Rust2Isabelle} fills this missing connection by extending the Aeneas toolchain with an Isabelle/HOL backend and the semantic support required by the generated theories.
+\texttt{Rust2Isabelle} fills this missing connection by extending the Aeneas toolchain with an Isabelle/HOL backend and the dependency support required by the generated theories.

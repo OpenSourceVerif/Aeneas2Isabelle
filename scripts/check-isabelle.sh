@@ -24,6 +24,8 @@ SESSIONS=""
 for f in tests/isabelle/*.thy; do
   [ -e "$f" ] || { echo "no theories in tests/isabelle (run make test-isabelle first)"; exit 1; }
   b=$(basename "$f" .thy)
+  # the prelude copied next to the generated theories is checked from backends/isabelle
+  [ "$b" = Primitives ] && continue
   mkdir -p "$WORK/tests/$b"
   sed 's/^    "Primitives"$/    "Aeneas_Prelude.Primitives"/' "$f" > "$WORK/tests/$b/$b.thy"
   printf 'session T_%s in "%s" = Aeneas_Prelude +\n  options [document = false]\n  theories %s\n\n' "$b" "$b" "$b" >> "$WORK/tests/ROOT"

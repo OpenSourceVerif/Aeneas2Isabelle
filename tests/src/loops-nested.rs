@@ -1,4 +1,4 @@
-//@ [!lean] skip
+//@ [!lean,isabelle] skip
 
 pub fn iter(m: u32, n: u32) {
     let mut i = 0;

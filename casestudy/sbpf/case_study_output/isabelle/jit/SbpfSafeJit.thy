@@ -40,12 +40,34 @@ record ('self, 'rhs) core_cmp_PartialOrd_t =
 axiomatization i32_Insts_CoreCmpPartialEqI32_eq ::
   "i32 ⇒ i32 ⇒ bool result"
 
+(* Trait implementation: [core::cmp::impls::{impl core::cmp::PartialEq<i32> for i32}]
+   Source: '/rustc/library/core/src/cmp.rs', lines 1876:12-1876:39
+   Name pattern: [core::cmp::PartialEq<i32, i32>] *)
+definition i32_Insts_CoreCmpPartialEqI32 :: "(i32, i32) core_cmp_PartialEq_t"
+  where
+  "i32_Insts_CoreCmpPartialEqI32 = (|
+  core_cmp_PartialEq_t_eq = i32_Insts_CoreCmpPartialEqI32_eq
+|)"
+
 (* [core::cmp::impls::{impl core::cmp::PartialOrd<i32> for i32}::partial_cmp]:
    Source: '/rustc/library/core/src/cmp.rs', lines 1999:16-1999:71
    Name pattern: [core::cmp::impls::{core::cmp::PartialOrd<i32, i32>}::partial_cmp]
    Visibility: public *)
 axiomatization i32_Insts_CoreCmpPartialOrdI32_partial_cmp ::
   "i32 ⇒ i32 ⇒ (core_cmp_Ordering_t option) result"
+
+(* Trait implementation: [core::cmp::impls::{impl core::cmp::PartialOrd<i32> for i32}]
+   Source: '/rustc/library/core/src/cmp.rs', lines 1997:12-1997:40
+   Name pattern: [core::cmp::PartialOrd<i32, i32>] *)
+definition i32_Insts_CoreCmpPartialOrdI32 :: "(i32, i32) core_cmp_PartialOrd_t"
+  where
+  "i32_Insts_CoreCmpPartialOrdI32 = (|
+  core_cmp_PartialOrd_tcore_cmp_PartialOrd_t_PartialEqInst =
+    i32_Insts_CoreCmpPartialEqI32,
+  
+  core_cmp_PartialOrd_t_partial_cmp =
+    i32_Insts_CoreCmpPartialOrdI32_partial_cmp
+|)"
 
 (* [core::convert::{impl core::convert::From<T> for T}::from]:
    Source: '/rustc/library/core/src/convert/mod.rs', lines 788:4-788:22
@@ -745,8 +767,10 @@ definition safe_mode_x86_X86Instruction_encode
                   core_ops_range_RangeInclusive_new ((-128) :: i32)
                     (127 :: i32);
                 b5 <-
-                  core_ops_range_RangeInclusive_contains core_cmp_PartialOrdI32
-                    core_cmp_PartialOrdI32 core_cmp_PartialOrdI32 ri offset;
+                  core_ops_range_RangeInclusive_contains
+                    i32_Insts_CoreCmpPartialOrdI32
+                    i32_Insts_CoreCmpPartialOrdI32
+                    i32_Insts_CoreCmpPartialOrdI32 ri offset;
                 (i17, os2) <-
                   if b5
                   then (Ok (1 :: u8, Safe_mode_jit_OperandSize_S8))
@@ -769,214 +793,68 @@ definition safe_mode_x86_X86Instruction_encode
                    core_ops_range_RangeInclusive_new ((-128) :: i32)
                      (127 :: i32);
                 b5 <-
-                  core_ops_range_RangeInclusive_contains core_cmp_PartialOrdI32
-                    core_cmp_PartialOrdI32 core_cmp_PartialOrdI32 ri offset;
+                  core_ops_range_RangeInclusive_contains
+                    i32_Insts_CoreCmpPartialOrdI32
+                    i32_Insts_CoreCmpPartialOrdI32
+                    i32_Insts_CoreCmpPartialOrdI32 ri offset;
                 (i17, displacement_size1) <-
                   if b5
                   then (Ok (1 :: u8, Safe_mode_jit_OperandSize_S8))
                   else (Ok (2 :: u8, Safe_mode_jit_OperandSize_S32));
                 let index1 =
-                  case
-                    index
-                    of
-                      Safe_mode_x86_X86Register_RAX
-                    =>
-                    (0 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RCX
-                    =>
-                    (1 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RDX
-                    =>
-                    (2 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RBX
-                    =>
-                    (3 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RSP
-                    =>
-                    (4 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RBP
-                    =>
-                    (5 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RSI
-                    =>
-                    (6 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RDI
-                    =>
-                    (7 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R8
-                    =>
-                    (8 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R9
-                    =>
-                    (9 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R10
-                    =>
-                    (10 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R11
-                    =>
-                    (11 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R12
-                    =>
-                    (12 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R13
-                    =>
-                    (13 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R14
-                    =>
-                    (14 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R15
-                    =>
-                    (15 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM0
-                    =>
-                    (16 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM1
-                    =>
-                    (17 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM2
-                    =>
-                    (18 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM3
-                    =>
-                    (19 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM4
-                    =>
-                    (20 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM5
-                    =>
-                    (21 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM6
-                    =>
-                    (22 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM7
-                    =>
-                    (23 :: u8)
+                  case index of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+                    Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+                    Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+                    Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+                    Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+                    Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+                    Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+                    Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+                    Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+                    Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+                    Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+                    Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+                    Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+                    Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+                    Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+                    Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+                    Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+                    Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+                    Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+                    Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+                    Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+                    Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+                    Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+                    Safe_mode_x86_X86Register_MM7 => (23 :: u8)
                 in
                 i18 <- scalar_cast U8 U8 index1;
                 let i19 = u8_and i18 (8 :: u8) in
                 let i20 = u8_and shift (3 :: u8) in
                 let index2 =
-                  case
-                    index
-                    of
-                      Safe_mode_x86_X86Register_RAX
-                    =>
-                    (0 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RCX
-                    =>
-                    (1 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RDX
-                    =>
-                    (2 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RBX
-                    =>
-                    (3 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RSP
-                    =>
-                    (4 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RBP
-                    =>
-                    (5 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RSI
-                    =>
-                    (6 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_RDI
-                    =>
-                    (7 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R8
-                    =>
-                    (8 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R9
-                    =>
-                    (9 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R10
-                    =>
-                    (10 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R11
-                    =>
-                    (11 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R12
-                    =>
-                    (12 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R13
-                    =>
-                    (13 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R14
-                    =>
-                    (14 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_R15
-                    =>
-                    (15 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM0
-                    =>
-                    (16 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM1
-                    =>
-                    (17 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM2
-                    =>
-                    (18 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM3
-                    =>
-                    (19 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM4
-                    =>
-                    (20 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM5
-                    =>
-                    (21 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM6
-                    =>
-                    (22 :: u8)
-                      |
-                    Safe_mode_x86_X86Register_MM7
-                    =>
-                    (23 :: u8)
+                  case index of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+                    Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+                    Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+                    Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+                    Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+                    Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+                    Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+                    Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+                    Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+                    Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+                    Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+                    Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+                    Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+                    Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+                    Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+                    Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+                    Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+                    Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+                    Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+                    Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+                    Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+                    Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+                    Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+                    Safe_mode_x86_X86Register_MM7 => (23 :: u8)
                 in
                 i21 <- scalar_cast U8 U8 index2;
                 let i22 = u8_and i21 (7 :: u8) in
@@ -1158,207 +1036,59 @@ definition safe_mode_x86_X86Instruction_load_immediate
         then (Ok Safe_mode_jit_OperandSize_S32)
         else (Ok Safe_mode_jit_OperandSize_S64);
       let destination1 =
-        case
-          destination
-          of
-            Safe_mode_x86_X86Register_RAX
-          =>
-          (0 :: u8)
-            |
-          Safe_mode_x86_X86Register_RCX
-          =>
-          (1 :: u8)
-            |
-          Safe_mode_x86_X86Register_RDX
-          =>
-          (2 :: u8)
-            |
-          Safe_mode_x86_X86Register_RBX
-          =>
-          (3 :: u8)
-            |
-          Safe_mode_x86_X86Register_RSP
-          =>
-          (4 :: u8)
-            |
-          Safe_mode_x86_X86Register_RBP
-          =>
-          (5 :: u8)
-            |
-          Safe_mode_x86_X86Register_RSI
-          =>
-          (6 :: u8)
-            |
-          Safe_mode_x86_X86Register_RDI
-          =>
-          (7 :: u8)
-            |
-          Safe_mode_x86_X86Register_R8
-          =>
-          (8 :: u8)
-            |
-          Safe_mode_x86_X86Register_R9
-          =>
-          (9 :: u8)
-            |
-          Safe_mode_x86_X86Register_R10
-          =>
-          (10 :: u8)
-            |
-          Safe_mode_x86_X86Register_R11
-          =>
-          (11 :: u8)
-            |
-          Safe_mode_x86_X86Register_R12
-          =>
-          (12 :: u8)
-            |
-          Safe_mode_x86_X86Register_R13
-          =>
-          (13 :: u8)
-            |
-          Safe_mode_x86_X86Register_R14
-          =>
-          (14 :: u8)
-            |
-          Safe_mode_x86_X86Register_R15
-          =>
-          (15 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM0
-          =>
-          (16 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM1
-          =>
-          (17 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM2
-          =>
-          (18 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM3
-          =>
-          (19 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM4
-          =>
-          (20 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM5
-          =>
-          (21 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM6
-          =>
-          (22 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM7
-          =>
-          (23 :: u8)
+        case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+          Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+          Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+          Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+          Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+          Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+          Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+          Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+          Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+          Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+          Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+          Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+          Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+          Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+          Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+          Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+          Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+          Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+          Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+          Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+          Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+          Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+          Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+          Safe_mode_x86_X86Register_MM7 => (23 :: u8)
       in
       i1 <- scalar_cast U8 U8 destination1;
       let i2 = u8_and i1 (7 :: u8) in
       let i3 = u8_or (184 :: u8) i2 in
       let destination2 =
-        case
-          destination
-          of
-            Safe_mode_x86_X86Register_RAX
-          =>
-          (0 :: u8)
-            |
-          Safe_mode_x86_X86Register_RCX
-          =>
-          (1 :: u8)
-            |
-          Safe_mode_x86_X86Register_RDX
-          =>
-          (2 :: u8)
-            |
-          Safe_mode_x86_X86Register_RBX
-          =>
-          (3 :: u8)
-            |
-          Safe_mode_x86_X86Register_RSP
-          =>
-          (4 :: u8)
-            |
-          Safe_mode_x86_X86Register_RBP
-          =>
-          (5 :: u8)
-            |
-          Safe_mode_x86_X86Register_RSI
-          =>
-          (6 :: u8)
-            |
-          Safe_mode_x86_X86Register_RDI
-          =>
-          (7 :: u8)
-            |
-          Safe_mode_x86_X86Register_R8
-          =>
-          (8 :: u8)
-            |
-          Safe_mode_x86_X86Register_R9
-          =>
-          (9 :: u8)
-            |
-          Safe_mode_x86_X86Register_R10
-          =>
-          (10 :: u8)
-            |
-          Safe_mode_x86_X86Register_R11
-          =>
-          (11 :: u8)
-            |
-          Safe_mode_x86_X86Register_R12
-          =>
-          (12 :: u8)
-            |
-          Safe_mode_x86_X86Register_R13
-          =>
-          (13 :: u8)
-            |
-          Safe_mode_x86_X86Register_R14
-          =>
-          (14 :: u8)
-            |
-          Safe_mode_x86_X86Register_R15
-          =>
-          (15 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM0
-          =>
-          (16 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM1
-          =>
-          (17 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM2
-          =>
-          (18 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM3
-          =>
-          (19 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM4
-          =>
-          (20 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM5
-          =>
-          (21 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM6
-          =>
-          (22 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM7
-          =>
-          (23 :: u8)
+        case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+          Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+          Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+          Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+          Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+          Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+          Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+          Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+          Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+          Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+          Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+          Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+          Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+          Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+          Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+          Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+          Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+          Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+          Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+          Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+          Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+          Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+          Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+          Safe_mode_x86_X86Register_MM7 => (23 :: u8)
       in
       i4 <- scalar_cast U8 U8 destination2;
       Ok
@@ -1375,104 +1105,30 @@ definition safe_mode_x86_X86Instruction_load_immediate
       if (immediate >= i)
       then (
         let destination1 =
-          case
-            destination
-            of
-              Safe_mode_x86_X86Register_RAX
-            =>
-            (0 :: u8)
-              |
-            Safe_mode_x86_X86Register_RCX
-            =>
-            (1 :: u8)
-              |
-            Safe_mode_x86_X86Register_RDX
-            =>
-            (2 :: u8)
-              |
-            Safe_mode_x86_X86Register_RBX
-            =>
-            (3 :: u8)
-              |
-            Safe_mode_x86_X86Register_RSP
-            =>
-            (4 :: u8)
-              |
-            Safe_mode_x86_X86Register_RBP
-            =>
-            (5 :: u8)
-              |
-            Safe_mode_x86_X86Register_RSI
-            =>
-            (6 :: u8)
-              |
-            Safe_mode_x86_X86Register_RDI
-            =>
-            (7 :: u8)
-              |
-            Safe_mode_x86_X86Register_R8
-            =>
-            (8 :: u8)
-              |
-            Safe_mode_x86_X86Register_R9
-            =>
-            (9 :: u8)
-              |
-            Safe_mode_x86_X86Register_R10
-            =>
-            (10 :: u8)
-              |
-            Safe_mode_x86_X86Register_R11
-            =>
-            (11 :: u8)
-              |
-            Safe_mode_x86_X86Register_R12
-            =>
-            (12 :: u8)
-              |
-            Safe_mode_x86_X86Register_R13
-            =>
-            (13 :: u8)
-              |
-            Safe_mode_x86_X86Register_R14
-            =>
-            (14 :: u8)
-              |
-            Safe_mode_x86_X86Register_R15
-            =>
-            (15 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM0
-            =>
-            (16 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM1
-            =>
-            (17 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM2
-            =>
-            (18 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM3
-            =>
-            (19 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM4
-            =>
-            (20 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM5
-            =>
-            (21 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM6
-            =>
-            (22 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM7
-            =>
-            (23 :: u8)
+          case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+            Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+            Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+            Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+            Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+            Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+            Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+            Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+            Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+            Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+            Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+            Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+            Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+            Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+            Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+            Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+            Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+            Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+            Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+            Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+            Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+            Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+            Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+            Safe_mode_x86_X86Register_MM7 => (23 :: u8)
         in
         i1 <- scalar_cast U8 U8 destination1;
         Ok
@@ -1486,207 +1142,59 @@ definition safe_mode_x86_X86Instruction_load_immediate
              |)))
       else (
         let destination1 =
-          case
-            destination
-            of
-              Safe_mode_x86_X86Register_RAX
-            =>
-            (0 :: u8)
-              |
-            Safe_mode_x86_X86Register_RCX
-            =>
-            (1 :: u8)
-              |
-            Safe_mode_x86_X86Register_RDX
-            =>
-            (2 :: u8)
-              |
-            Safe_mode_x86_X86Register_RBX
-            =>
-            (3 :: u8)
-              |
-            Safe_mode_x86_X86Register_RSP
-            =>
-            (4 :: u8)
-              |
-            Safe_mode_x86_X86Register_RBP
-            =>
-            (5 :: u8)
-              |
-            Safe_mode_x86_X86Register_RSI
-            =>
-            (6 :: u8)
-              |
-            Safe_mode_x86_X86Register_RDI
-            =>
-            (7 :: u8)
-              |
-            Safe_mode_x86_X86Register_R8
-            =>
-            (8 :: u8)
-              |
-            Safe_mode_x86_X86Register_R9
-            =>
-            (9 :: u8)
-              |
-            Safe_mode_x86_X86Register_R10
-            =>
-            (10 :: u8)
-              |
-            Safe_mode_x86_X86Register_R11
-            =>
-            (11 :: u8)
-              |
-            Safe_mode_x86_X86Register_R12
-            =>
-            (12 :: u8)
-              |
-            Safe_mode_x86_X86Register_R13
-            =>
-            (13 :: u8)
-              |
-            Safe_mode_x86_X86Register_R14
-            =>
-            (14 :: u8)
-              |
-            Safe_mode_x86_X86Register_R15
-            =>
-            (15 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM0
-            =>
-            (16 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM1
-            =>
-            (17 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM2
-            =>
-            (18 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM3
-            =>
-            (19 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM4
-            =>
-            (20 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM5
-            =>
-            (21 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM6
-            =>
-            (22 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM7
-            =>
-            (23 :: u8)
+          case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+            Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+            Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+            Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+            Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+            Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+            Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+            Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+            Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+            Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+            Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+            Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+            Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+            Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+            Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+            Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+            Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+            Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+            Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+            Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+            Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+            Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+            Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+            Safe_mode_x86_X86Register_MM7 => (23 :: u8)
         in
         i1 <- scalar_cast U8 U8 destination1;
         let i2 = u8_and i1 (7 :: u8) in
         let i3 = u8_or (184 :: u8) i2 in
         let destination2 =
-          case
-            destination
-            of
-              Safe_mode_x86_X86Register_RAX
-            =>
-            (0 :: u8)
-              |
-            Safe_mode_x86_X86Register_RCX
-            =>
-            (1 :: u8)
-              |
-            Safe_mode_x86_X86Register_RDX
-            =>
-            (2 :: u8)
-              |
-            Safe_mode_x86_X86Register_RBX
-            =>
-            (3 :: u8)
-              |
-            Safe_mode_x86_X86Register_RSP
-            =>
-            (4 :: u8)
-              |
-            Safe_mode_x86_X86Register_RBP
-            =>
-            (5 :: u8)
-              |
-            Safe_mode_x86_X86Register_RSI
-            =>
-            (6 :: u8)
-              |
-            Safe_mode_x86_X86Register_RDI
-            =>
-            (7 :: u8)
-              |
-            Safe_mode_x86_X86Register_R8
-            =>
-            (8 :: u8)
-              |
-            Safe_mode_x86_X86Register_R9
-            =>
-            (9 :: u8)
-              |
-            Safe_mode_x86_X86Register_R10
-            =>
-            (10 :: u8)
-              |
-            Safe_mode_x86_X86Register_R11
-            =>
-            (11 :: u8)
-              |
-            Safe_mode_x86_X86Register_R12
-            =>
-            (12 :: u8)
-              |
-            Safe_mode_x86_X86Register_R13
-            =>
-            (13 :: u8)
-              |
-            Safe_mode_x86_X86Register_R14
-            =>
-            (14 :: u8)
-              |
-            Safe_mode_x86_X86Register_R15
-            =>
-            (15 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM0
-            =>
-            (16 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM1
-            =>
-            (17 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM2
-            =>
-            (18 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM3
-            =>
-            (19 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM4
-            =>
-            (20 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM5
-            =>
-            (21 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM6
-            =>
-            (22 :: u8)
-              |
-            Safe_mode_x86_X86Register_MM7
-            =>
-            (23 :: u8)
+          case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+            Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+            Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+            Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+            Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+            Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+            Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+            Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+            Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+            Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+            Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+            Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+            Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+            Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+            Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+            Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+            Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+            Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+            Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+            Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+            Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+            Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+            Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+            Safe_mode_x86_X86Register_MM7 => (23 :: u8)
         in
         i4 <- scalar_cast U8 U8 destination2;
         Ok
@@ -1729,104 +1237,30 @@ definition safe_mode_x86_X86Instruction_cmp_immediate
       | Safe_mode_jit_OperandSize_S64 => (Ok False);
     i <- if b1 then (Ok (128 :: u8)) else (Ok (129 :: u8));
     let destination1 =
-      case
-        destination
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i1 <- scalar_cast U8 U8 destination1;
     b2 <-
@@ -1889,205 +1323,57 @@ definition safe_mode_x86_X86Instruction_cmp
       | Safe_mode_jit_OperandSize_S64 => (Ok False);
     i <- if b1 then (Ok (56 :: u8)) else (Ok (57 :: u8));
     let source1 =
-      case
-        source
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case source of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i1 <- scalar_cast U8 U8 source1;
     let destination1 =
-      case
-        destination
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i2 <- scalar_cast U8 U8 destination1;
     Ok
@@ -2128,104 +1414,30 @@ definition safe_mode_x86_X86Instruction_test_immediate
       | Safe_mode_jit_OperandSize_S64 => (Ok False);
     i <- if b1 then (Ok (246 :: u8)) else (Ok (247 :: u8));
     let destination1 =
-      case
-        destination
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i1 <- scalar_cast U8 U8 destination1;
     b2 <-
@@ -2288,205 +1500,57 @@ definition safe_mode_x86_X86Instruction_test
       | Safe_mode_jit_OperandSize_S64 => (Ok False);
     i <- if b1 then (Ok (132 :: u8)) else (Ok (133 :: u8));
     let source1 =
-      case
-        source
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case source of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i1 <- scalar_cast U8 U8 source1;
     let destination1 =
-      case
-        destination
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i2 <- scalar_cast U8 U8 destination1;
     Ok
@@ -2517,205 +1581,57 @@ definition safe_mode_x86_X86Instruction_mov
       | Safe_mode_jit_OperandSize_S64 => (Ok True);
     _ <- massert b;
     let source1 =
-      case
-        source
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case source of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i <- scalar_cast U8 U8 source1;
     let destination1 =
-      case
-        destination
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i1 <- scalar_cast U8 U8 destination1;
     Ok
@@ -2748,104 +1664,30 @@ definition safe_mode_x86_X86Instruction_alu_immediate_escaped
       | Safe_mode_jit_OperandSize_S64 => (Ok True);
     _ <- massert b;
     let destination1 =
-      case
-        destination
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i <- scalar_cast U8 U8 destination1;
     case opcode of
@@ -2958,205 +1800,57 @@ definition safe_mode_x86_X86Instruction_alu_escaped
       | Safe_mode_jit_OperandSize_S64 => (Ok True);
     _ <- massert b;
     let source1 =
-      case
-        source
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case source of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i <- scalar_cast U8 U8 source1;
     let destination1 =
-      case
-        destination
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i1 <- scalar_cast U8 U8 destination1;
     Ok
@@ -3374,207 +2068,59 @@ definition safe_mode_x86_X86Instruction_pop
   "safe_mode_x86_X86Instruction_pop destination
     = (
     let destination1 =
-      case
-        destination
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i <- scalar_cast U8 U8 destination1;
     let i1 = u8_and i (7 :: u8) in
     let i2 = u8_or (88 :: u8) i1 in
     let destination2 =
-      case
-        destination
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i3 <- scalar_cast U8 U8 destination2;
     Ok
@@ -3599,207 +2145,59 @@ definition safe_mode_x86_X86Instruction_push
     if b
     then (
       let source1 =
-        case
-          source
-          of
-            Safe_mode_x86_X86Register_RAX
-          =>
-          (0 :: u8)
-            |
-          Safe_mode_x86_X86Register_RCX
-          =>
-          (1 :: u8)
-            |
-          Safe_mode_x86_X86Register_RDX
-          =>
-          (2 :: u8)
-            |
-          Safe_mode_x86_X86Register_RBX
-          =>
-          (3 :: u8)
-            |
-          Safe_mode_x86_X86Register_RSP
-          =>
-          (4 :: u8)
-            |
-          Safe_mode_x86_X86Register_RBP
-          =>
-          (5 :: u8)
-            |
-          Safe_mode_x86_X86Register_RSI
-          =>
-          (6 :: u8)
-            |
-          Safe_mode_x86_X86Register_RDI
-          =>
-          (7 :: u8)
-            |
-          Safe_mode_x86_X86Register_R8
-          =>
-          (8 :: u8)
-            |
-          Safe_mode_x86_X86Register_R9
-          =>
-          (9 :: u8)
-            |
-          Safe_mode_x86_X86Register_R10
-          =>
-          (10 :: u8)
-            |
-          Safe_mode_x86_X86Register_R11
-          =>
-          (11 :: u8)
-            |
-          Safe_mode_x86_X86Register_R12
-          =>
-          (12 :: u8)
-            |
-          Safe_mode_x86_X86Register_R13
-          =>
-          (13 :: u8)
-            |
-          Safe_mode_x86_X86Register_R14
-          =>
-          (14 :: u8)
-            |
-          Safe_mode_x86_X86Register_R15
-          =>
-          (15 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM0
-          =>
-          (16 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM1
-          =>
-          (17 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM2
-          =>
-          (18 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM3
-          =>
-          (19 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM4
-          =>
-          (20 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM5
-          =>
-          (21 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM6
-          =>
-          (22 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM7
-          =>
-          (23 :: u8)
+        case source of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+          Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+          Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+          Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+          Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+          Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+          Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+          Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+          Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+          Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+          Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+          Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+          Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+          Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+          Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+          Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+          Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+          Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+          Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+          Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+          Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+          Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+          Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+          Safe_mode_x86_X86Register_MM7 => (23 :: u8)
       in
       i <- scalar_cast U8 U8 source1;
       let i1 = u8_and i (7 :: u8) in
       let i2 = u8_or (80 :: u8) i1 in
       let source2 =
-        case
-          source
-          of
-            Safe_mode_x86_X86Register_RAX
-          =>
-          (0 :: u8)
-            |
-          Safe_mode_x86_X86Register_RCX
-          =>
-          (1 :: u8)
-            |
-          Safe_mode_x86_X86Register_RDX
-          =>
-          (2 :: u8)
-            |
-          Safe_mode_x86_X86Register_RBX
-          =>
-          (3 :: u8)
-            |
-          Safe_mode_x86_X86Register_RSP
-          =>
-          (4 :: u8)
-            |
-          Safe_mode_x86_X86Register_RBP
-          =>
-          (5 :: u8)
-            |
-          Safe_mode_x86_X86Register_RSI
-          =>
-          (6 :: u8)
-            |
-          Safe_mode_x86_X86Register_RDI
-          =>
-          (7 :: u8)
-            |
-          Safe_mode_x86_X86Register_R8
-          =>
-          (8 :: u8)
-            |
-          Safe_mode_x86_X86Register_R9
-          =>
-          (9 :: u8)
-            |
-          Safe_mode_x86_X86Register_R10
-          =>
-          (10 :: u8)
-            |
-          Safe_mode_x86_X86Register_R11
-          =>
-          (11 :: u8)
-            |
-          Safe_mode_x86_X86Register_R12
-          =>
-          (12 :: u8)
-            |
-          Safe_mode_x86_X86Register_R13
-          =>
-          (13 :: u8)
-            |
-          Safe_mode_x86_X86Register_R14
-          =>
-          (14 :: u8)
-            |
-          Safe_mode_x86_X86Register_R15
-          =>
-          (15 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM0
-          =>
-          (16 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM1
-          =>
-          (17 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM2
-          =>
-          (18 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM3
-          =>
-          (19 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM4
-          =>
-          (20 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM5
-          =>
-          (21 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM6
-          =>
-          (22 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM7
-          =>
-          (23 :: u8)
+        case source of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+          Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+          Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+          Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+          Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+          Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+          Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+          Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+          Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+          Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+          Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+          Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+          Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+          Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+          Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+          Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+          Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+          Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+          Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+          Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+          Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+          Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+          Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+          Safe_mode_x86_X86Register_MM7 => (23 :: u8)
       in
       i3 <- scalar_cast U8 U8 source2;
       Ok
@@ -3811,104 +2209,30 @@ definition safe_mode_x86_X86Instruction_push
            |)))
     else (
       let source1 =
-        case
-          source
-          of
-            Safe_mode_x86_X86Register_RAX
-          =>
-          (0 :: u8)
-            |
-          Safe_mode_x86_X86Register_RCX
-          =>
-          (1 :: u8)
-            |
-          Safe_mode_x86_X86Register_RDX
-          =>
-          (2 :: u8)
-            |
-          Safe_mode_x86_X86Register_RBX
-          =>
-          (3 :: u8)
-            |
-          Safe_mode_x86_X86Register_RSP
-          =>
-          (4 :: u8)
-            |
-          Safe_mode_x86_X86Register_RBP
-          =>
-          (5 :: u8)
-            |
-          Safe_mode_x86_X86Register_RSI
-          =>
-          (6 :: u8)
-            |
-          Safe_mode_x86_X86Register_RDI
-          =>
-          (7 :: u8)
-            |
-          Safe_mode_x86_X86Register_R8
-          =>
-          (8 :: u8)
-            |
-          Safe_mode_x86_X86Register_R9
-          =>
-          (9 :: u8)
-            |
-          Safe_mode_x86_X86Register_R10
-          =>
-          (10 :: u8)
-            |
-          Safe_mode_x86_X86Register_R11
-          =>
-          (11 :: u8)
-            |
-          Safe_mode_x86_X86Register_R12
-          =>
-          (12 :: u8)
-            |
-          Safe_mode_x86_X86Register_R13
-          =>
-          (13 :: u8)
-            |
-          Safe_mode_x86_X86Register_R14
-          =>
-          (14 :: u8)
-            |
-          Safe_mode_x86_X86Register_R15
-          =>
-          (15 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM0
-          =>
-          (16 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM1
-          =>
-          (17 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM2
-          =>
-          (18 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM3
-          =>
-          (19 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM4
-          =>
-          (20 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM5
-          =>
-          (21 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM6
-          =>
-          (22 :: u8)
-            |
-          Safe_mode_x86_X86Register_MM7
-          =>
-          (23 :: u8)
+        case source of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+          Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+          Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+          Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+          Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+          Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+          Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+          Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+          Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+          Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+          Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+          Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+          Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+          Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+          Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+          Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+          Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+          Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+          Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+          Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+          Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+          Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+          Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+          Safe_mode_x86_X86Register_MM7 => (23 :: u8)
       in
       i <- scalar_cast U8 U8 source1;
       Ok
@@ -3940,205 +2264,57 @@ definition safe_mode_x86_X86Instruction_xchg
       | Safe_mode_jit_OperandSize_S64 => (Ok True);
     _ <- massert b;
     let source1 =
-      case
-        source
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case source of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i <- scalar_cast U8 U8 source1;
     let destination1 =
-      case
-        destination
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case destination of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     i1 <- scalar_cast U8 U8 destination1;
     Ok
@@ -4162,204 +2338,56 @@ definition safe_mode_x86_X86Register_Insts_CoreCmpPartialEqX86Register_eq
      other
     = (
     let self1 =
-      case
-        self
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case self of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     let other1 =
-      case
-        other
-        of
-          Safe_mode_x86_X86Register_RAX
-        =>
-        (0 :: u8)
-          |
-        Safe_mode_x86_X86Register_RCX
-        =>
-        (1 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDX
-        =>
-        (2 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBX
-        =>
-        (3 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSP
-        =>
-        (4 :: u8)
-          |
-        Safe_mode_x86_X86Register_RBP
-        =>
-        (5 :: u8)
-          |
-        Safe_mode_x86_X86Register_RSI
-        =>
-        (6 :: u8)
-          |
-        Safe_mode_x86_X86Register_RDI
-        =>
-        (7 :: u8)
-          |
-        Safe_mode_x86_X86Register_R8
-        =>
-        (8 :: u8)
-          |
-        Safe_mode_x86_X86Register_R9
-        =>
-        (9 :: u8)
-          |
-        Safe_mode_x86_X86Register_R10
-        =>
-        (10 :: u8)
-          |
-        Safe_mode_x86_X86Register_R11
-        =>
-        (11 :: u8)
-          |
-        Safe_mode_x86_X86Register_R12
-        =>
-        (12 :: u8)
-          |
-        Safe_mode_x86_X86Register_R13
-        =>
-        (13 :: u8)
-          |
-        Safe_mode_x86_X86Register_R14
-        =>
-        (14 :: u8)
-          |
-        Safe_mode_x86_X86Register_R15
-        =>
-        (15 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM0
-        =>
-        (16 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM1
-        =>
-        (17 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM2
-        =>
-        (18 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM3
-        =>
-        (19 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM4
-        =>
-        (20 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM5
-        =>
-        (21 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM6
-        =>
-        (22 :: u8)
-          |
-        Safe_mode_x86_X86Register_MM7
-        =>
-        (23 :: u8)
+      case other of Safe_mode_x86_X86Register_RAX => (0 :: u8) |
+        Safe_mode_x86_X86Register_RCX => (1 :: u8) |
+        Safe_mode_x86_X86Register_RDX => (2 :: u8) |
+        Safe_mode_x86_X86Register_RBX => (3 :: u8) |
+        Safe_mode_x86_X86Register_RSP => (4 :: u8) |
+        Safe_mode_x86_X86Register_RBP => (5 :: u8) |
+        Safe_mode_x86_X86Register_RSI => (6 :: u8) |
+        Safe_mode_x86_X86Register_RDI => (7 :: u8) |
+        Safe_mode_x86_X86Register_R8 => (8 :: u8) |
+        Safe_mode_x86_X86Register_R9 => (9 :: u8) |
+        Safe_mode_x86_X86Register_R10 => (10 :: u8) |
+        Safe_mode_x86_X86Register_R11 => (11 :: u8) |
+        Safe_mode_x86_X86Register_R12 => (12 :: u8) |
+        Safe_mode_x86_X86Register_R13 => (13 :: u8) |
+        Safe_mode_x86_X86Register_R14 => (14 :: u8) |
+        Safe_mode_x86_X86Register_R15 => (15 :: u8) |
+        Safe_mode_x86_X86Register_MM0 => (16 :: u8) |
+        Safe_mode_x86_X86Register_MM1 => (17 :: u8) |
+        Safe_mode_x86_X86Register_MM2 => (18 :: u8) |
+        Safe_mode_x86_X86Register_MM3 => (19 :: u8) |
+        Safe_mode_x86_X86Register_MM4 => (20 :: u8) |
+        Safe_mode_x86_X86Register_MM5 => (21 :: u8) |
+        Safe_mode_x86_X86Register_MM6 => (22 :: u8) |
+        Safe_mode_x86_X86Register_MM7 => (23 :: u8)
     in
     Ok (self1 = other1)
     )"

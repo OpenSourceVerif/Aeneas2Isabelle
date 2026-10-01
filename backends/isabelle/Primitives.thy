@@ -41,6 +41,15 @@ fun bind :: "'a result \<Rightarrow> ('a \<Rightarrow> 'b result) \<Rightarrow> 
 | "bind (Ok x) f = f x"
 | "bind Diverge f = Diverge"
 
+(** The function package uses this congruence rule when collecting recursive
+    calls beneath a monadic bind.  The continuation is evaluated only when the
+    first computation succeeds, so its termination assumptions may use the
+    equation [m = Ok x]. *)
+lemma result_bind_cong [fundef_cong]:
+  assumes "m = m'" and "\<And>x. m' = Ok x \<Longrightarrow> f x = g x"
+  shows "bind m f = bind m' g"
+  using assms by (cases m') auto
+
 (** Lift a well-formedness predicate through the result monad.  This is used
     by generated contracts for erased const-generic indices: a successful
     result must satisfy the predicate, while a failure carries no value to
@@ -980,8 +989,7 @@ definition core_num_U64_MIN :: u64 where
 definition core_num_U128_MIN :: u128 where
   "core_num_U128_MIN = u64_min" 
 
-axiomatization core_num_Usize_MIN :: usize
-
+definition core_num_Usize_MIN :: usize where "core_num_Usize_MIN = usize_min"
 definition core_num_I8_MIN :: i32 where
   "core_num_I8_MIN = i8_min"
 
@@ -997,8 +1005,7 @@ definition core_num_I64_MIN :: i64 where
 definition core_num_I128_MIN :: i128 where
   "core_num_I128_MIN = i64_min" 
 
-axiomatization core_num_Isize_MIN :: isize
-
+definition core_num_Isize_MIN :: isize where "core_num_Isize_MIN = isize_min"
 definition core_num_U8_MAX :: u32 where
   "core_num_U8_MAX = u8_max"
 
@@ -1014,8 +1021,7 @@ definition core_num_U64_MAX :: u64 where
 definition core_num_U128_MAX :: u128 where
   "core_num_U128_MAX = u64_max"
 
-axiomatization core_num_Usize_MAX :: usize 
-
+definition core_num_Usize_MAX :: usize where "core_num_Usize_MAX = usize_max"
 definition core_num_I8_MAX :: i32 where
   "core_num_I8_MAX = i8_max"
 
@@ -1031,9 +1037,28 @@ definition core_num_I64_MAX :: i64 where
 definition core_num_I128_MAX :: i128 where
   "core_num_I128_MAX = i64_max"
 
-axiomatization core_num_Isize_MAX :: isize
-
+definition core_num_Isize_MAX :: isize where "core_num_Isize_MAX = isize_max"
 (*** core *)
+
+(** Trait declaration: [core::convert::From].  Aeneas passes trait evidence as
+    an explicit dictionary, with the target type first and the source type
+    second. *)
+record ('self, 'source) core_convert_From =
+  from_' :: "'source \<Rightarrow> 'self result"
+
+(** The blanket [Into] implementation delegates to its [From] dictionary. *)
+definition core_convert_Into_Blanket_into ::
+  "('u, 't) core_convert_From \<Rightarrow> 't \<Rightarrow> 'u result" where
+  "core_convert_Into_Blanket_into from_inst x = from_' from_inst x"
+
+(** Widening conversion from [u16] to [u32]. *)
+definition core_convert_num_FromU32U16_from :: "u16 \<Rightarrow> u32 result" where
+  "core_convert_num_FromU32U16_from x = scalar_cast U16 U32 x"
+
+definition core_convert_FromU32U16 :: "(u32, u16) core_convert_From" where
+  "core_convert_FromU32U16 = (|
+    from_' = core_convert_num_FromU32U16_from
+  |)"
 
 (** Trait declaration: [core::clone::Clone] *)
 record 'self core_clone_Clone =
@@ -2536,10 +2561,6 @@ datatype ('b, 'c) core_ops_control_flow_ControlFlow =
   | core_ops_control_flow_ControlFlow_Break 'b
 
 typedecl core_num_error_TryFromIntError
-
-(* Trait declaration: [core::convert::From] *)
-record ('self, 't) core_convert_From =
-  from_' :: "'t \<Rightarrow> 'self result"
 
 (* [impl From<T> for T] *)
 definition core_convert_FromSame_from :: "'t \<Rightarrow> 't" where
