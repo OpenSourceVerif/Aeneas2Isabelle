@@ -78,6 +78,12 @@ where loop_unfold:
      | Ok (LoopContinue next) ⇒ loop body next
      | Ok (LoopBreak value) ⇒ Ok value)"
 
+(** The Rust never type [!].  Aeneas prints it as [Never].  Every HOL type is
+    inhabited, so an abstract type is the closest encoding: no closed term of
+    type [Never] is ever produced by a translated program, but the type itself
+    cannot be empty. *)
+typedecl Never
+
 (*** Misc *)
 
 type_synonym string = String.string
