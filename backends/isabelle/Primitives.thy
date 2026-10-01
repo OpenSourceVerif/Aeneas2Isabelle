@@ -2155,9 +2155,12 @@ record ('self, 'rhs) core_cmp_PartialEq =
 
 (* Default implementation of [PartialEq::ne], used to fill the record field of
    implementations that do not override it. *)
-definition core_cmp_PartialEq_ne_default ::
+definition core_cmp_PartialEq_ne_default_body ::
   "('self \<Rightarrow> 'rhs \<Rightarrow> bool result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
-  "core_cmp_PartialEq_ne_default eq x y = (b <- eq x y; Ok (\<not> b))"
+  "core_cmp_PartialEq_ne_default_body eq x y = (b <- eq x y; Ok (\<not> b))"
+definition core_cmp_PartialEq_ne_default ::
+  "('self, 'rhs) core_cmp_PartialEq \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialEq_ne_default inst = core_cmp_PartialEq_ne_default_body (core_cmp_PartialEq_eq inst)"
 
 (* Trait declaration: [core::cmp::PartialOrd] *)
 record ('self, 'rhs) core_cmp_PartialOrd =
@@ -2169,20 +2172,32 @@ record ('self, 'rhs) core_cmp_PartialOrd =
   core_cmp_PartialOrd_ge :: "'self \<Rightarrow> 'rhs \<Rightarrow> bool result"
 
 (* Default implementations of the comparison methods in terms of [partial_cmp]. *)
+definition core_cmp_PartialOrd_lt_default_body ::
+  "('self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialOrd_lt_default_body pc x y = (c <- pc x y; Ok (c = Some core_cmp_Ordering_Less))"
 definition core_cmp_PartialOrd_lt_default ::
+  "('self, 'rhs) core_cmp_PartialOrd \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialOrd_lt_default inst = core_cmp_PartialOrd_lt_default_body (core_cmp_PartialOrd_partial_cmp inst)"
+definition core_cmp_PartialOrd_le_default_body ::
   "('self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
-  "core_cmp_PartialOrd_lt_default pc x y = (c <- pc x y; Ok (c = Some core_cmp_Ordering_Less))"
-definition core_cmp_PartialOrd_le_default ::
-  "('self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
-  "core_cmp_PartialOrd_le_default pc x y =
+  "core_cmp_PartialOrd_le_default_body pc x y =
     (c <- pc x y; Ok (c = Some core_cmp_Ordering_Less \<or> c = Some core_cmp_Ordering_Equal))"
+definition core_cmp_PartialOrd_le_default ::
+  "('self, 'rhs) core_cmp_PartialOrd \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialOrd_le_default inst = core_cmp_PartialOrd_le_default_body (core_cmp_PartialOrd_partial_cmp inst)"
+definition core_cmp_PartialOrd_gt_default_body ::
+  "('self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialOrd_gt_default_body pc x y = (c <- pc x y; Ok (c = Some core_cmp_Ordering_Greater))"
 definition core_cmp_PartialOrd_gt_default ::
+  "('self, 'rhs) core_cmp_PartialOrd \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialOrd_gt_default inst = core_cmp_PartialOrd_gt_default_body (core_cmp_PartialOrd_partial_cmp inst)"
+definition core_cmp_PartialOrd_ge_default_body ::
   "('self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
-  "core_cmp_PartialOrd_gt_default pc x y = (c <- pc x y; Ok (c = Some core_cmp_Ordering_Greater))"
-definition core_cmp_PartialOrd_ge_default ::
-  "('self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
-  "core_cmp_PartialOrd_ge_default pc x y =
+  "core_cmp_PartialOrd_ge_default_body pc x y =
     (c <- pc x y; Ok (c = Some core_cmp_Ordering_Greater \<or> c = Some core_cmp_Ordering_Equal))"
+definition core_cmp_PartialOrd_ge_default ::
+  "('self, 'rhs) core_cmp_PartialOrd \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialOrd_ge_default inst = core_cmp_PartialOrd_ge_default_body (core_cmp_PartialOrd_partial_cmp inst)"
 
 (* Comparison of machine integers (all represented by [int]). *)
 definition scalar_partial_cmp :: "int \<Rightarrow> int \<Rightarrow> core_cmp_Ordering option" where
@@ -2546,9 +2561,12 @@ record ('self, 'args, 'output) core_ops_function_Fn =
 
 (* Default implementation of [Clone::clone_from]: ignore the old value and
    clone the source. *)
-definition core_clone_Clone_clone_from_default ::
+definition core_clone_Clone_clone_from_default_body ::
   "('self \<Rightarrow> 'self result) \<Rightarrow> 'self \<Rightarrow> 'self \<Rightarrow> 'self result" where
-  "core_clone_Clone_clone_from_default clone _ source = clone source"
+  "core_clone_Clone_clone_from_default_body clone _ source = clone source"
+definition core_clone_Clone_clone_from_default ::
+  "'self core_clone_Clone \<Rightarrow> 'self \<Rightarrow> 'self \<Rightarrow> 'self result" where
+  "core_clone_Clone_clone_from_default inst = core_clone_Clone_clone_from_default_body (core_clone_Clone_clone inst)"
 
 (*** core::result, core::ops::control_flow, core::convert *)
 
@@ -2895,7 +2913,7 @@ definition core_option_CloneOption :: "'t core_clone_Clone \<Rightarrow> ('t opt
   "core_option_CloneOption inst = (|
     core_clone_Clone_clone = core_option_CloneOption_clone inst,
     core_clone_Clone_clone_from =
-      core_clone_Clone_clone_from_default (core_option_CloneOption_clone inst) |)"
+      core_clone_Clone_clone_from_default_body (core_option_CloneOption_clone inst) |)"
 
 (*** core::ops::range::RangeInclusive *)
 
@@ -3273,8 +3291,10 @@ record 'self core_cmp_Eq =
   partialEqInst :: "('self, 'self) core_cmp_PartialEq"
   core_cmp_Eq_assert_fields_are_eq :: "'self \<Rightarrow> unit result"
 
-definition core_cmp_Eq_assert_fields_are_eq_default :: "'self \<Rightarrow> unit result" where
-  "core_cmp_Eq_assert_fields_are_eq_default _ = Ok ()"
+definition core_cmp_Eq_assert_fields_are_eq_default_body :: "'self \<Rightarrow> unit result" where
+  "core_cmp_Eq_assert_fields_are_eq_default_body _ = Ok ()"
+definition core_cmp_Eq_assert_fields_are_eq_default :: "'self core_cmp_Eq \<Rightarrow> 'self \<Rightarrow> unit result" where
+  "core_cmp_Eq_assert_fields_are_eq_default _ _ = Ok ()"
 
 definition core_cmp_impls_PartialEqBool_eq :: "bool \<Rightarrow> bool \<Rightarrow> bool result" where
   "core_cmp_impls_PartialEqBool_eq x y = Ok (x = y)"
@@ -3350,7 +3370,7 @@ definition core_clone_CloneBox ::
   "core_clone_CloneBox inst = (|
     core_clone_Clone_clone = alloc_boxed_CloneBox_clone inst,
     core_clone_Clone_clone_from =
-      core_clone_Clone_clone_from_default (alloc_boxed_CloneBox_clone inst) |)"
+      core_clone_Clone_clone_from_default_body (alloc_boxed_CloneBox_clone inst) |)"
 
 partial_function (result) list_clone_result ::
   "('t \<Rightarrow> 't result) \<Rightarrow> 't list \<Rightarrow> 't list result" where
@@ -3367,13 +3387,348 @@ definition core_clone_CloneVec ::
   "core_clone_CloneVec inst = (|
     core_clone_Clone_clone = alloc_vec_CloneVec_clone inst,
     core_clone_Clone_clone_from =
-      core_clone_Clone_clone_from_default (alloc_vec_CloneVec_clone inst) |)"
+      core_clone_Clone_clone_from_default_body (alloc_vec_CloneVec_clone inst) |)"
 
 definition alloc_alloc_CloneGlobal_clone :: "alloc_alloc_Global \<Rightarrow> alloc_alloc_Global result" where
   "alloc_alloc_CloneGlobal_clone x = Ok x"
 definition core_clone_CloneGlobal :: "alloc_alloc_Global core_clone_Clone" where
   "core_clone_CloneGlobal = (|
     core_clone_Clone_clone = alloc_alloc_CloneGlobal_clone,
-    core_clone_Clone_clone_from = core_clone_Clone_clone_from_default alloc_alloc_CloneGlobal_clone |)"
+    core_clone_Clone_clone_from = core_clone_Clone_clone_from_default_body alloc_alloc_CloneGlobal_clone |)"
+
+
+(*** core::iter *)
+
+(* [core::iter::adapters::step_by::StepBy]: an iterator and a step (the real
+   struct keeps [step - 1] and a [first_take] flag; this is the Lean model). *)
+record 'i core_iter_adapters_step_by_StepBy =
+  core_iter_adapters_step_by_StepBy_iter :: 'i
+  core_iter_adapters_step_by_StepBy_step_by :: usize
+
+(* Trait declaration: [core::iter::traits::iterator::Iterator].  Only [next]
+   and [step_by] are modelled; the associated type [Item] is a type parameter. *)
+record ('self, 'item) core_iter_traits_iterator_Iterator =
+  core_iter_traits_iterator_Iterator_next :: "'self \<Rightarrow> ('item option \<times> 'self) result"
+  core_iter_traits_iterator_Iterator_step_by ::
+    "'self \<Rightarrow> usize \<Rightarrow> 'self core_iter_adapters_step_by_StepBy result"
+
+(* Default implementation of [Iterator::step_by]: panics on a zero step. *)
+definition core_iter_traits_iterator_Iterator_step_by_default_body ::
+  "'self \<Rightarrow> usize \<Rightarrow> 'self core_iter_adapters_step_by_StepBy result" where
+  "core_iter_traits_iterator_Iterator_step_by_default_body self n =
+    (if n = 0 then Fail Failure
+     else Ok (| core_iter_adapters_step_by_StepBy_iter = self,
+                core_iter_adapters_step_by_StepBy_step_by = n |))"
+
+definition core_iter_traits_iterator_Iterator_step_by_default ::
+  "('self, 'item) core_iter_traits_iterator_Iterator \<Rightarrow> 'self \<Rightarrow> usize \<Rightarrow>
+   'self core_iter_adapters_step_by_StepBy result" where
+  "core_iter_traits_iterator_Iterator_step_by_default _ = core_iter_traits_iterator_Iterator_step_by_default_body"
+
+(* Trait declaration: [core::iter::range::Step] *)
+record 'self core_iter_range_Step =
+  stepCloneInst :: "'self core_clone_Clone"
+  stepPartialOrdInst :: "('self, 'self) core_cmp_PartialOrd"
+  core_iter_range_Step_steps_between :: "'self \<Rightarrow> 'self \<Rightarrow> (usize \<times> usize option) result"
+  core_iter_range_Step_forward_checked :: "'self \<Rightarrow> usize \<Rightarrow> 'self option result"
+  core_iter_range_Step_backward_checked :: "'self \<Rightarrow> usize \<Rightarrow> 'self option result"
+  core_iter_range_Step_forward_overflowing :: "'self \<Rightarrow> usize \<Rightarrow> ('self \<times> bool) result"
+  core_iter_range_Step_backward_overflowing :: "'self \<Rightarrow> usize \<Rightarrow> ('self \<times> bool) result"
+
+(* [Step] for the machine integers *)
+definition scalar_steps_between :: "int \<Rightarrow> int \<Rightarrow> (usize \<times> usize option) result" where
+  "scalar_steps_between a b =
+    Ok (if a \<le> b then
+          (if b - a \<le> usize_max then (b - a, Some (b - a)) else (usize_max, None))
+        else (0, None))"
+definition scalar_forward_checked :: "scalar_ty \<Rightarrow> int \<Rightarrow> usize \<Rightarrow> int option result" where
+  "scalar_forward_checked ty a n = Ok (if scalar_in_bounds ty (a + n) then Some (a + n) else None)"
+definition scalar_backward_checked :: "scalar_ty \<Rightarrow> int \<Rightarrow> usize \<Rightarrow> int option result" where
+  "scalar_backward_checked ty a n = Ok (if scalar_in_bounds ty (a - n) then Some (a - n) else None)"
+definition scalar_forward_overflowing :: "scalar_ty \<Rightarrow> int \<Rightarrow> usize \<Rightarrow> (int \<times> bool) result" where
+  "scalar_forward_overflowing ty a n = Ok (scalar_wrap ty (a + n), \<not> scalar_in_bounds ty (a + n))"
+definition scalar_backward_overflowing :: "scalar_ty \<Rightarrow> int \<Rightarrow> usize \<Rightarrow> (int \<times> bool) result" where
+  "scalar_backward_overflowing ty a n = Ok (scalar_wrap ty (a - n), \<not> scalar_in_bounds ty (a - n))"
+definition core_iter_range_StepI8_steps_between :: "i8 \<Rightarrow> i8 \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepI8_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepI8_forward_checked :: "i8 \<Rightarrow> usize \<Rightarrow> i8 option result" where
+  "core_iter_range_StepI8_forward_checked a n = scalar_forward_checked I8 a n"
+definition core_iter_range_StepI8_backward_checked :: "i8 \<Rightarrow> usize \<Rightarrow> i8 option result" where
+  "core_iter_range_StepI8_backward_checked a n = scalar_backward_checked I8 a n"
+definition core_iter_range_StepI8_forward_overflowing :: "i8 \<Rightarrow> usize \<Rightarrow> (i8 \<times> bool) result" where
+  "core_iter_range_StepI8_forward_overflowing a n = scalar_forward_overflowing I8 a n"
+definition core_iter_range_StepI8_backward_overflowing :: "i8 \<Rightarrow> usize \<Rightarrow> (i8 \<times> bool) result" where
+  "core_iter_range_StepI8_backward_overflowing a n = scalar_backward_overflowing I8 a n"
+definition core_iter_range_StepI8 :: "i8 core_iter_range_Step" where
+  "core_iter_range_StepI8 = (|
+    stepCloneInst = core_clone_CloneI8,
+    stepPartialOrdInst = core_cmp_PartialOrdI8,
+    core_iter_range_Step_steps_between = core_iter_range_StepI8_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepI8_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepI8_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepI8_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepI8_backward_overflowing |)"
+definition core_iter_range_StepI16_steps_between :: "i16 \<Rightarrow> i16 \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepI16_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepI16_forward_checked :: "i16 \<Rightarrow> usize \<Rightarrow> i16 option result" where
+  "core_iter_range_StepI16_forward_checked a n = scalar_forward_checked I16 a n"
+definition core_iter_range_StepI16_backward_checked :: "i16 \<Rightarrow> usize \<Rightarrow> i16 option result" where
+  "core_iter_range_StepI16_backward_checked a n = scalar_backward_checked I16 a n"
+definition core_iter_range_StepI16_forward_overflowing :: "i16 \<Rightarrow> usize \<Rightarrow> (i16 \<times> bool) result" where
+  "core_iter_range_StepI16_forward_overflowing a n = scalar_forward_overflowing I16 a n"
+definition core_iter_range_StepI16_backward_overflowing :: "i16 \<Rightarrow> usize \<Rightarrow> (i16 \<times> bool) result" where
+  "core_iter_range_StepI16_backward_overflowing a n = scalar_backward_overflowing I16 a n"
+definition core_iter_range_StepI16 :: "i16 core_iter_range_Step" where
+  "core_iter_range_StepI16 = (|
+    stepCloneInst = core_clone_CloneI16,
+    stepPartialOrdInst = core_cmp_PartialOrdI16,
+    core_iter_range_Step_steps_between = core_iter_range_StepI16_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepI16_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepI16_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepI16_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepI16_backward_overflowing |)"
+definition core_iter_range_StepI32_steps_between :: "i32 \<Rightarrow> i32 \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepI32_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepI32_forward_checked :: "i32 \<Rightarrow> usize \<Rightarrow> i32 option result" where
+  "core_iter_range_StepI32_forward_checked a n = scalar_forward_checked I32 a n"
+definition core_iter_range_StepI32_backward_checked :: "i32 \<Rightarrow> usize \<Rightarrow> i32 option result" where
+  "core_iter_range_StepI32_backward_checked a n = scalar_backward_checked I32 a n"
+definition core_iter_range_StepI32_forward_overflowing :: "i32 \<Rightarrow> usize \<Rightarrow> (i32 \<times> bool) result" where
+  "core_iter_range_StepI32_forward_overflowing a n = scalar_forward_overflowing I32 a n"
+definition core_iter_range_StepI32_backward_overflowing :: "i32 \<Rightarrow> usize \<Rightarrow> (i32 \<times> bool) result" where
+  "core_iter_range_StepI32_backward_overflowing a n = scalar_backward_overflowing I32 a n"
+definition core_iter_range_StepI32 :: "i32 core_iter_range_Step" where
+  "core_iter_range_StepI32 = (|
+    stepCloneInst = core_clone_CloneI32,
+    stepPartialOrdInst = core_cmp_PartialOrdI32,
+    core_iter_range_Step_steps_between = core_iter_range_StepI32_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepI32_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepI32_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepI32_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepI32_backward_overflowing |)"
+definition core_iter_range_StepI64_steps_between :: "i64 \<Rightarrow> i64 \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepI64_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepI64_forward_checked :: "i64 \<Rightarrow> usize \<Rightarrow> i64 option result" where
+  "core_iter_range_StepI64_forward_checked a n = scalar_forward_checked I64 a n"
+definition core_iter_range_StepI64_backward_checked :: "i64 \<Rightarrow> usize \<Rightarrow> i64 option result" where
+  "core_iter_range_StepI64_backward_checked a n = scalar_backward_checked I64 a n"
+definition core_iter_range_StepI64_forward_overflowing :: "i64 \<Rightarrow> usize \<Rightarrow> (i64 \<times> bool) result" where
+  "core_iter_range_StepI64_forward_overflowing a n = scalar_forward_overflowing I64 a n"
+definition core_iter_range_StepI64_backward_overflowing :: "i64 \<Rightarrow> usize \<Rightarrow> (i64 \<times> bool) result" where
+  "core_iter_range_StepI64_backward_overflowing a n = scalar_backward_overflowing I64 a n"
+definition core_iter_range_StepI64 :: "i64 core_iter_range_Step" where
+  "core_iter_range_StepI64 = (|
+    stepCloneInst = core_clone_CloneI64,
+    stepPartialOrdInst = core_cmp_PartialOrdI64,
+    core_iter_range_Step_steps_between = core_iter_range_StepI64_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepI64_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepI64_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepI64_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepI64_backward_overflowing |)"
+definition core_iter_range_StepI128_steps_between :: "i128 \<Rightarrow> i128 \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepI128_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepI128_forward_checked :: "i128 \<Rightarrow> usize \<Rightarrow> i128 option result" where
+  "core_iter_range_StepI128_forward_checked a n = scalar_forward_checked I128 a n"
+definition core_iter_range_StepI128_backward_checked :: "i128 \<Rightarrow> usize \<Rightarrow> i128 option result" where
+  "core_iter_range_StepI128_backward_checked a n = scalar_backward_checked I128 a n"
+definition core_iter_range_StepI128_forward_overflowing :: "i128 \<Rightarrow> usize \<Rightarrow> (i128 \<times> bool) result" where
+  "core_iter_range_StepI128_forward_overflowing a n = scalar_forward_overflowing I128 a n"
+definition core_iter_range_StepI128_backward_overflowing :: "i128 \<Rightarrow> usize \<Rightarrow> (i128 \<times> bool) result" where
+  "core_iter_range_StepI128_backward_overflowing a n = scalar_backward_overflowing I128 a n"
+definition core_iter_range_StepI128 :: "i128 core_iter_range_Step" where
+  "core_iter_range_StepI128 = (|
+    stepCloneInst = core_clone_CloneI128,
+    stepPartialOrdInst = core_cmp_PartialOrdI128,
+    core_iter_range_Step_steps_between = core_iter_range_StepI128_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepI128_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepI128_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepI128_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepI128_backward_overflowing |)"
+definition core_iter_range_StepIsize_steps_between :: "isize \<Rightarrow> isize \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepIsize_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepIsize_forward_checked :: "isize \<Rightarrow> usize \<Rightarrow> isize option result" where
+  "core_iter_range_StepIsize_forward_checked a n = scalar_forward_checked Isize a n"
+definition core_iter_range_StepIsize_backward_checked :: "isize \<Rightarrow> usize \<Rightarrow> isize option result" where
+  "core_iter_range_StepIsize_backward_checked a n = scalar_backward_checked Isize a n"
+definition core_iter_range_StepIsize_forward_overflowing :: "isize \<Rightarrow> usize \<Rightarrow> (isize \<times> bool) result" where
+  "core_iter_range_StepIsize_forward_overflowing a n = scalar_forward_overflowing Isize a n"
+definition core_iter_range_StepIsize_backward_overflowing :: "isize \<Rightarrow> usize \<Rightarrow> (isize \<times> bool) result" where
+  "core_iter_range_StepIsize_backward_overflowing a n = scalar_backward_overflowing Isize a n"
+definition core_iter_range_StepIsize :: "isize core_iter_range_Step" where
+  "core_iter_range_StepIsize = (|
+    stepCloneInst = core_clone_CloneIsize,
+    stepPartialOrdInst = core_cmp_PartialOrdIsize,
+    core_iter_range_Step_steps_between = core_iter_range_StepIsize_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepIsize_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepIsize_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepIsize_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepIsize_backward_overflowing |)"
+definition core_iter_range_StepU8_steps_between :: "u8 \<Rightarrow> u8 \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepU8_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepU8_forward_checked :: "u8 \<Rightarrow> usize \<Rightarrow> u8 option result" where
+  "core_iter_range_StepU8_forward_checked a n = scalar_forward_checked U8 a n"
+definition core_iter_range_StepU8_backward_checked :: "u8 \<Rightarrow> usize \<Rightarrow> u8 option result" where
+  "core_iter_range_StepU8_backward_checked a n = scalar_backward_checked U8 a n"
+definition core_iter_range_StepU8_forward_overflowing :: "u8 \<Rightarrow> usize \<Rightarrow> (u8 \<times> bool) result" where
+  "core_iter_range_StepU8_forward_overflowing a n = scalar_forward_overflowing U8 a n"
+definition core_iter_range_StepU8_backward_overflowing :: "u8 \<Rightarrow> usize \<Rightarrow> (u8 \<times> bool) result" where
+  "core_iter_range_StepU8_backward_overflowing a n = scalar_backward_overflowing U8 a n"
+definition core_iter_range_StepU8 :: "u8 core_iter_range_Step" where
+  "core_iter_range_StepU8 = (|
+    stepCloneInst = core_clone_CloneU8,
+    stepPartialOrdInst = core_cmp_PartialOrdU8,
+    core_iter_range_Step_steps_between = core_iter_range_StepU8_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepU8_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepU8_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepU8_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepU8_backward_overflowing |)"
+definition core_iter_range_StepU16_steps_between :: "u16 \<Rightarrow> u16 \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepU16_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepU16_forward_checked :: "u16 \<Rightarrow> usize \<Rightarrow> u16 option result" where
+  "core_iter_range_StepU16_forward_checked a n = scalar_forward_checked U16 a n"
+definition core_iter_range_StepU16_backward_checked :: "u16 \<Rightarrow> usize \<Rightarrow> u16 option result" where
+  "core_iter_range_StepU16_backward_checked a n = scalar_backward_checked U16 a n"
+definition core_iter_range_StepU16_forward_overflowing :: "u16 \<Rightarrow> usize \<Rightarrow> (u16 \<times> bool) result" where
+  "core_iter_range_StepU16_forward_overflowing a n = scalar_forward_overflowing U16 a n"
+definition core_iter_range_StepU16_backward_overflowing :: "u16 \<Rightarrow> usize \<Rightarrow> (u16 \<times> bool) result" where
+  "core_iter_range_StepU16_backward_overflowing a n = scalar_backward_overflowing U16 a n"
+definition core_iter_range_StepU16 :: "u16 core_iter_range_Step" where
+  "core_iter_range_StepU16 = (|
+    stepCloneInst = core_clone_CloneU16,
+    stepPartialOrdInst = core_cmp_PartialOrdU16,
+    core_iter_range_Step_steps_between = core_iter_range_StepU16_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepU16_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepU16_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepU16_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepU16_backward_overflowing |)"
+definition core_iter_range_StepU32_steps_between :: "u32 \<Rightarrow> u32 \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepU32_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepU32_forward_checked :: "u32 \<Rightarrow> usize \<Rightarrow> u32 option result" where
+  "core_iter_range_StepU32_forward_checked a n = scalar_forward_checked U32 a n"
+definition core_iter_range_StepU32_backward_checked :: "u32 \<Rightarrow> usize \<Rightarrow> u32 option result" where
+  "core_iter_range_StepU32_backward_checked a n = scalar_backward_checked U32 a n"
+definition core_iter_range_StepU32_forward_overflowing :: "u32 \<Rightarrow> usize \<Rightarrow> (u32 \<times> bool) result" where
+  "core_iter_range_StepU32_forward_overflowing a n = scalar_forward_overflowing U32 a n"
+definition core_iter_range_StepU32_backward_overflowing :: "u32 \<Rightarrow> usize \<Rightarrow> (u32 \<times> bool) result" where
+  "core_iter_range_StepU32_backward_overflowing a n = scalar_backward_overflowing U32 a n"
+definition core_iter_range_StepU32 :: "u32 core_iter_range_Step" where
+  "core_iter_range_StepU32 = (|
+    stepCloneInst = core_clone_CloneU32,
+    stepPartialOrdInst = core_cmp_PartialOrdU32,
+    core_iter_range_Step_steps_between = core_iter_range_StepU32_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepU32_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepU32_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepU32_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepU32_backward_overflowing |)"
+definition core_iter_range_StepU64_steps_between :: "u64 \<Rightarrow> u64 \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepU64_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepU64_forward_checked :: "u64 \<Rightarrow> usize \<Rightarrow> u64 option result" where
+  "core_iter_range_StepU64_forward_checked a n = scalar_forward_checked U64 a n"
+definition core_iter_range_StepU64_backward_checked :: "u64 \<Rightarrow> usize \<Rightarrow> u64 option result" where
+  "core_iter_range_StepU64_backward_checked a n = scalar_backward_checked U64 a n"
+definition core_iter_range_StepU64_forward_overflowing :: "u64 \<Rightarrow> usize \<Rightarrow> (u64 \<times> bool) result" where
+  "core_iter_range_StepU64_forward_overflowing a n = scalar_forward_overflowing U64 a n"
+definition core_iter_range_StepU64_backward_overflowing :: "u64 \<Rightarrow> usize \<Rightarrow> (u64 \<times> bool) result" where
+  "core_iter_range_StepU64_backward_overflowing a n = scalar_backward_overflowing U64 a n"
+definition core_iter_range_StepU64 :: "u64 core_iter_range_Step" where
+  "core_iter_range_StepU64 = (|
+    stepCloneInst = core_clone_CloneU64,
+    stepPartialOrdInst = core_cmp_PartialOrdU64,
+    core_iter_range_Step_steps_between = core_iter_range_StepU64_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepU64_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepU64_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepU64_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepU64_backward_overflowing |)"
+definition core_iter_range_StepU128_steps_between :: "u128 \<Rightarrow> u128 \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepU128_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepU128_forward_checked :: "u128 \<Rightarrow> usize \<Rightarrow> u128 option result" where
+  "core_iter_range_StepU128_forward_checked a n = scalar_forward_checked U128 a n"
+definition core_iter_range_StepU128_backward_checked :: "u128 \<Rightarrow> usize \<Rightarrow> u128 option result" where
+  "core_iter_range_StepU128_backward_checked a n = scalar_backward_checked U128 a n"
+definition core_iter_range_StepU128_forward_overflowing :: "u128 \<Rightarrow> usize \<Rightarrow> (u128 \<times> bool) result" where
+  "core_iter_range_StepU128_forward_overflowing a n = scalar_forward_overflowing U128 a n"
+definition core_iter_range_StepU128_backward_overflowing :: "u128 \<Rightarrow> usize \<Rightarrow> (u128 \<times> bool) result" where
+  "core_iter_range_StepU128_backward_overflowing a n = scalar_backward_overflowing U128 a n"
+definition core_iter_range_StepU128 :: "u128 core_iter_range_Step" where
+  "core_iter_range_StepU128 = (|
+    stepCloneInst = core_clone_CloneU128,
+    stepPartialOrdInst = core_cmp_PartialOrdU128,
+    core_iter_range_Step_steps_between = core_iter_range_StepU128_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepU128_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepU128_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepU128_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepU128_backward_overflowing |)"
+definition core_iter_range_StepUsize_steps_between :: "usize \<Rightarrow> usize \<Rightarrow> (usize \<times> usize option) result" where
+  "core_iter_range_StepUsize_steps_between a b = scalar_steps_between a b"
+definition core_iter_range_StepUsize_forward_checked :: "usize \<Rightarrow> usize \<Rightarrow> usize option result" where
+  "core_iter_range_StepUsize_forward_checked a n = scalar_forward_checked Usize a n"
+definition core_iter_range_StepUsize_backward_checked :: "usize \<Rightarrow> usize \<Rightarrow> usize option result" where
+  "core_iter_range_StepUsize_backward_checked a n = scalar_backward_checked Usize a n"
+definition core_iter_range_StepUsize_forward_overflowing :: "usize \<Rightarrow> usize \<Rightarrow> (usize \<times> bool) result" where
+  "core_iter_range_StepUsize_forward_overflowing a n = scalar_forward_overflowing Usize a n"
+definition core_iter_range_StepUsize_backward_overflowing :: "usize \<Rightarrow> usize \<Rightarrow> (usize \<times> bool) result" where
+  "core_iter_range_StepUsize_backward_overflowing a n = scalar_backward_overflowing Usize a n"
+definition core_iter_range_StepUsize :: "usize core_iter_range_Step" where
+  "core_iter_range_StepUsize = (|
+    stepCloneInst = core_clone_CloneUsize,
+    stepPartialOrdInst = core_cmp_PartialOrdUsize,
+    core_iter_range_Step_steps_between = core_iter_range_StepUsize_steps_between,
+    core_iter_range_Step_forward_checked = core_iter_range_StepUsize_forward_checked,
+    core_iter_range_Step_backward_checked = core_iter_range_StepUsize_backward_checked,
+    core_iter_range_Step_forward_overflowing = core_iter_range_StepUsize_forward_overflowing,
+    core_iter_range_Step_backward_overflowing = core_iter_range_StepUsize_backward_overflowing |)"
+
+(* [impl Iterator for Range<A>] *)
+definition core_iter_range_IteratorRange_next ::
+  "'a core_iter_range_Step \<Rightarrow> 'a core_ops_range_Range \<Rightarrow> ('a option \<times> 'a core_ops_range_Range) result" where
+  "core_iter_range_IteratorRange_next inst r =
+    (lt <- core_cmp_PartialOrd_lt (stepPartialOrdInst inst) (core_ops_range_Range_start r) (core_ops_range_Range_end_' r);
+     if lt then
+       (s <- core_clone_Clone_clone (stepCloneInst inst) (core_ops_range_Range_start r);
+        n <- core_iter_range_Step_forward_checked inst s 1;
+        case n of
+          None \<Rightarrow> Fail Failure
+        | Some n \<Rightarrow> Ok (Some s, r (| core_ops_range_Range_start := n |)))
+     else Ok (None, r))"
+
+definition core_iter_range_IteratorRange ::
+  "'a core_iter_range_Step \<Rightarrow> ('a core_ops_range_Range, 'a) core_iter_traits_iterator_Iterator" where
+  "core_iter_range_IteratorRange inst = (|
+    core_iter_traits_iterator_Iterator_next = core_iter_range_IteratorRange_next inst,
+    core_iter_traits_iterator_Iterator_step_by = core_iter_traits_iterator_Iterator_step_by_default_body |)"
+
+(* [impl Iterator for StepBy<I>]: skip [step - 1] elements after each one. *)
+partial_function (result) step_by_skip ::
+  "('i \<Rightarrow> ('item option \<times> 'i) result) \<Rightarrow> 'i \<Rightarrow> nat \<Rightarrow> 'i result" where
+  "step_by_skip next it n =
+    (if n = 0 then Ok it
+     else ((opt, it') <- next it;
+           case opt of None \<Rightarrow> Ok it' | Some _ \<Rightarrow> step_by_skip next it' (n - 1)))"
+
+definition core_iter_adapters_step_by_IteratorStepBy_next ::
+  "('i, 'item) core_iter_traits_iterator_Iterator \<Rightarrow> 'i core_iter_adapters_step_by_StepBy \<Rightarrow>
+   ('item option \<times> 'i core_iter_adapters_step_by_StepBy) result" where
+  "core_iter_adapters_step_by_IteratorStepBy_next inst self =
+    ((opt, it) <- core_iter_traits_iterator_Iterator_next inst (core_iter_adapters_step_by_StepBy_iter self);
+     case opt of
+       None \<Rightarrow> Ok (None, self (| core_iter_adapters_step_by_StepBy_iter := it |))
+     | Some x \<Rightarrow>
+         (it' <- step_by_skip (core_iter_traits_iterator_Iterator_next inst) it
+                   (nat (core_iter_adapters_step_by_StepBy_step_by self) - 1);
+          Ok (Some x, self (| core_iter_adapters_step_by_StepBy_iter := it' |))))"
+
+definition core_iter_adapters_step_by_IteratorStepBy ::
+  "('i, 'item) core_iter_traits_iterator_Iterator \<Rightarrow>
+   ('i core_iter_adapters_step_by_StepBy, 'item) core_iter_traits_iterator_Iterator" where
+  "core_iter_adapters_step_by_IteratorStepBy inst = (|
+    core_iter_traits_iterator_Iterator_next = core_iter_adapters_step_by_IteratorStepBy_next inst,
+    core_iter_traits_iterator_Iterator_step_by = core_iter_traits_iterator_Iterator_step_by_default_body |)"
+
+(* [impl Iterator for slice::Iter<T>] *)
+definition core_slice_iter_IteratorSliceIter ::
+  "('a core_slice_iter_Iter, 'a) core_iter_traits_iterator_Iterator" where
+  "core_slice_iter_IteratorSliceIter = (|
+    core_iter_traits_iterator_Iterator_next = core_slice_iter_IteratorSliceIter_next,
+    core_iter_traits_iterator_Iterator_step_by = core_iter_traits_iterator_Iterator_step_by_default_body |)"
 
 end

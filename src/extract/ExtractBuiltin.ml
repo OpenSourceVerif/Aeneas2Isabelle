@@ -192,6 +192,10 @@ let builtin_types () : Pure.builtin_type_info list =
          mk_type "core::slice::iter::Iter"
            ~kind:(KStruct [ ("slice", None); ("i", None) ])
            ();
+         (* core::iter *)
+         mk_type "core::iter::adapters::step_by::StepBy"
+           ~kind:(KStruct [ ("iter", None); ("step_by", None) ])
+           ();
          (* core::fmt *)
          mk_type "core::fmt::Error" ();
          mk_type "core::fmt::Formatter" ();
@@ -368,6 +372,15 @@ let builtin_trait_decls_info () =
         (* Eq *)
         mk_trait "core::cmp::Eq" ~parent_clauses:[ "partialEqInst" ]
           ~default_methods:[ "assert_fields_are_eq" ] ();
+        (* core::iter *)
+        mk_trait "core::iter::range::Step"
+          ~parent_clauses:[ "stepCloneInst"; "stepPartialOrdInst" ]
+          ~methods:
+            [ "steps_between"; "forward_checked"; "backward_checked";
+              "forward_overflowing"; "backward_overflowing" ]
+          ();
+        mk_trait "core::iter::traits::iterator::Iterator" ~types:[ "Item" ]
+          ~methods:[ "next" ] ~default_methods:[ "step_by" ] ();
         (* core::fmt *)
         mk_trait "core::fmt::Debug" ~methods:[ "fmt" ] ();
         mk_trait "core::fmt::Display" ~methods:[ "fmt" ] ();
@@ -489,6 +502,15 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
          fmt "core::clone::Clone<alloc::vec::Vec<@T>>" ~extract_name:(Some "core.clone.CloneVec")
            ~keep_params:(Some [ true; false ]) ();
          fmt "core::clone::Clone<alloc::alloc::Global>" ~extract_name:(Some "core.clone.CloneGlobal") ();
+         (* core::iter *)
+         fmt "core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, @A>"
+           ~extract_name:(Some "core.iter.range.IteratorRange") ();
+         fmt
+           "core::iter::traits::iterator::Iterator<core::iter::adapters::step_by::StepBy<@I>, \
+            @Clause0_Item>"
+           ~extract_name:(Some "core.iter.adapters.step_by.IteratorStepBy") ();
+         fmt "core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>"
+           ~extract_name:(Some "core.slice.iter.IteratorSliceIter") ();
          (* core::fmt::Debug *)
          fmt "core::fmt::Debug<&'0 @T>" ~extract_name:(Some "core.fmt.DebugShared") ();
          fmt "core::fmt::Debug<()>" ~extract_name:(Some "core.fmt.DebugUnit") ();
@@ -505,6 +527,7 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
             [
               fmt ("core::fmt::Debug<" ^ ty ^ ">") ~extract_name:(Some ("core.fmt.Debug" ^ cap)) ();
               fmt ("core::fmt::Display<" ^ ty ^ ">") ~extract_name:(Some ("core.fmt.Display" ^ cap)) ();
+              fmt ("core::iter::range::Step<" ^ ty ^ ">") ~extract_name:(Some ("core.iter.range.Step" ^ cap)) ();
             ])
           all_int_names)
   @ mk_lean_only lean_builtin_trait_impls
@@ -1019,6 +1042,22 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
           mk_fun "alloc::alloc::{core::clone::Clone<alloc::alloc::Global>}::clone"
             ~extract_name:(Some "alloc.alloc.CloneGlobal.clone") ();
         ]
+      (* core::iter *)
+      @ [
+          mk_fun
+            "core::iter::range::{core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, \
+             @A>}::next"
+            ~extract_name:(Some "core.iter.range.IteratorRange.next") ();
+          mk_fun
+            "core::iter::adapters::step_by::{core::iter::traits::iterator::Iterator<core::iter::adapters::step_by::StepBy<@I>, \
+             @Clause0_Item>}::next"
+            ~extract_name:(Some "core.iter.adapters.step_by.IteratorStepBy.next") ();
+        ]
+      @ mk_scalar_funs
+          (fun ty fn -> "core::iter::range::{core::iter::range::Step<" ^ ty ^ ">}::" ^ fn)
+          (fun ty fn -> "core.iter.range.Step" ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
+          [ (true, "steps_between"); (true, "forward_checked"); (true, "backward_checked");
+            (true, "forward_overflowing"); (true, "backward_overflowing") ]
       (* core::fmt *)
       @ [
           mk_fun "core::fmt::{core::fmt::Debug<&'0 @T>}::fmt"
@@ -1203,7 +1242,13 @@ let builtin_funs : unit -> (pattern * Pure.builtin_fun_info) list =
                   {
                     f with
                     extract_name =
-                      d.extract_name ^ sep ^ f.extract_name ^ sep ^ "default";
+                      (* For Isabelle the method's extract name is already
+                         prefixed with the trait name *)
+                      (if backend () = Isabelle
+                          && String.starts_with ~prefix:(d.extract_name ^ sep)
+                               f.extract_name
+                       then f.extract_name ^ sep ^ "default"
+                       else d.extract_name ^ sep ^ f.extract_name ^ sep ^ "default");
                   }
                 in
                 Some (pattern, info)

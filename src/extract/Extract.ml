@@ -4928,7 +4928,8 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
       | Some info ->
           not
             (List.mem info.extract_name
-               [ "core_clone_Clone"; "core_cmp_PartialEq"; "core_cmp_Eq"; "core_cmp_PartialOrd" ])
+               [ "core_clone_Clone"; "core_cmp_PartialEq"; "core_cmp_Eq";
+                 "core_cmp_PartialOrd"; "core_iter_traits_iterator_Iterator" ])
       | None -> true
     else is_rec
   in
@@ -5261,15 +5262,17 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
             (* (default method, prelude default function, required method) *)
             match info.extract_name with
             | "core_clone_Clone" ->
-                [ ("clone_from", "core_clone_Clone_clone_from_default", "clone") ]
+                [ ("clone_from", "core_clone_Clone_clone_from_default_body", "clone") ]
             | "core_cmp_PartialEq" ->
-                [ ("ne", "core_cmp_PartialEq_ne_default", "eq") ]
+                [ ("ne", "core_cmp_PartialEq_ne_default_body", "eq") ]
+            | "core_iter_traits_iterator_Iterator" ->
+                [ ("step_by", "core_iter_traits_iterator_Iterator_step_by_default_body", "") ]
             | "core_cmp_Eq" ->
                 (* The default does not depend on any required method *)
-                [ ("assert_fields_are_eq", "core_cmp_Eq_assert_fields_are_eq_default", "") ]
+                [ ("assert_fields_are_eq", "core_cmp_Eq_assert_fields_are_eq_default_body", "") ]
             | "core_cmp_PartialOrd" ->
                 List.map
-                  (fun m -> (m, "core_cmp_PartialOrd_" ^ m ^ "_default", "partial_cmp"))
+                  (fun m -> (m, "core_cmp_PartialOrd_" ^ m ^ "_default_body", "partial_cmp"))
                   [ "lt"; "le"; "gt"; "ge" ]
             | _ -> [])
     in
