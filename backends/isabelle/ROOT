@@ -1,0 +1,7 @@
+(* Isabelle session for the Aeneas prelude.
+   Build with:  isabelle build -d backends/isabelle Aeneas_Prelude *)
+session Aeneas_Prelude = HOL +
+  options [document = false]
+  sessions "HOL-Library"
+  theories
+    Primitives

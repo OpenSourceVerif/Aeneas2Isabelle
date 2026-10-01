@@ -39,6 +39,20 @@ make test-isabelle-loops           # tests/src/loops.rs -> tests/isabelle/
 make isabelle                      # every input in tests/src, ignoring per-test directives
 ```
 
+## Checking generated theories with Isabelle
+
+```sh
+scripts/check-isabelle.sh            # prelude + every theory in tests/isabelle, one session each
+scripts/check-isabelle.sh --strict   # also fail on `sorry`
+```
+
+The script needs `isabelle` (Isabelle2025-2) on `PATH` or as its last argument.
+Two things it handles that bite in batch mode: `isabelle build` rejects raw
+Unicode symbols (only jEdit recodes them), so sources are recoded with
+`scripts/isabelle-recode.py`; and the generated `imports "Primitives"` is
+qualified with the prelude session. The backend itself prints `\<Rightarrow>`-style
+escapes, and `backends/isabelle/Primitives.thy` is kept in that form too.
+
 ## Syncing with upstream
 
 ```sh

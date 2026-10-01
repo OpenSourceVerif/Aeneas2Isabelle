@@ -748,7 +748,7 @@ let extract_binop (span : Meta.span) (ctx : extraction_ctx)
         | Ne _ -> (
           match backend () with
           | Lean -> "!="
-          | Isabelle -> "≠" (* Or "/=" *)
+          | Isabelle -> "\\<noteq>"
           | _ -> "<>")
         | Ge _ -> ">="
         | Gt _ -> ">"
@@ -1585,7 +1585,7 @@ and extract_Lambda (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
   [%sanity_check] span (xl <> []);
   let _ =
     match backend () with
-    | Isabelle -> F.pp_print_string fmt "λ";
+    | Isabelle -> F.pp_print_string fmt "\\<lambda>";
     | _ -> F.pp_print_string fmt "fun";
   in
   let with_type =
@@ -1801,6 +1801,103 @@ and extract_lets (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
   (* Close parentheses *)
   if inside then F.pp_print_string fmt ")"
 
+(** Isabelle: [case] expressions can only match on datatype constructors, so a
+    Rust [match] on integer literals (e.g. [match x { 0 => .., 1 => .., _ => ..}])
+    cannot be printed as a [case].  We detect such matches - every pattern is an
+    integer literal or a catch-all - and print them as a chain of conditionals. *)
+and isabelle_match_is_literal_switch (branches : match_branch list) : bool =
+  let is_lit (br : match_branch) =
+    match br.pat.pat with
+    | PConstant (VScalar _) -> true
+    | _ -> false
+  in
+  let is_catch_all (br : match_branch) =
+    match br.pat.pat with
+    | PIgnored | POpen _ -> true
+    | _ -> false
+  in
+  List.exists is_lit branches
+  && List.for_all (fun br -> is_lit br || is_catch_all br) branches
+
+(** Print a match on integer literals as [if s = c1 then e1 else if s = c2 then
+    e2 else e_default].  A catch-all branch ends the chain; a trailing literal
+    branch without catch-all is also used as the default (the Rust match is
+    exhaustive, so the remaining case is unreachable). *)
+and extract_isabelle_literal_switch (span : Meta.span) (ctx : extraction_ctx)
+    (fmt : F.formatter) ~(inside : bool) ~(inside_do : bool) (scrut : texpr)
+    (branches : match_branch list) : unit =
+  if inside then F.pp_print_string fmt "(";
+  F.pp_open_hvbox fmt 0;
+  (* Evaluate the scrutinee once if it is not already a variable *)
+  let scrut_is_var =
+    match scrut.e with
+    | FVar _ -> true
+    | _ -> false
+  in
+  let scrut_name = "isabelle_scrut" in
+  let print_scrut () =
+    if scrut_is_var then
+      extract_texpr span ctx fmt ~inside:true ~inside_do:false scrut
+    else F.pp_print_string fmt scrut_name
+  in
+  if not scrut_is_var then (
+    F.pp_print_string fmt ("let " ^ scrut_name ^ " =");
+    F.pp_print_space fmt ();
+    extract_texpr span ctx fmt ~inside:false ~inside_do:false scrut;
+    F.pp_print_space fmt ();
+    F.pp_print_string fmt "in";
+    F.pp_print_space fmt ());
+  let rec go (first : bool) (branches : match_branch list) : unit =
+    match branches with
+    | [] -> F.pp_print_string fmt "undefined"
+    | br :: rest -> (
+        if not first then (
+          F.pp_print_space fmt ();
+          F.pp_print_string fmt "else";
+          F.pp_print_space fmt ());
+        match br.pat.pat with
+        | PConstant cv when rest <> [] ->
+            F.pp_open_hvbox fmt ctx.indent_incr;
+            F.pp_print_string fmt "if";
+            F.pp_print_space fmt ();
+            print_scrut ();
+            F.pp_print_space fmt ();
+            F.pp_print_string fmt "=";
+            F.pp_print_space fmt ();
+            extract_literal span fmt ~is_pattern:false ~inside:true cv;
+            F.pp_print_space fmt ();
+            F.pp_print_string fmt "then";
+            F.pp_print_space fmt ();
+            extract_texpr span ctx fmt ~inside:true ~inside_do br.branch;
+            F.pp_close_box fmt ();
+            go false rest
+        | PConstant _ | PIgnored ->
+            (* Default branch *)
+            extract_texpr span ctx fmt ~inside:true ~inside_do br.branch
+        | POpen _ ->
+            (* Bind the scrutinee to the pattern variable *)
+            F.pp_open_hvbox fmt ctx.indent_incr;
+            F.pp_print_string fmt "(let";
+            F.pp_print_space fmt ();
+            let ctx =
+              extract_tpat span ctx fmt ~is_let:true ~inside:false br.pat
+            in
+            F.pp_print_space fmt ();
+            F.pp_print_string fmt "=";
+            F.pp_print_space fmt ();
+            print_scrut ();
+            F.pp_print_space fmt ();
+            F.pp_print_string fmt "in";
+            F.pp_print_space fmt ();
+            extract_texpr span ctx fmt ~inside:false ~inside_do br.branch;
+            F.pp_print_string fmt ")";
+            F.pp_close_box fmt ()
+        | PBound _ | PAdt _ -> [%internal_error] span)
+  in
+  go true branches;
+  F.pp_close_box fmt ();
+  if inside then F.pp_print_string fmt ")"
+
 and extract_Switch (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
     ~(inside : bool) ~(inside_do : bool) (scrut : texpr) (body : switch_body) :
     unit =
@@ -1879,6 +1976,10 @@ and extract_Switch (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
 
       extract_branch true e_then;
       extract_branch false e_else
+  | Match branches
+    when backend () = Isabelle && isabelle_match_is_literal_switch branches ->
+      extract_isabelle_literal_switch span ctx fmt ~inside ~inside_do scrut
+        branches
   | Match branches -> (
       (* Open a box for the [match ... with] *)
       F.pp_open_hovbox fmt ctx.indent_incr;
@@ -2773,6 +2874,17 @@ let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
   in
   (* Print the qualifier ("assume", etc.). *)
   let qualif = fun_decl_kind_to_qualif kind in
+  (* Isabelle: a singly recursive function whose output lives in the result
+     monad is defined as a least fixed point with [partial_function (result)]
+     (see [Primitives.thy]), which needs no termination proof - this mirrors
+     [partial_fixpoint] in the Lean backend.  Recursive functions returning a
+     pure value still use [function] and admit termination. *)
+  let qualif =
+    if backend () = Isabelle && kind = SingleRec && not is_opaque
+       && is_result_ty def.signature.output
+    then Some "partial_function (result)"
+    else qualif
+  in
   (match qualif with
   | Some qualif ->
       F.pp_print_string fmt qualif;
@@ -4345,7 +4457,7 @@ let extract_trait_impl_method_term (ctx : extraction_ctx) (fmt : F.formatter)
   if backend () = Isabelle then (
     let runtime_params = method_cgs @ method_tcs in
     if runtime_params <> [] then (
-      F.pp_print_string fmt "λ";
+      F.pp_print_string fmt "\\<lambda>";
       List.iter
         (fun name ->
           F.pp_print_space fmt ();
@@ -4771,7 +4883,7 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
               when default_info.has_default ->
                 let default_clone_from () =
                   F.pp_print_space fmt ();
-                  F.pp_print_string fmt "(λ _ source.";
+                  F.pp_print_string fmt "(\\<lambda> _ source.";
                   extract_trait_impl_method_term ctx fmt impl clone_fn;
                   F.pp_print_space fmt ();
                   F.pp_print_string fmt "source)"

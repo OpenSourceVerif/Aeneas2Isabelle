@@ -44,6 +44,13 @@ let mk_not_lean (funs : 'a list) : 'a list =
   | Lean -> []
   | _ -> funs
 
+(** Utility for Isabelle-only definitions (models provided by the Isabelle
+    prelude but not by the other non-Lean backends). *)
+let mk_isabelle_only (funs : 'a list) : 'a list =
+  match backend () with
+  | Isabelle -> funs
+  | _ -> []
+
 let () =
   assert (split_on_separator "x::y::z" = [ "x"; "y"; "z" ]);
   assert (split_on_separator "x.y.z" = [ "x"; "y"; "z" ])

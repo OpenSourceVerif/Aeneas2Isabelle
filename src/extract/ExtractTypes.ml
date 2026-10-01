@@ -282,7 +282,7 @@ let unit_name () =
 (** Small helper *)
 let extract_arrow (fmt : F.formatter) () : unit =
   if Config.backend () = Lean then F.pp_print_string fmt "→"
-  else if Config.backend() = Isabelle then F.pp_print_string fmt "⇒"
+  else if Config.backend() = Isabelle then F.pp_print_string fmt "\\<Rightarrow>"
   else F.pp_print_string fmt "->"
 
 let extract_const_generic (span : Meta.span) (ctx : extraction_ctx)
@@ -366,7 +366,7 @@ let rec extract_ty (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
                   | Coq -> "*"
                   | Lean -> "×"
                   | HOL4 -> "#"
-                  | Isabelle -> "×"
+                  | Isabelle -> "\\<times>"
                 in
                 F.pp_print_string fmt product;
                 F.pp_print_space fmt ())
@@ -1154,7 +1154,8 @@ let extract_type_decl_tuple_struct_body (span : Meta.span)
     let sep =
       match backend () with
       | Coq | FStar | HOL4 -> "*"
-      | Lean | Isabelle -> "×"
+      | Lean -> "×"
+      | Isabelle -> "\\<times>"
     in
     (* Isabelle's product type binds more tightly than the function arrow.  In
        a product with several fields, parenthesize compound field types so that
@@ -1580,7 +1581,7 @@ let rec extract_isabelle_ty_const_generic_wf (span : Meta.span)
         { types = [ ok_ty ]; const_generics = []; trait_refs = [] } ) ->
       F.pp_print_string fmt "result_wf";
       F.pp_print_space fmt ();
-      F.pp_print_string fmt "(λwf_value.";
+      F.pp_print_string fmt "(\\<lambda>wf_value.";
       F.pp_print_space fmt ();
       extract_isabelle_ty_const_generic_wf span ctx fmt ok_ty (fun () ->
           F.pp_print_string fmt "wf_value");
@@ -1675,7 +1676,7 @@ let extract_isabelle_const_generic_type_wf (ctx : extraction_ctx)
       cg_params;
     F.pp_print_string fmt " ";
     F.pp_print_string fmt value_name;
-    F.pp_print_string fmt " ⟷";
+    F.pp_print_string fmt " \\<longleftrightarrow>";
     F.pp_force_newline fmt ();
     F.pp_print_string fmt "    ";
     let ghost_constraints =
@@ -1705,7 +1706,7 @@ let extract_isabelle_const_generic_type_wf (ctx : extraction_ctx)
     in
     let constraints = ghost_constraints @ field_constraints in
     if constraints = [] then F.pp_print_string fmt "True"
-    else F.pp_print_string fmt (String.concat " ∧ " constraints);
+    else F.pp_print_string fmt (String.concat " \\<and> " constraints);
     F.pp_print_string fmt "\"";
     F.pp_print_break fmt 0 0)
 
