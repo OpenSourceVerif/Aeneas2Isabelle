@@ -993,6 +993,7 @@ let dyn_constructor () =
   match backend () with
   | Isabelle -> "dyn_mk"
   | _ -> "Dyn.mk" (* TODO: backends other than Lean *)
+
 let dyn_ty = "Dyn"
 
 (** A list of keywords/identifiers used by the backend and with which we want to
@@ -1198,33 +1199,80 @@ let keywords () =
 let isabelle_standard_library_names =
   [
     (* List ops *)
-    "hd"; "tl"; "last"; "butlast"; "rev"; "length"; "size"; "set"; 
-    "map"; "filter"; "fold"; "foldr"; "foldl"; "concat"; "zip"; 
-    "replicate"; "take"; "drop"; "distinct"; "remdups"; "member";
-
+    "hd";
+    "tl";
+    "last";
+    "butlast";
+    "rev";
+    "length";
+    "size";
+    "set";
+    "map";
+    "filter";
+    "fold";
+    "foldr";
+    "foldl";
+    "concat";
+    "zip";
+    "replicate";
+    "take";
+    "drop";
+    "distinct";
+    "remdups";
+    "member";
     (* Set ops *)
-    "insert"; "subset"; "psubset"; "union"; "inter"; "card"; 
-    "image"; "Ball"; "Bex"; "Collect";
-
+    "insert";
+    "subset";
+    "psubset";
+    "union";
+    "inter";
+    "card";
+    "image";
+    "Ball";
+    "Bex";
+    "Collect";
     (* Option *)
-    "None"; "Some"; "the"; "is_none"; "is_some";
-
+    "None";
+    "Some";
+    "the";
+    "is_none";
+    "is_some";
     (* Product & Sum *)
-    "fst"; "snd"; "curry"; "uncurry"; "Inl"; "Inr";
-
+    "fst";
+    "snd";
+    "curry";
+    "uncurry";
+    "Inl";
+    "Inr";
     (* Map ('a ~=> 'b) *)
-    "dom"; "ran"; "map_of"; "empty";
-
+    "dom";
+    "ran";
+    "map_of";
+    "empty";
     (* Arithmetic & Order *)
-    "min"; "max"; "abs"; "sgn"; "gcd"; "lcm"; "div"; "mod";
-
+    "min";
+    "max";
+    "abs";
+    "sgn";
+    "gcd";
+    "lcm";
+    "div";
+    "mod";
     (* Combinators & Misc *)
-    "id"; "comp"; "undefined"; "default"; "True"; "False"; "not"; 
-    "choose"; "range"; "univ"
+    "id";
+    "comp";
+    "undefined";
+    "default";
+    "True";
+    "False";
+    "not";
+    "choose";
+    "range";
+    "univ";
   ]
 
-(** Avoid shadowing names already provided by Isabelle/HOL.  A trailing prime
-    is part of an Isabelle identifier and keeps the generated name readable. *)
+(** Avoid shadowing names already provided by Isabelle/HOL. A trailing prime is
+    part of an Isabelle identifier and keeps the generated name readable. *)
 let escape_isabelle_standard_library_name (name : string) : string =
   if backend () = Isabelle && List.mem name isabelle_standard_library_names then
     name ^ "'"
@@ -1265,6 +1313,7 @@ let builtin_struct_constructors () : (builtin_ty * string) list =
   | FStar -> [ (TArray, "mk_array") ]
   | HOL4 -> [ (TArray, "mk_array") ]
   | Isabelle -> [ (TArray, "mk_array") ]
+
 let builtin_variants () : (builtin_ty * VariantId.id * string) list =
   match backend () with
   | FStar ->
@@ -2082,11 +2131,12 @@ let ctx_compute_trait_parent_clause_name (ctx : extraction_ctx)
          name (see [ctx_compute_trait_clause_name]): for Isabelle don't
          prefix it a second time, which would give names like
          [core_cmp_PartialOrd_tcore_cmp_PartialOrd_t_PartialEqInst]. *)
-      if backend () = Isabelle
-         && (String.starts_with ~prefix:decl_name clause
-            || String.starts_with
-                 ~prefix:(StringUtils.lowercase_first_letter decl_name)
-                 clause)
+      if
+        backend () = Isabelle
+        && (String.starts_with ~prefix:decl_name clause
+           || String.starts_with
+                ~prefix:(StringUtils.lowercase_first_letter decl_name)
+                clause)
       then clause
       else decl_name ^ "_" ^ clause
   in
@@ -2212,7 +2262,8 @@ let ctx_compute_var_basename (span : Meta.span) (ctx : extraction_ctx)
           (* TODO: use "t" also for F* *)
           match backend () with
           | FStar -> "x" (* lacking inspiration here... *)
-          | Coq | Lean | HOL4 | Isabelle -> "t" (* lacking inspiration here... *))
+          | Coq | Lean | HOL4 | Isabelle ->
+              "t" (* lacking inspiration here... *))
       | TLiteral lty -> (
           match lty with
           | TBool -> "b"
@@ -2688,7 +2739,8 @@ let ctx_compute_decreases_proof_name (decl : fun_decl) (ctx : extraction_ctx) :
   let suffix =
     match Config.backend () with
     | Lean -> "_decreases"
-    | FStar | Coq | HOL4 | Isabelle -> [%craise] decl.item_meta.span "Unexpected"
+    | FStar | Coq | HOL4 | Isabelle ->
+        [%craise] decl.item_meta.span "Unexpected"
   in
   (* Concatenate *)
   fname ^ lp_suffix ^ suffix

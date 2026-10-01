@@ -245,7 +245,7 @@ let extract_adt_g_value (span : Meta.span)
       [%admit_raise] span "Inconsistently typed value" fmt;
       ctx
 
-(** Extract an Isabelle trait dictionary as a term.  In particular, record
+(** Extract an Isabelle trait dictionary as a term. In particular, record
     selectors are prefix functions in Isabelle, including selectors used to
     reach parent trait dictionaries. *)
 let rec extract_isabelle_trait_ref_term (span : Meta.span)
@@ -323,8 +323,8 @@ and extract_isabelle_trait_instance_id_term (span : Meta.span)
         trait_ref id
 
 and extract_isabelle_runtime_generic_args (span : Meta.span)
-    (ctx : extraction_ctx) (fmt : F.formatter) (generics : generic_args) :
-    unit =
+    (ctx : extraction_ctx) (fmt : F.formatter) (generics : generic_args) : unit
+    =
   List.iter
     (fun cg ->
       F.pp_print_space fmt ();
@@ -340,10 +340,9 @@ let extract_trait_ref_term (span : Meta.span) (ctx : extraction_ctx)
     (fmt : F.formatter) ~(inside : bool) (trait_ref : trait_ref) : unit =
   if backend () = Isabelle then
     extract_isabelle_trait_ref_term span ctx fmt ~inside trait_ref
-  else
-    extract_trait_ref span ctx fmt TypeDeclId.Set.empty ~inside trait_ref
+  else extract_trait_ref span ctx fmt TypeDeclId.Set.empty ~inside trait_ref
 
-(** Extract generic arguments at a term-level call site.  Isabelle infers type
+(** Extract generic arguments at a term-level call site. Isabelle infers type
     arguments, but const generics and trait dictionaries are explicit term
     arguments in the pure model. *)
 let extract_call_generic_args (span : Meta.span) (ctx : extraction_ctx)
@@ -360,8 +359,7 @@ let extract_call_generic_args (span : Meta.span) (ctx : extraction_ctx)
         F.pp_print_space fmt ();
         extract_trait_ref_term span ctx fmt ~inside:true trait_ref)
       generics.trait_refs)
-  else
-    extract_generic_args span ctx fmt TypeDeclId.Set.empty ~explicit generics
+  else extract_generic_args span ctx fmt TypeDeclId.Set.empty ~explicit generics
 
 (* Extract globals in the same way as variables *)
 let extract_global (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
@@ -493,7 +491,7 @@ let rec extract_tpat (span : Meta.span) (ctx : extraction_ctx)
   if with_type then (
     F.pp_print_space fmt ();
     let _ =
-      match backend () with 
+      match backend () with
       | Isabelle -> F.pp_print_string fmt "::"
       | _ -> F.pp_print_string fmt ":"
     in
@@ -685,8 +683,7 @@ let extract_cast_kind (span : Meta.span)
     - unop
     - argument *)
 let isabelle_scalar_ty_name (ty : integer_type) : string =
-  StringUtils.capitalize_first_letter
-    (PrintPure.integer_type_to_string ty)
+  StringUtils.capitalize_first_letter (PrintPure.integer_type_to_string ty)
 
 let extract_unop (span : Meta.span)
     (extract_expr : inside:bool -> texpr -> unit) (fmt : F.formatter)
@@ -746,10 +743,10 @@ let extract_binop (span : Meta.span) (ctx : extraction_ctx)
         | Lt _ -> "<"
         | Le _ -> "<="
         | Ne _ -> (
-          match backend () with
-          | Lean -> "!="
-          | Isabelle -> "\\<noteq>"
-          | _ -> "<>")
+            match backend () with
+            | Lean -> "!="
+            | Isabelle -> "\\<noteq>"
+            | _ -> "<>")
         | Ge _ -> ">="
         | Gt _ -> ">"
         | Div (OPanic, _) -> "/"
@@ -834,8 +831,8 @@ let extract_binop (span : Meta.span) (ctx : extraction_ctx)
       extract_expr ~inside:true arg0;
       F.pp_print_space fmt ();
       extract_expr ~inside:true arg1
-  | ( Isabelle,
-      ((AddChecked ty | SubChecked ty | MulChecked ty) as checked_binop) ) ->
+  | Isabelle, ((AddChecked ty | SubChecked ty | MulChecked ty) as checked_binop)
+    ->
       let op =
         match checked_binop with
         | AddChecked _ -> "add"
@@ -893,22 +890,19 @@ let extract_texpr_error (span : Meta.span) (msg : string) (fmt : F.formatter) =
   extract_texpr_errors fmt
 
 (** Isabelle records are not datatypes, so their synthetic structure names
-    cannot be used as patterns in [case] expressions.  Match on the selected
-    fields instead.  A record with several fields becomes a tuple match. *)
+    cannot be used as patterns in [case] expressions. Match on the selected
+    fields instead. A record with several fields becomes a tuple match. *)
 let isabelle_record_match_fields (ctx : extraction_ctx) (scrut : texpr)
-    (branches : match_branch list) :
-    (TypeDeclId.id * FieldId.id list) option =
+    (branches : match_branch list) : (TypeDeclId.id * FieldId.id list) option =
   match (backend (), scrut.ty) with
   | Isabelle, TAdt (TAdtId adt_id, _) ->
       let def = TypeDeclId.Map.find adt_id ctx.trans_types in
-      let info =
-        TypeDeclId.Map.find adt_id ctx.trans_ctx.type_ctx.type_infos
-      in
+      let info = TypeDeclId.Map.find adt_id ctx.trans_ctx.type_ctx.type_infos in
       let record_fields =
         match def.kind with
         | Struct fields
           when fields <> []
-               && not info.TypesAnalysis.is_rec
+               && (not info.TypesAnalysis.is_rec)
                && not
                     (TypesUtils.type_decl_from_decl_id_is_tuple_struct
                        ctx.trans_ctx.type_ctx.type_infos adt_id) ->
@@ -917,8 +911,7 @@ let isabelle_record_match_fields (ctx : extraction_ctx) (scrut : texpr)
       in
       let supported_branch field_count (branch : match_branch) =
         match branch.pat.pat with
-        | PAdt { variant_id = None; fields } ->
-            List.length fields = field_count
+        | PAdt { variant_id = None; fields } -> List.length fields = field_count
         | PIgnored -> true
         | PConstant _ | PBound _ | POpen _ | PAdt _ -> false
       in
@@ -1107,13 +1100,14 @@ and extract_array_or_slice (span : Meta.span) (ctx : extraction_ctx)
       extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:true args_ty;
       F.pp_print_space fmt ();
       F.pp_print_string fmt (if is_array then "array" else "slice")))
-  else (
-  (* In case the array is empty we use a special [Array.empty] construct -
+  else if
+    (* In case the array is empty we use a special [Array.empty] construct -
      the reason is that otherwise it is not possible to infer the type of the
      array.Aeneas
      TODO: doing this *here* is a bit of a hack.
   *)
-  if args = [] then (
+    args = []
+  then (
     let cs =
       match backend () with
       | Lean -> "Std.Array.empty"
@@ -1156,7 +1150,7 @@ and extract_array_or_slice (span : Meta.span) (ctx : extraction_ctx)
     (* Close the boxes *)
     F.pp_close_box fmt ();
     if args <> [] then F.pp_print_space fmt ();
-    F.pp_print_string fmt "]"));
+    F.pp_print_string fmt "]");
   if need_paren then F.pp_print_string fmt ")";
   F.pp_close_box fmt ()
 
@@ -1446,8 +1440,8 @@ and extract_function_call (span : Meta.span) (ctx : extraction_ctx)
       extract_texpr_error span
         ("Unreachable:\n" ^ "Function: " ^ show_fun_or_op_id fid
        ^ ",\nNumber of arguments: "
-       ^ string_of_int (List.length args)
-       ^ ",\nArguments: "
+        ^ string_of_int (List.length args)
+        ^ ",\nArguments: "
         ^ String.concat " " (List.map show_texpr args))
         fmt
 
@@ -1586,10 +1580,10 @@ and extract_field_projector (span : Meta.span) (ctx : extraction_ctx)
           if backend () <> Lean then F.pp_print_break fmt 0 0;
           F.pp_print_string fmt ".";
           (* If in Coq, the field projection has to be parenthesized *)
-          (match backend () with
+          match backend () with
           | FStar | Lean | HOL4 -> F.pp_print_string fmt field_name
           | Coq -> F.pp_print_string fmt ("(" ^ field_name ^ ")")
-          | Isabelle -> ()));
+          | Isabelle -> ());
         (* Close the box *)
         F.pp_close_box fmt ()
   | arg :: args ->
@@ -1623,8 +1617,8 @@ and extract_Lambda (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
   [%sanity_check] span (xl <> []);
   let _ =
     match backend () with
-    | Isabelle -> F.pp_print_string fmt "\\<lambda>";
-    | _ -> F.pp_print_string fmt "fun";
+    | Isabelle -> F.pp_print_string fmt "\\<lambda>"
+    | _ -> F.pp_print_string fmt "fun"
   in
   let with_type =
     match backend () with
@@ -1642,7 +1636,7 @@ and extract_Lambda (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
   let _ =
     match backend () with
     | Lean | Coq -> F.pp_print_string fmt "=>"
-    | Isabelle  -> F.pp_print_string fmt "."
+    | Isabelle -> F.pp_print_string fmt "."
     | _ -> F.pp_print_string fmt "->"
   in
   F.pp_print_space fmt ();
@@ -1723,11 +1717,11 @@ and extract_lets (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
       (re : texpr) : extraction_ctx =
     if is_isabelle_ctor_pat lv then extract_let_as_case ctx monadic lv re
     else begin
-    (* Open a box for the let-binding *)
-    F.pp_open_hvbox fmt 0;
-    F.pp_open_hvbox fmt ctx.indent_incr;
-    let ctx, end_let =
-      (* There are two cases:
+      (* Open a box for the let-binding *)
+      F.pp_open_hvbox fmt 0;
+      F.pp_open_hvbox fmt ctx.indent_incr;
+      let ctx, end_let =
+        (* There are two cases:
          - do we use a notation like [x <-- y;]
          - do we use notation with let-bindings
          Note that both notations can be used for monadic let-bindings.
@@ -1738,93 +1732,99 @@ and extract_lets (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
          ]}
          TODO: cleanup
       *)
-      if monadic && (backend () = Coq || backend () = HOL4 || backend () = Isabelle) then (
-        (* Box for the let .. <- *)
-        F.pp_open_hovbox fmt ctx.indent_incr;
-        let ctx = extract_tpat span ctx fmt ~is_let:true ~inside:false lv in
-        F.pp_print_space fmt ();
-        let arrow =
-          match backend () with
-          | Coq | HOL4 | Isabelle -> "<-"
-          | FStar | Lean -> [%internal_error] span
-        in
-        F.pp_print_string fmt arrow;
-        F.pp_close_box fmt ();
-        F.pp_print_space fmt ();
-        (* Box for the bound expression *)
-        F.pp_open_hovbox fmt ctx.indent_incr;
-        extract_texpr span ctx fmt ~inside:false ~inside_do:true re;
-        F.pp_print_string fmt ";";
-        F.pp_close_box fmt ();
-        (ctx, fun _ -> ()))
-      else
-        (* Check if we can ignore the [let] - it is possible for some backends,
+        if
+          monadic
+          && (backend () = Coq || backend () = HOL4 || backend () = Isabelle)
+        then (
+          (* Box for the let .. <- *)
+          F.pp_open_hovbox fmt ctx.indent_incr;
+          let ctx = extract_tpat span ctx fmt ~is_let:true ~inside:false lv in
+          F.pp_print_space fmt ();
+          let arrow =
+            match backend () with
+            | Coq | HOL4 | Isabelle -> "<-"
+            | FStar | Lean -> [%internal_error] span
+          in
+          F.pp_print_string fmt arrow;
+          F.pp_close_box fmt ();
+          F.pp_print_space fmt ();
+          (* Box for the bound expression *)
+          F.pp_open_hovbox fmt ctx.indent_incr;
+          extract_texpr span ctx fmt ~inside:false ~inside_do:true re;
+          F.pp_print_string fmt ";";
+          F.pp_close_box fmt ();
+          (ctx, fun _ -> ()))
+        else
+          (* Check if we can ignore the [let] - it is possible for some backends,
            if the monadic expression evaluates to [()] *)
-        let ignore_let =
-          monadic && is_ignored_pat lv && ty_is_unit lv.ty && backend () = Lean
-        in
-        (* Print the [let] *)
-        let ctx, end_let =
-          if not ignore_let then (
-            (* Box for the let .. <- *)
-            F.pp_open_hovbox fmt ctx.indent_incr;
-            if monadic then
-              match backend () with
-              | FStar ->
-                  F.pp_print_string fmt "let*";
-                  F.pp_print_space fmt ()
-              | Coq | Lean | Isabelle ->
-                  F.pp_print_string fmt "let";
-                  F.pp_print_space fmt ()
-              | HOL4 -> ()
-            else (
-              F.pp_print_string fmt "let";
-              F.pp_print_space fmt ());
-            let ctx = extract_tpat span ctx fmt ~is_let:true ~inside:false lv in
-            F.pp_print_space fmt ();
-            let eq =
-              match backend () with
-              | FStar -> "="
-              | Coq -> ":="
-              | Lean -> if monadic then "←" else ":="
-              | HOL4 -> if monadic then "<-" else "="
-              | Isabelle -> "="
-            in
-            F.pp_print_string fmt eq;
-            F.pp_close_box fmt ();
-            F.pp_print_space fmt ();
-            (* Continuation to end the let-binding *)
-            let end_let () =
-              match backend () with
-              | Lean ->
-                  (* In Lean, (monadic) let-bindings don't require to end with anything *)
-                  ()
-              | Coq | FStar | HOL4 | Isabelle ->
-                  F.pp_print_space fmt ();
-                  F.pp_print_string fmt "in"
-            in
-            (ctx, end_let))
-          else (ctx, fun _ -> ())
-        in
-        (* Print the bound expression. *)
-        F.pp_open_hovbox fmt ctx.indent_incr;
-        let inside_do_rhs =
-          match backend () with
-          | Lean -> false
-          | _ -> monadic
-        in
-        extract_texpr span ctx fmt ~inside:false ~inside_do:inside_do_rhs re;
-        F.pp_close_box fmt ();
-        (ctx, end_let)
-    in
-    (* Close the boxes for the let-binding *)
-    F.pp_close_box fmt ();
-    (* End the let-binding *)
-    end_let ();
-    F.pp_close_box fmt ();
-    F.pp_print_space fmt ();
-    (* Return *)
-    ctx
+          let ignore_let =
+            monadic && is_ignored_pat lv && ty_is_unit lv.ty
+            && backend () = Lean
+          in
+          (* Print the [let] *)
+          let ctx, end_let =
+            if not ignore_let then (
+              (* Box for the let .. <- *)
+              F.pp_open_hovbox fmt ctx.indent_incr;
+              if monadic then
+                match backend () with
+                | FStar ->
+                    F.pp_print_string fmt "let*";
+                    F.pp_print_space fmt ()
+                | Coq | Lean | Isabelle ->
+                    F.pp_print_string fmt "let";
+                    F.pp_print_space fmt ()
+                | HOL4 -> ()
+              else (
+                F.pp_print_string fmt "let";
+                F.pp_print_space fmt ());
+              let ctx =
+                extract_tpat span ctx fmt ~is_let:true ~inside:false lv
+              in
+              F.pp_print_space fmt ();
+              let eq =
+                match backend () with
+                | FStar -> "="
+                | Coq -> ":="
+                | Lean -> if monadic then "←" else ":="
+                | HOL4 -> if monadic then "<-" else "="
+                | Isabelle -> "="
+              in
+              F.pp_print_string fmt eq;
+              F.pp_close_box fmt ();
+              F.pp_print_space fmt ();
+              (* Continuation to end the let-binding *)
+              let end_let () =
+                match backend () with
+                | Lean ->
+                    (* In Lean, (monadic) let-bindings don't require to end with anything *)
+                    ()
+                | Coq | FStar | HOL4 | Isabelle ->
+                    F.pp_print_space fmt ();
+                    F.pp_print_string fmt "in"
+              in
+              (ctx, end_let))
+            else (ctx, fun _ -> ())
+          in
+          (* Print the bound expression. *)
+          F.pp_open_hovbox fmt ctx.indent_incr;
+          let inside_do_rhs =
+            match backend () with
+            | Lean -> false
+            | _ -> monadic
+          in
+          extract_texpr span ctx fmt ~inside:false ~inside_do:inside_do_rhs re;
+          F.pp_close_box fmt ();
+          (ctx, end_let)
+      in
+      (* Close the boxes for the let-binding *)
+      F.pp_close_box fmt ();
+      (* End the let-binding *)
+      end_let ();
+      F.pp_close_box fmt ();
+      F.pp_print_space fmt ();
+      (* Return *)
+      ctx
     end
   in
   (* Open parentheses *)
@@ -1870,7 +1870,9 @@ and extract_lets (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
     if backend () = HOL4 then (
       F.pp_print_space fmt ();
       F.pp_print_string fmt "od")
-    else if backend () = Isabelle then (F.pp_print_space fmt (); F.pp_print_string fmt "}");
+    else if backend () = Isabelle then (
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt "}");
   (* Close parentheses *)
   if inside && backend () <> Lean then F.pp_print_string fmt ")";
   (* Close the box for the whole expression *)
@@ -1879,9 +1881,10 @@ and extract_lets (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
   if inside then F.pp_print_string fmt ")"
 
 (** Isabelle: [case] expressions can only match on datatype constructors, so a
-    Rust [match] on integer literals (e.g. [match x { 0 => .., 1 => .., _ => ..}])
-    cannot be printed as a [case].  We detect such matches - every pattern is an
-    integer literal or a catch-all - and print them as a chain of conditionals. *)
+    Rust [match] on integer literals (e.g.
+    [match x { 0 => .., 1 => .., _ => ..}]) cannot be printed as a [case]. We
+    detect such matches - every pattern is an integer literal or a catch-all -
+    and print them as a chain of conditionals. *)
 and isabelle_match_is_literal_switch (branches : match_branch list) : bool =
   let is_lit (br : match_branch) =
     match br.pat.pat with
@@ -1896,10 +1899,11 @@ and isabelle_match_is_literal_switch (branches : match_branch list) : bool =
   List.exists is_lit branches
   && List.for_all (fun br -> is_lit br || is_catch_all br) branches
 
-(** Print a match on integer literals as [if s = c1 then e1 else if s = c2 then
-    e2 else e_default].  A catch-all branch ends the chain; a trailing literal
-    branch without catch-all is also used as the default (the Rust match is
-    exhaustive, so the remaining case is unreachable). *)
+(** Print a match on integer literals as
+    [if s = c1 then e1 else if s = c2 then e2 else e_default]. A catch-all
+    branch ends the chain; a trailing literal branch without catch-all is also
+    used as the default (the Rust match is exhaustive, so the remaining case is
+    unreachable). *)
 and extract_isabelle_literal_switch (span : Meta.span) (ctx : extraction_ctx)
     (fmt : F.formatter) ~(inside : bool) ~(inside_do : bool) (scrut : texpr)
     (branches : match_branch list) : unit =
@@ -1997,8 +2001,7 @@ and extract_Switch (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
       if backend () = Lean && ctx.use_dep_ite then F.pp_print_string fmt " h:";
       F.pp_print_space fmt ();
       let scrut_inside =
-        backend () = Isabelle
-        || PureUtils.texpr_requires_parentheses span scrut
+        backend () = Isabelle || PureUtils.texpr_requires_parentheses span scrut
       in
       extract_texpr span ctx fmt ~inside:scrut_inside ~inside_do:false scrut;
       (* Close the box for the [if e] *)
@@ -2077,8 +2080,7 @@ and extract_Switch (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
       F.pp_print_string fmt match_begin;
       F.pp_print_space fmt ();
       let scrut_inside =
-        backend () = Isabelle
-        || PureUtils.texpr_requires_parentheses span scrut
+        backend () = Isabelle || PureUtils.texpr_requires_parentheses span scrut
       in
       (match isabelle_record_fields with
       | Some (adt_id, field_ids) ->
@@ -2098,8 +2100,7 @@ and extract_Switch (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
               extract_field field_ids;
             F.pp_print_string fmt ")")
       | None ->
-          extract_texpr span ctx fmt ~inside:scrut_inside ~inside_do:false
-            scrut);
+          extract_texpr span ctx fmt ~inside:scrut_inside ~inside_do:false scrut);
       F.pp_print_space fmt ();
       let match_scrut_end =
         match backend () with
@@ -2118,15 +2119,14 @@ and extract_Switch (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
         (* Open a box for the pattern *)
         F.pp_open_hovbox fmt ctx.indent_incr;
         (* Print the pattern *)
-        let print_bar = 
-          match backend () with 
+        let print_bar =
+          match backend () with
           | Isabelle -> not is_first
           | _ -> true
         in
         if print_bar then (
           F.pp_print_string fmt "|";
-          F.pp_print_space fmt ();
-        );
+          F.pp_print_space fmt ());
         let ctx =
           match (isabelle_record_fields, br.pat.pat) with
           | Some _, PAdt { variant_id = None; fields } ->
@@ -2164,15 +2164,16 @@ and extract_Switch (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
         (* Print the branch itself *)
         (* In Isabelle, parenthesize compound branch terms so an inner [case]
            cannot capture the following bar of the outer [case]. *)
-        extract_texpr span ctx fmt ~inside:(backend () = Isabelle) ~inside_do
-          br.branch;
+        extract_texpr span ctx fmt
+          ~inside:(backend () = Isabelle)
+          ~inside_do br.branch;
         (* Close the box for the branch *)
         F.pp_close_box fmt ();
         (* Close the box for the pattern+branch *)
         F.pp_close_box fmt ()
       in
 
-      List.iteri (fun i br -> extract_branch (i = 0) br)  branches;
+      List.iteri (fun i br -> extract_branch (i = 0) br) branches;
 
       (* End the match *)
       match backend () with
@@ -2225,10 +2226,7 @@ and extract_StructUpdate (span : Meta.span) (ctx : extraction_ctx)
   in
   let isabelle_const_generic_updates =
     match (backend (), supd.init, supd.struct_id, ty) with
-    | ( Isabelle,
-        None,
-        TAdtId adt_id,
-        TAdt (TAdtId ty_id, generics) )
+    | Isabelle, None, TAdtId adt_id, TAdt (TAdtId ty_id, generics)
       when adt_id = ty_id ->
         let def = TypeDeclId.Map.find adt_id ctx.trans_types in
         if isabelle_type_decl_has_const_generic_fields ctx def then
@@ -2277,9 +2275,7 @@ and extract_StructUpdate (span : Meta.span) (ctx : extraction_ctx)
                   fmt))
       fields;
     if inside then F.pp_print_string fmt ")")
-  else if
-    backend () = Isabelle && supd.init <> None && supd.updates = []
-  then
+  else if backend () = Isabelle && supd.init <> None && supd.updates = [] then
     (* A record update without changed fields is just its base value.  Isabelle
        does not accept an empty update block [r(| |)]. *)
     extract_texpr span ctx fmt ~inside ~inside_do:false (Option.get supd.init)
@@ -2315,16 +2311,14 @@ and extract_StructUpdate (span : Meta.span) (ctx : extraction_ctx)
           | Coq -> (Some "{|", Some "|}")
           | HOL4 -> (None, None)
           | Isabelle ->
-            if supd.init = None then (Some "(|", Some "|)")
-            else (None, None)
+              if supd.init = None then (Some "(|", Some "|)") else (None, None)
         in
         (* Inner brackets *)
         let ilb, irb =
           match backend () with
           | Lean | FStar | Coq -> (None, None)
           | Isabelle ->
-              if supd.init = None then (None, None)
-              else (Some "(|", Some "|)")
+              if supd.init = None then (None, None) else (Some "(|", Some "|)")
           | HOL4 -> (Some "<|", Some "|>")
         in
         (* Helper *)
@@ -2365,7 +2359,7 @@ and extract_StructUpdate (span : Meta.span) (ctx : extraction_ctx)
           match backend () with
           | Coq | Lean | HOL4 -> ":="
           | FStar -> "="
-          | Isabelle -> (if supd.init = None then "=" else ":=")
+          | Isabelle -> if supd.init = None then "=" else ":="
         in
         List.iter
           (fun (field_name, cg) ->
@@ -2506,7 +2500,11 @@ let extract_fun_parameters (space : bool ref) (ctx : extraction_ctx)
 let extract_fun_input_parameters_types (span : span) (ctx : extraction_ctx)
     (fmt : F.formatter) (inputs : ty list) : unit =
   let extract_param (ty : ty) : unit =
-    let inside = match backend () with | Isabelle -> true | _ -> false in
+    let inside =
+      match backend () with
+      | Isabelle -> true
+      | _ -> false
+    in
     extract_ty span ctx fmt TypeDeclId.Set.empty ~inside ty;
     F.pp_print_space fmt ();
     extract_arrow fmt ();
@@ -2515,9 +2513,9 @@ let extract_fun_input_parameters_types (span : span) (ctx : extraction_ctx)
   List.iter extract_param inputs
 
 (** Print the runtime generic parameter types of an Isabelle constant as a
-    prefix of its function type.  Type variables are implicitly quantified by
-    Isabelle, while const generics and trait dictionaries remain term
-    parameters in the pure translation. *)
+    prefix of its function type. Type variables are implicitly quantified by
+    Isabelle, while const generics and trait dictionaries remain term parameters
+    in the pure translation. *)
 let extract_isabelle_runtime_generic_parameter_types (span : Meta.span)
     (ctx : extraction_ctx) (fmt : F.formatter) (generics : generic_params) :
     unit =
@@ -2781,39 +2779,33 @@ let extract_fun_comment (ctx : extraction_ctx) (fmt : F.formatter)
     Isabelle function whose result contains an erased const-generic index.
 
     Function inputs are expected to be open variables after the pure
-    micro-passes.  If this invariant does not hold, we skip the contract rather
+    micro-passes. If this invariant does not hold, we skip the contract rather
     than printing an ill-scoped Isabelle proposition. *)
 let extract_isabelle_fun_const_generic_wf_lemma (ctx : extraction_ctx)
     (ctx_body : extraction_ctx) (fmt : F.formatter) (def_name : string)
-    (all_params : (explicit * string) list) (kind : decl_kind) (def : fun_decl) :
-    unit =
+    (all_params : (explicit * string) list) (kind : decl_kind) (def : fun_decl)
+    : unit =
   match def.body with
   | None -> ()
   | Some body ->
-      if
-        not
-          (isabelle_ty_has_const_generic_wf ctx None def.signature.output)
+      if not (isabelle_ty_has_const_generic_wf ctx None def.signature.output)
       then ()
       else
-        let input_pats =
-          List.combine def.signature.inputs body.inputs
-        in
+        let input_pats = List.combine def.signature.inputs body.inputs in
         let input_vars =
           List.map
             (fun (input_ty, (pat : tpat)) ->
               match pat.pat with
               | POpen (var, _) ->
-                  Some
-                    ( input_ty,
-                      ctx_get_var def.item_meta.span var.id ctx_body )
+                  Some (input_ty, ctx_get_var def.item_meta.span var.id ctx_body)
               | _ -> None)
             input_pats
         in
         if List.exists Option.is_none input_vars then
           [%save_error] def.item_meta.span
             ("Could not generate the Isabelle const-generic well-formedness \
-              lemma for "
-            ^ def_name ^ ": function inputs are not simple variables")
+              lemma for " ^ def_name
+           ^ ": function inputs are not simple variables")
         else
           let input_vars = List.filter_map Fun.id input_vars in
           let assumptions =
@@ -2834,8 +2826,7 @@ let extract_isabelle_fun_const_generic_wf_lemma (ctx : extraction_ctx)
                 ( TBuiltin TResult,
                   { types = [ ty ]; const_generics = []; trait_refs = [] } ) ->
                 record_wf_def_name ty
-            | TAdt (TAdtId id, generics)
-              when generics.const_generics <> [] ->
+            | TAdt (TAdtId id, generics) when generics.const_generics <> [] ->
                 let type_def = TypeDeclId.Map.find id ctx.trans_types in
                 if isabelle_type_decl_has_const_generic_fields ctx type_def then
                   Some
@@ -2956,8 +2947,7 @@ let rec isabelle_ty_contains_recursive_adt (ctx : extraction_ctx) (ty : ty) =
   | TArrow (input_ty, output_ty) ->
       isabelle_ty_contains_recursive_adt ctx input_ty
       || isabelle_ty_contains_recursive_adt ctx output_ty
-  | TVar _ | TLiteral _ | TTraitType _ | TNever | TDynTrait _ | TError ->
-      false
+  | TVar _ | TLiteral _ | TTraitType _ | TNever | TDynTrait _ | TError -> false
 
 let isabelle_body_uses_i32_decrement (body : fun_body) =
   let found = ref false in
@@ -3084,9 +3074,7 @@ let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
   let is_isabelle_structural_rec =
     backend () = Isabelle
     && kind = SingleRec
-    && List.exists
-         (isabelle_ty_contains_recursive_adt ctx)
-         def.signature.inputs
+    && List.exists (isabelle_ty_contains_recursive_adt ctx) def.signature.inputs
   in
   (* Print the qualifier ("assume", etc.). *)
   let qualif = fun_decl_kind_to_qualif kind in
@@ -3096,8 +3084,10 @@ let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
      [partial_fixpoint] in the Lean backend.  Recursive functions returning a
      pure value still use [function] and admit termination. *)
   let qualif =
-    if backend () = Isabelle && kind = SingleRec && not is_opaque
-       && is_result_ty def.signature.output
+    if
+      backend () = Isabelle
+      && kind = SingleRec && (not is_opaque)
+      && is_result_ty def.signature.output
     then Some "partial_function (result)"
     else qualif
   in
@@ -3118,148 +3108,147 @@ let extract_fun_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
   F.pp_open_hovbox fmt 0;
   let space = ref true in
   let ctx, ctx_body, all_params =
-  match backend () with
-  | Isabelle ->
-      (* Isabelle function/definition commands expect the complete function
+    match backend () with
+    | Isabelle ->
+        (* Isabelle function/definition commands expect the complete function
          type after [::]. Runtime parameters are printed only on the LHS of
          the defining equation. *)
-      let ctx, type_params, cg_params, trait_clauses =
-        ctx_add_generic_params def.item_meta.span def.item_meta.name Item
-          def.signature.llbc_generics def.signature.generics ctx
-      in
-      let explicit = def.signature.explicit_info in
-      let type_params =
-        List.combine explicit.explicit_types type_params
-      in
-      let cg_params =
-        List.combine explicit.explicit_const_generics cg_params
-      in
-      let trait_clauses =
-        List.map (fun name -> (Explicit, name)) trait_clauses
-      in
-      let all_params =
-        List.concat [ type_params; cg_params; trait_clauses ]
-      in
-      (* Input-pattern bindings will be added while printing the equation LHS. *)
-      (ctx, ctx, all_params)
-  | FStar | Coq | Lean | HOL4 ->
-      extract_fun_parameters space ctx fmt def
-in
+        let ctx, type_params, cg_params, trait_clauses =
+          ctx_add_generic_params def.item_meta.span def.item_meta.name Item
+            def.signature.llbc_generics def.signature.generics ctx
+        in
+        let explicit = def.signature.explicit_info in
+        let type_params = List.combine explicit.explicit_types type_params in
+        let cg_params =
+          List.combine explicit.explicit_const_generics cg_params
+        in
+        let trait_clauses =
+          List.map (fun name -> (Explicit, name)) trait_clauses
+        in
+        let all_params =
+          List.concat [ type_params; cg_params; trait_clauses ]
+        in
+        (* Input-pattern bindings will be added while printing the equation LHS. *)
+        (ctx, ctx, all_params)
+    | FStar | Coq | Lean | HOL4 -> extract_fun_parameters space ctx fmt def
+  in
   let lemma_ctx_body = ref ctx_body in
   (* Print the return type - note that we have to be careful when
    * printing the input values for the decrease clause, because
    * it introduces bindings in the context... We thus "forget"
    * the bindings we introduced above.
    * TODO: figure out a cleaner way *)
-   (match backend () with
+  (match backend () with
   | Isabelle ->
-    insert_req_space fmt space;
-    F.pp_print_string fmt "::";
-    F.pp_print_space fmt ();
-    F.pp_print_string fmt "\"";
-
-    (* Type parameters are implicit Isabelle type variables. Const generics
-       and trait dictionaries remain explicit term-level arguments. *)
-    extract_isabelle_runtime_generic_parameter_types
-      def.item_meta.span ctx fmt def.signature.generics;
-
-    (* Print all ordinary input types as part of the function type. *)
-    extract_fun_input_parameters_types
-      def.item_meta.span ctx fmt def.signature.inputs;
-
-    (* The output type is the rightmost part of the curried function type. *)
-    extract_ty def.item_meta.span ctx fmt TypeDeclId.Set.empty
-      ~inside:false def.signature.output;
-
-    F.pp_print_string fmt "\"";
-    (* Close the box for "(PARAMS) :" *)
-    F.pp_close_box fmt ()
-  | _ ->
-    let _ =
-      if use_forall then F.pp_print_string fmt ","
-      else (
-        insert_req_space fmt space;
-        F.pp_print_string fmt ":");
-      (* Close the box for "(PARAMS) :" *)
-      F.pp_close_box fmt ();
+      insert_req_space fmt space;
+      F.pp_print_string fmt "::";
       F.pp_print_space fmt ();
-      (* Open a box for the EFFECT *)
-      F.pp_open_hvbox fmt 0;
-      (* Open a box for the return type *)
-      F.pp_open_hovbox fmt ctx.indent_incr;
-      (* Print the return type *)
-      (* For opaque definitions, as we don't have named parameters under the hand,
+      F.pp_print_string fmt "\"";
+
+      (* Type parameters are implicit Isabelle type variables. Const generics
+       and trait dictionaries remain explicit term-level arguments. *)
+      extract_isabelle_runtime_generic_parameter_types def.item_meta.span ctx
+        fmt def.signature.generics;
+
+      (* Print all ordinary input types as part of the function type. *)
+      extract_fun_input_parameters_types def.item_meta.span ctx fmt
+        def.signature.inputs;
+
+      (* The output type is the rightmost part of the curried function type. *)
+      extract_ty def.item_meta.span ctx fmt TypeDeclId.Set.empty ~inside:false
+        def.signature.output;
+
+      F.pp_print_string fmt "\"";
+      (* Close the box for "(PARAMS) :" *)
+      F.pp_close_box fmt ()
+  | _ ->
+      let _ =
+        if use_forall then F.pp_print_string fmt ","
+        else (
+          insert_req_space fmt space;
+          F.pp_print_string fmt ":");
+        (* Close the box for "(PARAMS) :" *)
+        F.pp_close_box fmt ();
+        F.pp_print_space fmt ();
+        (* Open a box for the EFFECT *)
+        F.pp_open_hvbox fmt 0;
+        (* Open a box for the return type *)
+        F.pp_open_hovbox fmt ctx.indent_incr;
+        (* Print the return type *)
+        (* For opaque definitions, as we don't have named parameters under the hand,
       * we don't print parameters in the form [(x : a) (y : b) ...] above,
       * but wait until here to print the types: [a -> b -> ...]. *)
-      if is_opaque then
-        extract_fun_input_parameters_types def.item_meta.span ctx fmt
-          def.signature.inputs;
-      (* [Tot] *)
-      if has_decreases_clause then (
-        assert_backend_supports_decreases_clauses def.item_meta.span;
-        if backend () = FStar then (
-          F.pp_print_string fmt "Tot";
-          F.pp_print_space fmt ()));
-      extract_ty def.item_meta.span ctx fmt TypeDeclId.Set.empty
-        ~inside:has_decreases_clause def.signature.output;
-      (* Close the box for the return type *)
-      F.pp_close_box fmt ();
-      (* Print the decrease clause - rk.: a function with a decreases clause
-      * is necessarily a transparent function *)
-      if has_decreases_clause && backend () = FStar then (
-        assert_backend_supports_decreases_clauses def.item_meta.span;
-        F.pp_print_space fmt ();
-        (* Open a box for the decreases clause *)
-        F.pp_open_hovbox fmt ctx.indent_incr;
-        (* *)
-        F.pp_print_string fmt "(decreases (";
-        F.pp_print_cut fmt ();
-        (* Open a box for the decreases term *)
-        F.pp_open_hovbox fmt ctx.indent_incr;
-        (* The name of the decrease clause *)
-        let decr_name =
-          ctx_get_termination_measure def.item_meta.span def.def_id def.loop_id
-            ctx
-        in
-        F.pp_print_string fmt decr_name;
-        (* Print the generic parameters - TODO: we do this many
-          times, we should have a helper to factor it out *)
-        List.iter
-          (fun (name : string) ->
-            F.pp_print_space fmt ();
-            F.pp_print_string fmt name)
-          (List.filter_map
-            (fun (e, x) -> if e = Implicit then None else Some x)
-            all_params);
-        (* Print the input values: we have to be careful here to print
-        * only the input values which are in common with the *forward*
-        * function (the additional input values "given back" to the
-        * backward functions have no influence on termination: we thus
-        * share the decrease clauses between the forward and the backward
-        * functions - we also ignore the additional state received by the
-        * backward function, if there is one).
-        *)
-        let inputs_lvs = (Option.get def.body).inputs in
-        (* TODO: we should probably print the input variables, not the typed
-          patterns *)
-        let _ =
-          List.fold_left
-            (fun ctx (lv : tpat) ->
-              F.pp_print_space fmt ();
-              let ctx =
-                extract_tpat def.item_meta.span ctx fmt ~is_let:true ~inside:false lv
-              in
-              ctx)
-            ctx inputs_lvs
-        in
-        F.pp_print_string fmt "))";
-        (* Close the box for the decreases term *)
+        if is_opaque then
+          extract_fun_input_parameters_types def.item_meta.span ctx fmt
+            def.signature.inputs;
+        (* [Tot] *)
+        if has_decreases_clause then (
+          assert_backend_supports_decreases_clauses def.item_meta.span;
+          if backend () = FStar then (
+            F.pp_print_string fmt "Tot";
+            F.pp_print_space fmt ()));
+        extract_ty def.item_meta.span ctx fmt TypeDeclId.Set.empty
+          ~inside:has_decreases_clause def.signature.output;
+        (* Close the box for the return type *)
         F.pp_close_box fmt ();
-        (* Close the box for the decreases clause *)
-        F.pp_close_box fmt ());
-      (* Close the box for the EFFECT *)
-      F.pp_close_box fmt ()
-    in ());
+        (* Print the decrease clause - rk.: a function with a decreases clause
+         * is necessarily a transparent function *)
+        if has_decreases_clause && backend () = FStar then (
+          assert_backend_supports_decreases_clauses def.item_meta.span;
+          F.pp_print_space fmt ();
+          (* Open a box for the decreases clause *)
+          F.pp_open_hovbox fmt ctx.indent_incr;
+          (* *)
+          F.pp_print_string fmt "(decreases (";
+          F.pp_print_cut fmt ();
+          (* Open a box for the decreases term *)
+          F.pp_open_hovbox fmt ctx.indent_incr;
+          (* The name of the decrease clause *)
+          let decr_name =
+            ctx_get_termination_measure def.item_meta.span def.def_id
+              def.loop_id ctx
+          in
+          F.pp_print_string fmt decr_name;
+          (* Print the generic parameters - TODO: we do this many
+          times, we should have a helper to factor it out *)
+          List.iter
+            (fun (name : string) ->
+              F.pp_print_space fmt ();
+              F.pp_print_string fmt name)
+            (List.filter_map
+               (fun (e, x) -> if e = Implicit then None else Some x)
+               all_params);
+          (* Print the input values: we have to be careful here to print
+           * only the input values which are in common with the *forward*
+           * function (the additional input values "given back" to the
+           * backward functions have no influence on termination: we thus
+           * share the decrease clauses between the forward and the backward
+           * functions - we also ignore the additional state received by the
+           * backward function, if there is one).
+           *)
+          let inputs_lvs = (Option.get def.body).inputs in
+          (* TODO: we should probably print the input variables, not the typed
+          patterns *)
+          let _ =
+            List.fold_left
+              (fun ctx (lv : tpat) ->
+                F.pp_print_space fmt ();
+                let ctx =
+                  extract_tpat def.item_meta.span ctx fmt ~is_let:true
+                    ~inside:false lv
+                in
+                ctx)
+              ctx inputs_lvs
+          in
+          F.pp_print_string fmt "))";
+          (* Close the box for the decreases term *)
+          F.pp_close_box fmt ();
+          (* Close the box for the decreases clause *)
+          F.pp_close_box fmt ());
+        (* Close the box for the EFFECT *)
+        F.pp_close_box fmt ()
+      in
+      ());
   (* Print the "=" *)
   if not is_opaque then (
     F.pp_print_space fmt ();
@@ -3311,8 +3300,8 @@ in
                     F.pp_open_hovbox fmt 0;
                     F.pp_print_space fmt ();
                     let ctx =
-                      extract_tpat def.item_meta.span ctx fmt
-                        ~is_let:true ~inside:false lv
+                      extract_tpat def.item_meta.span ctx fmt ~is_let:true
+                        ~inside:false lv
                     in
                     F.pp_close_box fmt ();
                     ctx)
@@ -3324,22 +3313,19 @@ in
           F.pp_print_string fmt "= (";
           F.pp_force_newline fmt ();
           ctx_body)
-        else
-          ctx_body
+        else ctx_body
       in
 
-      extract_texpr def.item_meta.span ctx_body fmt
-        ~inside:false ~inside_do:true (Option.get def.body).body;
-      if backend () = Isabelle then(
+      extract_texpr def.item_meta.span ctx_body fmt ~inside:false
+        ~inside_do:true (Option.get def.body).body;
+      if backend () = Isabelle then (
         F.pp_force_newline fmt ();
         F.pp_print_string fmt ")\"";
-        (match qualif with
-        | Some "function" -> (
-          F.pp_force_newline fmt ();
-          F.pp_print_string fmt "by pat_completeness auto")
-        | _ -> ()
-        );
-      );
+        match qualif with
+        | Some "function" ->
+            F.pp_force_newline fmt ();
+            F.pp_print_string fmt "by pat_completeness auto"
+        | _ -> ());
       F.pp_close_box fmt ()
     in
     (* Close the box for the body *)
@@ -3353,7 +3339,8 @@ in
     F.pp_print_string fmt "termination";
     F.pp_force_newline fmt ();
     F.pp_print_string fmt
-      "  by (relation \"measure (\\<lambda>i. if 0 \\<le> i then nat i else nat (i - i32_min))\")";
+      "  by (relation \"measure (\\<lambda>i. if 0 \\<le> i then nat i else \
+       nat (i - i32_min))\")";
     F.pp_force_newline fmt ();
     F.pp_print_string fmt
       "     (auto simp: i32_sub_def scalar_sub_def mk_scalar_def";
@@ -3524,13 +3511,13 @@ let extract_fun_decl_isabelle_opaque (ctx : extraction_ctx) (fmt : F.formatter)
     ctx_get_local_function def.item_meta.span def.def_id def.loop_id ctx
   in
   let _, fresh_fvar_id = FVarId.fresh_stateful_generator () in
-  let def = 
+  let def =
     {
       def with
-      body = 
-        Option.map 
+      body =
+        Option.map
           (fun b -> snd (open_all_fun_body fresh_fvar_id def.item_meta.span b))
-          def.body
+          def.body;
     }
   in
   let ctx, _, _, _ =
@@ -3540,26 +3527,34 @@ let extract_fun_decl_isabelle_opaque (ctx : extraction_ctx) (fmt : F.formatter)
 
   F.pp_print_break fmt 0 0;
   F.pp_open_hvbox fmt 0;
-  extract_fun_comment ctx fmt def; F.pp_print_space fmt ();
+  extract_fun_comment ctx fmt def;
+  F.pp_print_space fmt ();
 
   F.pp_open_hovbox fmt ctx.indent_incr;
-  F.pp_print_string fmt "axiomatization"; F.pp_print_space fmt ();
-  F.pp_print_string fmt def_name; F.pp_print_space fmt ();
-  F.pp_print_string fmt "::"; F.pp_print_space fmt ();
+  F.pp_print_string fmt "axiomatization";
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt def_name;
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt "::";
+  F.pp_print_space fmt ();
   (* Print type signature *)
   F.pp_open_hovbox fmt ctx.indent_incr;
   F.pp_print_string fmt "\"";
   extract_isabelle_runtime_generic_parameter_types def.item_meta.span ctx fmt
     def.signature.generics;
-  extract_fun_input_parameters_types def.item_meta.span ctx fmt def.signature.inputs;
-  extract_ty def.item_meta.span ctx fmt TypeDeclId.Set.empty ~inside:false def.signature.output;
+  extract_fun_input_parameters_types def.item_meta.span ctx fmt
+    def.signature.inputs;
+  extract_ty def.item_meta.span ctx fmt TypeDeclId.Set.empty ~inside:false
+    def.signature.output;
   F.pp_print_string fmt "\"";
   F.pp_close_box fmt ();
-  F.pp_close_box fmt (); (* Close axiomatization line *)
-  F.pp_close_box fmt (); (* Close outer box *)
+  F.pp_close_box fmt ();
+  (* Close axiomatization line *)
+  F.pp_close_box fmt ();
+  (* Close outer box *)
   F.pp_print_break fmt 0 0
 
-(** Emit a mutually recursive Isabelle function group.  Isabelle requires all
+(** Emit a mutually recursive Isabelle function group. Isabelle requires all
     signatures to appear before [where], followed by all equations; this does
     not match the declaration-at-a-time layout used by the generic extractor.
     Keeping the group here also lets the function package analyse calls across
@@ -3567,9 +3562,7 @@ let extract_fun_decl_isabelle_opaque (ctx : extraction_ctx) (fmt : F.formatter)
 let extract_isabelle_mut_rec_group (ctx : extraction_ctx) (fmt : F.formatter)
     (defs : fun_decl list) : unit =
   [%sanity_check_opt_span] None (backend () = Isabelle && List.length defs > 1);
-  let has_u32_termination_measure =
-    isabelle_supports_u32_mut_rec_group defs
-  in
+  let has_u32_termination_measure = isabelle_supports_u32_mut_rec_group defs in
   let prepare (def : fun_decl) =
     [%sanity_check] def.item_meta.span (Option.is_some def.body);
     let _, fresh_fvar_id = FVarId.fresh_stateful_generator () in
@@ -3592,12 +3585,8 @@ let extract_isabelle_mut_rec_group (ctx : extraction_ctx) (fmt : F.formatter)
     in
     let explicit = def.signature.explicit_info in
     let type_params = List.combine explicit.explicit_types type_params in
-    let cg_params =
-      List.combine explicit.explicit_const_generics cg_params
-    in
-    let trait_clauses =
-      List.map (fun name -> (Explicit, name)) trait_clauses
-    in
+    let cg_params = List.combine explicit.explicit_const_generics cg_params in
+    let trait_clauses = List.map (fun name -> (Explicit, name)) trait_clauses in
     let all_params = List.concat [ type_params; cg_params; trait_clauses ] in
     (def, def_name, def_ctx, all_params)
   in
@@ -3678,7 +3667,8 @@ let extract_isabelle_mut_rec_group (ctx : extraction_ctx) (fmt : F.formatter)
     F.pp_print_string fmt "termination";
     F.pp_force_newline fmt ();
     F.pp_print_string fmt
-      "  by (relation \"measure (\\<lambda>x. case x of Inl i \\<Rightarrow> nat i | Inr i \\<Rightarrow> nat i)\")";
+      "  by (relation \"measure (\\<lambda>x. case x of Inl i \\<Rightarrow> \
+       nat i | Inr i \\<Rightarrow> nat i)\")";
     F.pp_force_newline fmt ();
     F.pp_print_string fmt
       "     (auto simp: u32_sub_def scalar_sub_def mk_scalar_def";
@@ -3705,20 +3695,22 @@ let extract_fun_decl (ctx : extraction_ctx) (fmt : F.formatter)
   [%sanity_check] def.item_meta.span (not def.is_global_decl_body);
   (* We treat HOL4 opaque functions in a specific manner *)
   match backend () with
-    | HOL4 when Option.is_none def.body -> extract_fun_decl_hol4_opaque ctx fmt def
-    | Isabelle when Option.is_none def.body -> extract_fun_decl_isabelle_opaque ctx fmt def
-    | Isabelle -> (
-        match kind with
-        | MutRecFirst | MutRecInner | MutRecLast ->
-            (* Isabelle's mutual [function] command requires all signatures to
+  | HOL4 when Option.is_none def.body ->
+      extract_fun_decl_hol4_opaque ctx fmt def
+  | Isabelle when Option.is_none def.body ->
+      extract_fun_decl_isabelle_opaque ctx fmt def
+  | Isabelle -> (
+      match kind with
+      | MutRecFirst | MutRecInner | MutRecLast ->
+          (* Isabelle's mutual [function] command requires all signatures to
                precede all equations.  The generic extractor streams one
                declaration at a time, so emit sound uninterpreted constants
                rather than malformed interleaved [function]/[and]/[where]
                commands. *)
-            extract_fun_decl_isabelle_opaque ctx fmt { def with body = None }
-        | SingleNonRec | SingleRec | Builtin | Declared ->
-            extract_fun_decl_gen ctx fmt kind has_decreases_clause def)
-    | _ -> extract_fun_decl_gen ctx fmt kind has_decreases_clause def
+          extract_fun_decl_isabelle_opaque ctx fmt { def with body = None }
+      | SingleNonRec | SingleRec | Builtin | Declared ->
+          extract_fun_decl_gen ctx fmt kind has_decreases_clause def)
+  | _ -> extract_fun_decl_gen ctx fmt kind has_decreases_clause def
 
 (** Extract a global declaration body of the shape "QUALIF NAME : TYPE = BODY"
     with a custom body extractor.
@@ -3783,9 +3775,8 @@ let extract_global_decl_body_gen (span : Meta.span) (ctx : extraction_ctx)
   (* Extract the generic parameters *)
   let space = ref true in
   if backend () <> Isabelle then (
-    extract_generic_params span ctx fmt TypeDeclId.Set.empty
-      ~space:(Some space) Item generics (Some explicit)
-      type_params cg_params trait_clauses;
+    extract_generic_params span ctx fmt TypeDeclId.Set.empty ~space:(Some space)
+      Item generics (Some explicit) type_params cg_params trait_clauses;
     if not !space then F.pp_print_space fmt ());
 
   (* Open ": TYPE =" box (depth=2) *)
@@ -3802,8 +3793,7 @@ let extract_global_decl_body_gen (span : Meta.span) (ctx : extraction_ctx)
     extract_isabelle_runtime_generic_parameter_types span ctx fmt generics;
     extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false ty;
     F.pp_print_string fmt "\"")
-  else
-    extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false ty;
+  else extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false ty;
   (* Close "TYPE" box (depth=3) *)
   F.pp_close_box fmt ();
 
@@ -3892,24 +3882,30 @@ let extract_global_decl_hol4_opaque (span : Meta.span) (ctx : extraction_ctx)
   F.pp_print_space fmt ()
 
 (** Extract an opaque global declaration for Isabelle. *)
-let extract_global_decl_isabelle_opaque (span : Meta.span) (ctx : extraction_ctx)
-    (fmt : F.formatter) (name : string) (generics : generic_params)
-    (_explicit : explicit_info) (_type_params : string list)
-    (_cg_params : string list) (_trait_clauses : string list) (ty : ty) : unit =
+let extract_global_decl_isabelle_opaque (span : Meta.span)
+    (ctx : extraction_ctx) (fmt : F.formatter) (name : string)
+    (generics : generic_params) (_explicit : explicit_info)
+    (_type_params : string list) (_cg_params : string list)
+    (_trait_clauses : string list) (ty : ty) : unit =
   F.pp_open_hvbox fmt 0;
   F.pp_open_hovbox fmt ctx.indent_incr;
 
-  F.pp_print_string fmt "axiomatization"; F.pp_print_space fmt ();
-  F.pp_print_string fmt name; F.pp_print_space fmt ();
-  F.pp_print_string fmt "::"; F.pp_print_space fmt ();
+  F.pp_print_string fmt "axiomatization";
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt name;
+  F.pp_print_space fmt ();
+  F.pp_print_string fmt "::";
+  F.pp_print_space fmt ();
   F.pp_open_hovbox fmt ctx.indent_incr;
   F.pp_print_string fmt "\"";
   extract_isabelle_runtime_generic_parameter_types span ctx fmt generics;
   extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false ty;
   F.pp_print_string fmt "\"";
   F.pp_close_box fmt ();
-  F.pp_close_box fmt (); (* Close axiomatization line *)
-  F.pp_close_box fmt (); (* Close outer box *)
+  F.pp_close_box fmt ();
+  (* Close axiomatization line *)
+  F.pp_close_box fmt ();
+  (* Close outer box *)
   F.pp_print_break fmt 0 0
 
 (** Extract a global declaration.
@@ -3966,18 +3962,22 @@ let extract_global_decl_aux (ctx : extraction_ctx) (fmt : F.formatter)
       global.generics ctx
   in
   match body.body with
-  | None ->
+  | None -> (
       (* No body: only generate a [val x_c : u32] declaration *)
       let kind = if interface then Declared else Builtin in
-      (match backend () with
-      | HOL4 -> extract_global_decl_hol4_opaque span ctx fmt decl_name global.generics output_ty
+      match backend () with
+      | HOL4 ->
+          extract_global_decl_hol4_opaque span ctx fmt decl_name global.generics
+            output_ty
       | Isabelle ->
-          extract_global_decl_isabelle_opaque span ctx fmt decl_name global.generics
-            global.explicit_info type_params cg_params trait_clauses output_ty
+          extract_global_decl_isabelle_opaque span ctx fmt decl_name
+            global.generics global.explicit_info type_params cg_params
+            trait_clauses output_ty
       | _ ->
-          extract_global_decl_body_gen span ctx fmt global kind ~irreducible:false
-            ~with_do:false decl_name global.generics global.explicit_info type_params cg_params
-            trait_clauses output_ty None;
+          extract_global_decl_body_gen span ctx fmt global kind
+            ~irreducible:false ~with_do:false decl_name global.generics
+            global.explicit_info type_params cg_params trait_clauses output_ty
+            None;
           F.pp_print_space fmt ())
   | Some body ->
       (* There is a body *)
@@ -3994,8 +3994,7 @@ let extract_global_decl_aux (ctx : extraction_ctx) (fmt : F.formatter)
            (fun fmt ->
              extract_texpr span ctx fmt
                ~inside:(backend () = Isabelle)
-               ~inside_do:with_do
-               body.body));
+               ~inside_do:with_do body.body));
       (* Add a break to insert lines between declarations *)
       F.pp_print_break fmt 0 0
 
@@ -4376,8 +4375,7 @@ let is_isabelle_trait_record_empty (decl : trait_decl) : bool =
          decl with
          methods =
            List.filter
-             (fun meth ->
-               not (is_isabelle_polymorphic_trait_method meth))
+             (fun meth -> not (is_isabelle_polymorphic_trait_method meth))
              decl.methods;
        }
 
@@ -4438,13 +4436,13 @@ let extract_trait_decl_method_items (ctx : extraction_ctx) (fmt : F.formatter)
           else extract_admit fmt)
 
 (** Isabelle/HOL cannot store a value polymorphic in a method-level type
-    parameter inside a record field.  Keep such a method as a top-level,
-    implicitly-polymorphic selector which takes the trait dictionary first.
-    This preserves the Rust/Lean/Coq [forall T] call shape without adding [T]
-    to the trait itself. *)
-let extract_isabelle_polymorphic_trait_method
-    (ctx : extraction_ctx) (fmt : F.formatter) (decl : trait_decl)
-    (trait_type_params : string list) (meth : trait_method) : unit =
+    parameter inside a record field. Keep such a method as a top-level,
+    implicitly-polymorphic selector which takes the trait dictionary first. This
+    preserves the Rust/Lean/Coq [forall T] call shape without adding [T] to the
+    trait itself. *)
+let extract_isabelle_polymorphic_trait_method (ctx : extraction_ctx)
+    (fmt : F.formatter) (decl : trait_decl) (trait_type_params : string list)
+    (meth : trait_method) : unit =
   [%sanity_check] meth.item_meta.span
     (is_isabelle_polymorphic_trait_method meth);
   let span = meth.item_meta.span in
@@ -4454,9 +4452,7 @@ let extract_isabelle_polymorphic_trait_method
     ctx_add_generic_params span meth.item_meta.name Method
       signature.llbc_generics method_generics ctx
   in
-  let fun_name =
-    ctx_get_trait_method span decl.def_id meth.method_id ctx
-  in
+  let fun_name = ctx_get_trait_method span decl.def_id meth.method_id ctx in
   F.pp_print_break fmt 0 0;
   F.pp_open_hovbox fmt ctx.indent_incr;
   F.pp_print_string fmt "axiomatization";
@@ -4467,16 +4463,13 @@ let extract_isabelle_polymorphic_trait_method
   F.pp_print_space fmt ();
   F.pp_print_string fmt "\"";
   extract_isabelle_type_decl_params fmt trait_type_params;
-  F.pp_print_string fmt
-    (ctx_get_trait_decl span decl.def_id ctx);
+  F.pp_print_string fmt (ctx_get_trait_decl span decl.def_id ctx);
   F.pp_print_space fmt ();
   extract_arrow fmt ();
   F.pp_print_space fmt ();
-  extract_isabelle_runtime_generic_parameter_types span ctx fmt
-    method_generics;
+  extract_isabelle_runtime_generic_parameter_types span ctx fmt method_generics;
   extract_fun_input_parameters_types span ctx fmt signature.inputs;
-  extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false
-    signature.output;
+  extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false signature.output;
   F.pp_print_string fmt "\"";
   F.pp_close_box fmt ()
 
@@ -4648,7 +4641,6 @@ let extract_trait_decl (ctx : extraction_ctx) (fmt : F.formatter)
     (*
      * Extract the items
      *)
-
     if is_empty && backend () = Isabelle then (
       F.pp_print_space fmt ();
       F.pp_print_string fmt (decl_name ^ "_dummy :: unit"));
@@ -4870,16 +4862,16 @@ let extract_trait_impl_method_items ~(before : unit -> unit)
         method_id ctx
     in
     extract_trait_impl_item ~before ctx fmt fun_name (fun () ->
-      F.pp_print_space fmt ();
-      extract_admit fmt)
+        F.pp_print_space fmt ();
+        extract_admit fmt)
 
 (** Connect an Isabelle top-level polymorphic selector to the concrete method
-    function of a trait implementation.  Equality between the two curried
+    function of a trait implementation. Equality between the two curried
     functions quantifies implicitly over the method-level type parameters. *)
-let extract_isabelle_polymorphic_trait_impl_method_axiom
-    (ctx : extraction_ctx) (fmt : F.formatter) (impl : trait_impl)
-    (impl_name : string) (impl_runtime_params : string list)
-    (method_id : trait_method_id) (fn : fun_decl_ref binder) : unit =
+let extract_isabelle_polymorphic_trait_impl_method_axiom (ctx : extraction_ctx)
+    (fmt : F.formatter) (impl : trait_impl) (impl_name : string)
+    (impl_runtime_params : string list) (method_id : trait_method_id)
+    (fn : fun_decl_ref binder) : unit =
   let span = impl.item_meta.span in
   let selector_name =
     ctx_get_trait_method span impl.impl_trait.trait_decl_id method_id ctx
@@ -4888,8 +4880,7 @@ let extract_isabelle_polymorphic_trait_impl_method_axiom
   F.pp_open_hovbox fmt ctx.indent_incr;
   F.pp_print_string fmt "axiomatization where";
   F.pp_print_space fmt ();
-  F.pp_print_string fmt
-    (impl_name ^ "_" ^ selector_name ^ "_poly_eq");
+  F.pp_print_string fmt (impl_name ^ "_" ^ selector_name ^ "_poly_eq");
   F.pp_print_string fmt ":";
   F.pp_print_space fmt ();
   F.pp_print_string fmt "\"";
@@ -4928,8 +4919,13 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
       | Some info ->
           not
             (List.mem info.extract_name
-               [ "core_clone_Clone"; "core_cmp_PartialEq"; "core_cmp_Eq";
-                 "core_cmp_PartialOrd"; "core_iter_traits_iterator_Iterator" ])
+               [
+                 "core_clone_Clone";
+                 "core_cmp_PartialEq";
+                 "core_cmp_Eq";
+                 "core_cmp_PartialOrd";
+                 "core_iter_traits_iterator_Iterator";
+               ])
       | None -> true
     else is_rec
   in
@@ -5114,132 +5110,142 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
       else if backend () = Isabelle then F.pp_print_string fmt "where"
       else F.pp_print_string fmt "= {";
 
-    (* Close the box for the name + generics *)
-    F.pp_close_box fmt ();
+      (* Close the box for the name + generics *)
+      F.pp_close_box fmt ();
 
-    if backend () = Isabelle then (
-      F.pp_print_space fmt ();
-      F.pp_print_string fmt "\"";
-      F.pp_print_string fmt impl_name;
+      if backend () = Isabelle then (
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt "\"";
+        F.pp_print_string fmt impl_name;
+        List.iter
+          (fun name ->
+            F.pp_print_space fmt ();
+            F.pp_print_string fmt name)
+          (cg_params @ trait_clauses);
+        F.pp_print_string fmt " = (|");
+
+      (*
+       * Extract the items
+       *)
+      let trait_decl_id = impl.impl_trait.trait_decl_id in
+      let trait_decl =
+        TraitDeclId.Map.find trait_decl_id ctx.crate.trait_decls
+      in
+      let isabelle_first_item = ref true in
+      let before_isabelle_item () =
+        if backend () = Isabelle then
+          if !isabelle_first_item then isabelle_first_item := false
+          else (
+            F.pp_print_string fmt ",";
+            F.pp_print_space fmt ())
+      in
+      if is_isabelle_trait_record_empty trans_trait_decl then (
+        before_isabelle_item ();
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt
+          (ctx_get_trait_decl span trait_decl_id ctx ^ "_dummy = ()"));
+
+      (* The constants *)
       List.iter
-        (fun name ->
-          F.pp_print_space fmt ();
-          F.pp_print_string fmt name)
-        (cg_params @ trait_clauses);
-      F.pp_print_string fmt " = (|");
+        (fun (const_id, _, gref) ->
+          let item_name = ctx_get_trait_const span trait_decl_id const_id ctx in
+          (* Lookup the information about the explicit/implicit parameters *)
+          let explicit =
+            match
+              GlobalDeclId.Map.find_opt gref.global_id ctx.trans_globals
+            with
+            | None ->
+                (* The declaration might be missing if there was an error *)
+                None
+            | Some d -> Some d.explicit_info
+          in
+          let print_params () =
+            extract_call_generic_args span ctx fmt ~explicit
+              gref.global_generics
+          in
+          let global_decl =
+            [%unwrap_with_span] span
+              (GlobalDeclId.Map.find_opt gref.global_id ctx.trans_globals)
+              "Internal error"
+          in
+          let needs_brackets =
+            (not global_decl.can_fail)
+            &&
+            match explicit with
+            | Some explicit ->
+                PureUtils.explicit_info_has_explicit explicit
+                || gref.global_generics.trait_refs <> []
+            | None -> gref.global_generics <> empty_generic_args
+          in
+          let ty () =
+            F.pp_print_space fmt ();
+            if not global_decl.can_fail then (
+              let ok =
+                match backend () with
+                | Lean -> "ok"
+                | _ -> "Ok"
+              in
+              F.pp_print_string fmt ok;
+              F.pp_print_space fmt ());
+            if needs_brackets then F.pp_print_string fmt "(";
+            F.pp_print_string fmt (ctx_get_global span gref.global_id ctx);
+            print_params ();
+            if needs_brackets then F.pp_print_string fmt ")"
+          in
 
-    (*
-     * Extract the items
-     *)
-    let trait_decl_id = impl.impl_trait.trait_decl_id in
-    let trait_decl = TraitDeclId.Map.find trait_decl_id ctx.crate.trait_decls in
-    let isabelle_first_item = ref true in
-    let before_isabelle_item () =
-      if backend () = Isabelle then
-        if !isabelle_first_item then isabelle_first_item := false
-        else (
-          F.pp_print_string fmt ",";
-          F.pp_print_space fmt ())
-    in
-    if is_isabelle_trait_record_empty trans_trait_decl then (
-      before_isabelle_item ();
-      F.pp_print_space fmt ();
-      F.pp_print_string fmt
-        (ctx_get_trait_decl span trait_decl_id ctx ^ "_dummy = ()"));
+          extract_trait_impl_item ~before:before_isabelle_item ctx fmt item_name
+            ty)
+        impl.consts;
 
-    (* The constants *)
-    List.iter
-      (fun (const_id, _, gref) ->
-        let item_name = ctx_get_trait_const span trait_decl_id const_id ctx in
-        (* Lookup the information about the explicit/implicit parameters *)
-        let explicit =
-          match GlobalDeclId.Map.find_opt gref.global_id ctx.trans_globals with
-          | None ->
-              (* The declaration might be missing if there was an error *) None
-          | Some d -> Some d.explicit_info
-        in
-        let print_params () =
-          extract_call_generic_args span ctx fmt ~explicit gref.global_generics
-        in
-        let global_decl =
-          [%unwrap_with_span] span
-            (GlobalDeclId.Map.find_opt gref.global_id ctx.trans_globals)
-            "Internal error"
-        in
-        let needs_brackets =
-          (not global_decl.can_fail)
-          &&
-          match explicit with
-          | Some explicit ->
-              PureUtils.explicit_info_has_explicit explicit
-              || gref.global_generics.trait_refs <> []
-          | None -> gref.global_generics <> empty_generic_args
-        in
-        let ty () =
-          F.pp_print_space fmt ();
-          if not global_decl.can_fail then (
-            let ok =
-              match backend () with
-              | Lean -> "ok"
-              | _ -> "Ok"
-            in
-            F.pp_print_string fmt ok;
-            F.pp_print_space fmt ());
-          if needs_brackets then F.pp_print_string fmt "(";
-          F.pp_print_string fmt (ctx_get_global span gref.global_id ctx);
-          print_params ();
-          if needs_brackets then F.pp_print_string fmt ")"
-        in
+      (* The types *)
+      List.iter
+        (fun (type_id, _, ty) ->
+          (* Extract the type *)
+          let item_name = ctx_get_trait_type span trait_decl_id type_id ctx in
+          let ty () =
+            F.pp_print_space fmt ();
+            extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false ty
+          in
+          extract_trait_impl_item ~before:before_isabelle_item ctx fmt item_name
+            ty)
+        impl.types;
 
-        extract_trait_impl_item ~before:before_isabelle_item ctx fmt item_name ty)
-      impl.consts;
+      (* The parent clauses *)
+      List.iter
+        (fun (clause, trait_ref) ->
+          let item_name =
+            ctx_get_trait_parent_clause span trait_decl_id clause.T.clause_id
+              ctx
+          in
+          let ty () =
+            F.pp_print_space fmt ();
+            extract_trait_ref_term span ctx fmt ~inside:false trait_ref
+          in
+          extract_trait_impl_item ~before:before_isabelle_item ctx fmt item_name
+            ty)
+        (List.combine trait_decl.implied_clauses impl.parent_trait_refs);
 
-    (* The types *)
-    List.iter
-      (fun (type_id, _, ty) ->
-        (* Extract the type *)
-        let item_name = ctx_get_trait_type span trait_decl_id type_id ctx in
-        let ty () =
-          F.pp_print_space fmt ();
-          extract_ty span ctx fmt TypeDeclId.Set.empty ~inside:false ty
-        in
-        extract_trait_impl_item ~before:before_isabelle_item ctx fmt item_name ty)
-      impl.types;
-
-    (* The parent clauses *)
-    List.iter
-      (fun (clause, trait_ref) ->
-        let item_name =
-          ctx_get_trait_parent_clause span trait_decl_id clause.T.clause_id ctx
-        in
-        let ty () =
-          F.pp_print_space fmt ();
-          extract_trait_ref_term span ctx fmt ~inside:false trait_ref
-        in
-        extract_trait_impl_item ~before:before_isabelle_item ctx fmt item_name ty)
-      (List.combine trait_decl.implied_clauses impl.parent_trait_refs);
-
-    (* The methods.
+      (* The methods.
 
        If the [filter_trait_impl_methods] option is on, we skip the methods
        which are absent from the model of the trait declaration. *)
-    let keep_method : string -> bool =
-      if not !filter_trait_impl_methods then fun _ -> true
-      else
-        let pure_trait_decl =
-          [%unwrap_with_span] span
-            (TraitDeclId.Map.find_opt trait_decl_id ctx.trans_trait_decls)
-            "Could not lookup the translated trait declaration"
-        in
-        match pure_trait_decl.builtin_info with
-        | None -> fun _ -> true
-        | Some info ->
-            let method_names =
-              Collections.StringSet.of_list (List.map fst info.methods)
-            in
-            fun item_name -> Collections.StringSet.mem item_name method_names
-    in
-    (* Isabelle: default methods of builtin traits.
+      let keep_method : string -> bool =
+        if not !filter_trait_impl_methods then fun _ -> true
+        else
+          let pure_trait_decl =
+            [%unwrap_with_span] span
+              (TraitDeclId.Map.find_opt trait_decl_id ctx.trans_trait_decls)
+              "Could not lookup the translated trait declaration"
+          in
+          match pure_trait_decl.builtin_info with
+          | None -> fun _ -> true
+          | Some info ->
+              let method_names =
+                Collections.StringSet.of_list (List.map fst info.methods)
+              in
+              fun item_name -> Collections.StringSet.mem item_name method_names
+      in
+      (* Isabelle: default methods of builtin traits.
 
        Isabelle records do not support default field values, and the default
        implementation Aeneas extracts for a trait's default method takes the
@@ -5253,103 +5259,122 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
        This is Isabelle-specific: Lean fills the structure field from its
        default value (tying the knot with [impl_def]), while the other
        backends keep their existing behavior. *)
-    let isabelle_defaults : (string * string * string) list =
-      if backend () <> Isabelle then []
-      else
-        match trans_trait_decl.builtin_info with
-        | None -> []
-        | Some info -> (
-            (* (default method, prelude default function, required method) *)
-            match info.extract_name with
-            | "core_clone_Clone" ->
-                [ ("clone_from", "core_clone_Clone_clone_from_default_body", "clone") ]
-            | "core_cmp_PartialEq" ->
-                [ ("ne", "core_cmp_PartialEq_ne_default_body", "eq") ]
-            | "core_iter_traits_iterator_Iterator" ->
-                [ ("step_by", "core_iter_traits_iterator_Iterator_step_by_default_body", "") ]
-            | "core_cmp_Eq" ->
-                (* The default does not depend on any required method *)
-                [ ("assert_fields_are_eq", "core_cmp_Eq_assert_fields_are_eq_default_body", "") ]
-            | "core_cmp_PartialOrd" ->
-                List.map
-                  (fun m -> (m, "core_cmp_PartialOrd_" ^ m ^ "_default_body", "partial_cmp"))
-                  [ "lt"; "le"; "gt"; "ge" ]
-            | _ -> [])
-    in
-    let find_impl_method (item_name : string) =
-      List.find_opt (fun (_, name, _) -> name = item_name) impl.methods
-    in
-    (* Print [dflt_fn] applied to the required method, as the value of the
+      let isabelle_defaults : (string * string * string) list =
+        if backend () <> Isabelle then []
+        else
+          match trans_trait_decl.builtin_info with
+          | None -> []
+          | Some info -> (
+              (* (default method, prelude default function, required method) *)
+              match info.extract_name with
+              | "core_clone_Clone" ->
+                  [
+                    ( "clone_from",
+                      "core_clone_Clone_clone_from_default_body",
+                      "clone" );
+                  ]
+              | "core_cmp_PartialEq" ->
+                  [ ("ne", "core_cmp_PartialEq_ne_default_body", "eq") ]
+              | "core_iter_traits_iterator_Iterator" ->
+                  [
+                    ( "step_by",
+                      "core_iter_traits_iterator_Iterator_step_by_default_body",
+                      "" );
+                  ]
+              | "core_cmp_Eq" ->
+                  (* The default does not depend on any required method *)
+                  [
+                    ( "assert_fields_are_eq",
+                      "core_cmp_Eq_assert_fields_are_eq_default_body",
+                      "" );
+                  ]
+              | "core_cmp_PartialOrd" ->
+                  List.map
+                    (fun m ->
+                      ( m,
+                        "core_cmp_PartialOrd_" ^ m ^ "_default_body",
+                        "partial_cmp" ))
+                    [ "lt"; "le"; "gt"; "ge" ]
+              | _ -> [])
+      in
+      let find_impl_method (item_name : string) =
+        List.find_opt (fun (_, name, _) -> name = item_name) impl.methods
+      in
+      (* Print [dflt_fn] applied to the required method, as the value of the
        record field of [dflt]; returns [false] if this is not possible. *)
-    let print_isabelle_default (dflt : string) : bool =
-      match List.assoc_opt dflt (List.map (fun (d, f, r) -> (d, (f, r))) isabelle_defaults) with
-      | None -> false
-      | Some (dflt_fn, required) -> (
-          let required_fn =
-            if required = "" then Some None
-            else Option.map (fun (_, _, f) -> Some f) (find_impl_method required)
-          in
-          let default_info =
-            match trans_trait_decl.builtin_info with
-            | Some info -> List.assoc_opt dflt info.methods
-            | None -> None
-          in
-          match (required_fn, default_info) with
-          | Some required_fn, Some default_info ->
-              let print_default () =
-                F.pp_print_space fmt ();
-                match required_fn with
-                | None -> F.pp_print_string fmt dflt_fn
-                | Some required_fn ->
-                    F.pp_print_string fmt ("(" ^ dflt_fn ^ " (");
-                    extract_trait_impl_method_term ctx fmt impl required_fn;
-                    F.pp_print_string fmt "))"
-              in
-              extract_trait_impl_item ~before:before_isabelle_item ctx fmt
-                default_info.extract_name print_default;
-              true
-          | _ -> false)
-    in
-    (* Is the method bound to the trait's default implementation? *)
-    let is_bound_to_trait_default (bound_fn : fun_decl_ref binder) : bool =
-      match ctx_lookup_fun_decl_info ctx bound_fn.binder_value.fun_id with
-      | Some trans -> fun_source_is_trait_default ctx trans.f.src
-      | None -> false
-    in
-    List.iter
-      (fun (method_id, name, bound_fn) ->
-        if keep_method name && not (is_polymorphic_method_id method_id) then
-          if
-            backend () = Isabelle
-            && List.exists (fun (d, _, _) -> d = name) isabelle_defaults
-            && is_bound_to_trait_default bound_fn
-            && print_isabelle_default name
-          then ()
-          else
-            extract_trait_impl_method_items ~before:before_isabelle_item ctx fmt
-              impl method_id bound_fn)
-      impl.methods;
-
-    (* Default methods that rustc omitted from the implementation *)
-    if backend () = Isabelle then
+      let print_isabelle_default (dflt : string) : bool =
+        match
+          List.assoc_opt dflt
+            (List.map (fun (d, f, r) -> (d, (f, r))) isabelle_defaults)
+        with
+        | None -> false
+        | Some (dflt_fn, required) -> (
+            let required_fn =
+              if required = "" then Some None
+              else
+                Option.map (fun (_, _, f) -> Some f) (find_impl_method required)
+            in
+            let default_info =
+              match trans_trait_decl.builtin_info with
+              | Some info -> List.assoc_opt dflt info.methods
+              | None -> None
+            in
+            match (required_fn, default_info) with
+            | Some required_fn, Some default_info ->
+                let print_default () =
+                  F.pp_print_space fmt ();
+                  match required_fn with
+                  | None -> F.pp_print_string fmt dflt_fn
+                  | Some required_fn ->
+                      F.pp_print_string fmt ("(" ^ dflt_fn ^ " (");
+                      extract_trait_impl_method_term ctx fmt impl required_fn;
+                      F.pp_print_string fmt "))"
+                in
+                extract_trait_impl_item ~before:before_isabelle_item ctx fmt
+                  default_info.extract_name print_default;
+                true
+            | _ -> false)
+      in
+      (* Is the method bound to the trait's default implementation? *)
+      let is_bound_to_trait_default (bound_fn : fun_decl_ref binder) : bool =
+        match ctx_lookup_fun_decl_info ctx bound_fn.binder_value.fun_id with
+        | Some trans -> fun_source_is_trait_default ctx trans.f.src
+        | None -> false
+      in
       List.iter
-        (fun (dflt, _, _) ->
-          match find_impl_method dflt with
-          | None -> ignore (print_isabelle_default dflt)
-          | Some _ -> ())
-        isabelle_defaults;
+        (fun (method_id, name, bound_fn) ->
+          if keep_method name && not (is_polymorphic_method_id method_id) then
+            if
+              backend () = Isabelle
+              && List.exists (fun (d, _, _) -> d = name) isabelle_defaults
+              && is_bound_to_trait_default bound_fn
+              && print_isabelle_default name
+            then ()
+            else
+              extract_trait_impl_method_items ~before:before_isabelle_item ctx
+                fmt impl method_id bound_fn)
+        impl.methods;
 
-    (* Close the outer boxes for the definition, as well as the brackets *)
-    F.pp_close_box fmt ();
-    if backend () = Coq then (
-      F.pp_print_space fmt ();
-      F.pp_print_string fmt "|}.")
-    else if backend () = Isabelle then (
-      F.pp_print_space fmt ();
-      F.pp_print_string fmt "|)\"")
-    else if (not (backend () = FStar)) || not is_empty then (
-      F.pp_print_space fmt ();
-      F.pp_print_string fmt "}"))
+      (* Default methods that rustc omitted from the implementation *)
+      if backend () = Isabelle then
+        List.iter
+          (fun (dflt, _, _) ->
+            match find_impl_method dflt with
+            | None -> ignore (print_isabelle_default dflt)
+            | Some _ -> ())
+          isabelle_defaults;
+
+      (* Close the outer boxes for the definition, as well as the brackets *)
+      F.pp_close_box fmt ();
+      if backend () = Coq then (
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt "|}.")
+      else if backend () = Isabelle then (
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt "|)\"")
+      else if (not (backend () = FStar)) || not is_empty then (
+        F.pp_print_space fmt ();
+        F.pp_print_string fmt "}"))
   in
   let is_isabelle_recursive_impl = is_rec && backend () = Isabelle in
   if is_isabelle_recursive_impl then (
@@ -5364,7 +5389,9 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
       (fun (method_id, _name, bound_fn) ->
         if is_polymorphic_method_id method_id then
           extract_isabelle_polymorphic_trait_impl_method_axiom ctx fmt impl
-            impl_name (cg_params @ trait_clauses) method_id bound_fn)
+            impl_name
+            (cg_params @ trait_clauses)
+            method_id bound_fn)
       impl.methods;
   (* Add breaks to insert new lines between definitions *)
   F.pp_print_break fmt 0 0
@@ -5472,14 +5499,14 @@ let extract_unit_test_if_marked (ctx : extraction_ctx) (fmt : F.formatter)
             F.pp_print_space fmt ();
             F.pp_print_string fmt "()");
           F.pp_print_string fmt "”)"
-          | Isabelle ->
-        let fun_name = 
-          ctx_get_local_function def.item_meta.span def.def_id def.loop_id ctx
-        in
-        F.pp_print_string fmt "(* Unit test: ";
-        F.pp_print_string fmt fun_name;
-        if sg.inputs <> [] then F.pp_print_string fmt " ()";
-        F.pp_print_string fmt " should evaluate to Ok () *)");
+      | Isabelle ->
+          let fun_name =
+            ctx_get_local_function def.item_meta.span def.def_id def.loop_id ctx
+          in
+          F.pp_print_string fmt "(* Unit test: ";
+          F.pp_print_string fmt fun_name;
+          if sg.inputs <> [] then F.pp_print_string fmt " ()";
+          F.pp_print_string fmt " should evaluate to Ok () *)");
       (* Close the box for the test *)
       F.pp_close_box fmt ();
       (* Add a break after *)

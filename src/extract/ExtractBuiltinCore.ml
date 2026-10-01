@@ -57,8 +57,8 @@ let () =
 
 (** Switch between two values depending on the target backend.
 
-    We often compute the same value (typically: a name) if the target is F*, Coq, isabelle
-    or HOL4, and a different value if the target is Lean. *)
+    We often compute the same value (typically: a name) if the target is F*,
+    Coq, isabelle or HOL4, and a different value if the target is Lean. *)
 let backend_choice (fstar_coq_hol4_isabelle : 'a) (lean : 'a) : 'a =
   match backend () with
   | Coq | FStar | HOL4 | Isabelle -> fstar_coq_hol4_isabelle

@@ -84,7 +84,7 @@ let builtin_types () : Pure.builtin_type_info list =
                    in
                    match backend () with
                    | FStar | Lean -> name
-                   | Coq | HOL4 | Isabelle-> extract_name ^ "_" ^ name ))
+                   | Coq | HOL4 | Isabelle -> extract_name ^ "_" ^ name ))
                fields
            in
            let constructor = mk_struct_constructor extract_name in
@@ -258,7 +258,8 @@ let builtin_trait_decls_info () =
         in
         let type_name =
           match backend () with
-          | FStar | Coq | HOL4 | Isabelle -> StringUtils.lowercase_first_letter type_name
+          | FStar | Coq | HOL4 | Isabelle ->
+              StringUtils.lowercase_first_letter type_name
           | Lean -> type_name
         in
         (item_name, type_name)
@@ -359,8 +360,7 @@ let builtin_trait_decls_info () =
         mk_trait "core::cmp::PartialEq" ~methods:[ "eq" ]
           ~default_methods:[ "ne" ] ();
         mk_trait "core::cmp::PartialOrd" ~parent_clauses:[ "partialEqInst" ]
-          ~methods:[ "partial_cmp" ]
-          ~default_methods:[ "lt"; "le"; "gt"; "ge" ]
+          ~methods:[ "partial_cmp" ] ~default_methods:[ "lt"; "le"; "gt"; "ge" ]
           ();
         (* FnOnce / FnMut / Fn *)
         mk_trait "core::ops::function::FnOnce" ~types:[ "Output" ]
@@ -376,8 +376,13 @@ let builtin_trait_decls_info () =
         mk_trait "core::iter::range::Step"
           ~parent_clauses:[ "stepCloneInst"; "stepPartialOrdInst" ]
           ~methods:
-            [ "steps_between"; "forward_checked"; "backward_checked";
-              "forward_overflowing"; "backward_overflowing" ]
+            [
+              "steps_between";
+              "forward_checked";
+              "backward_checked";
+              "forward_overflowing";
+              "backward_overflowing";
+            ]
           ();
         mk_trait "core::iter::traits::iterator::Iterator" ~types:[ "Item" ]
           ~methods:[ "next" ] ~default_methods:[ "step_by" ] ();
@@ -480,8 +485,7 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
            "core::slice::index::SliceIndex<core::ops::range::RangeTo<usize>, \
             [@T], [@T]>"
            ~extract_name:
-             (Some "core::slice::index::SliceIndexRangeToUsizeSliceInst")
-           ();
+             (Some "core::slice::index::SliceIndexRangeToUsizeSliceInst") ();
          (* Clone<Option<T>> *)
          fmt "core::clone::Clone<core::option::Option<@T>>"
            ~extract_name:(Some "core.option.CloneOption") ();
@@ -489,45 +493,74 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
          fmt "core::convert::From<@Self, @Self>"
            ~extract_name:(Some "core.convert.FromSame") ();
          (* PartialEq / Clone for bool, (), &T, Box<T>, Vec<T>, Global *)
-         fmt "core::cmp::PartialEq<bool, bool>" ~extract_name:(Some "core.cmp.PartialEqBool") ();
-         fmt "core::cmp::PartialEq<(), ()>" ~extract_name:(Some "core.cmp.PartialEqUnit") ();
-         fmt "core::cmp::PartialEq<&'a @A, &'b @B>" ~extract_name:(Some "core.cmp.PartialEqShared") ();
-         fmt "core::cmp::PartialEq<Box<@T>, Box<@T>>" ~extract_name:(Some "core.cmp.PartialEqBox")
-           ~keep_params:(Some [ true; false ]) ();
+         fmt "core::cmp::PartialEq<bool, bool>"
+           ~extract_name:(Some "core.cmp.PartialEqBool") ();
+         fmt "core::cmp::PartialEq<(), ()>"
+           ~extract_name:(Some "core.cmp.PartialEqUnit") ();
+         fmt "core::cmp::PartialEq<&'a @A, &'b @B>"
+           ~extract_name:(Some "core.cmp.PartialEqShared") ();
+         fmt "core::cmp::PartialEq<Box<@T>, Box<@T>>"
+           ~extract_name:(Some "core.cmp.PartialEqBox")
+           ~keep_params:(Some [ true; false ])
+           ();
          fmt "core::cmp::PartialEq<alloc::vec::Vec<@T>, alloc::vec::Vec<@U>>"
            ~extract_name:(Some "core.cmp.PartialEqVec")
-           ~keep_params:(Some [ true; true; false; false ]) ();
-         fmt "core::clone::Clone<Box<@T>>" ~extract_name:(Some "core.clone.CloneBox")
-           ~keep_params:(Some [ true; false ]) ();
-         fmt "core::clone::Clone<alloc::vec::Vec<@T>>" ~extract_name:(Some "core.clone.CloneVec")
-           ~keep_params:(Some [ true; false ]) ();
-         fmt "core::clone::Clone<alloc::alloc::Global>" ~extract_name:(Some "core.clone.CloneGlobal") ();
+           ~keep_params:(Some [ true; true; false; false ])
+           ();
+         fmt "core::clone::Clone<Box<@T>>"
+           ~extract_name:(Some "core.clone.CloneBox")
+           ~keep_params:(Some [ true; false ])
+           ();
+         fmt "core::clone::Clone<alloc::vec::Vec<@T>>"
+           ~extract_name:(Some "core.clone.CloneVec")
+           ~keep_params:(Some [ true; false ])
+           ();
+         fmt "core::clone::Clone<alloc::alloc::Global>"
+           ~extract_name:(Some "core.clone.CloneGlobal") ();
          (* core::iter *)
-         fmt "core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, @A>"
+         fmt
+           "core::iter::traits::iterator::Iterator<core::ops::range::Range<@A>, \
+            @A>"
            ~extract_name:(Some "core.iter.range.IteratorRange") ();
          fmt
            "core::iter::traits::iterator::Iterator<core::iter::adapters::step_by::StepBy<@I>, \
             @Clause0_Item>"
            ~extract_name:(Some "core.iter.adapters.step_by.IteratorStepBy") ();
-         fmt "core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, @T>, &'a @T>"
+         fmt
+           "core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
+            @T>, &'a @T>"
            ~extract_name:(Some "core.slice.iter.IteratorSliceIter") ();
          (* core::fmt::Debug *)
-         fmt "core::fmt::Debug<&'0 @T>" ~extract_name:(Some "core.fmt.DebugShared") ();
+         fmt "core::fmt::Debug<&'0 @T>"
+           ~extract_name:(Some "core.fmt.DebugShared") ();
          fmt "core::fmt::Debug<()>" ~extract_name:(Some "core.fmt.DebugUnit") ();
-         fmt "core::fmt::Debug<bool>" ~extract_name:(Some "core.fmt.DebugBool") ();
+         fmt "core::fmt::Debug<bool>" ~extract_name:(Some "core.fmt.DebugBool")
+           ();
          fmt "core::fmt::Debug<alloc::vec::Vec<@T>>"
            ~extract_name:(Some "core.fmt.DebugVec")
-           ~keep_params:(Some [ true; false ]) ();
-         fmt "core::fmt::Debug<[@T; @N]>" ~extract_name:(Some "core.fmt.DebugArray") ();
-         fmt "core::fmt::Debug<[@T]>" ~extract_name:(Some "core.fmt.DebugSlice") ();
+           ~keep_params:(Some [ true; false ])
+           ();
+         fmt "core::fmt::Debug<[@T; @N]>"
+           ~extract_name:(Some "core.fmt.DebugArray") ();
+         fmt "core::fmt::Debug<[@T]>" ~extract_name:(Some "core.fmt.DebugSlice")
+           ();
        ]
       @ List.concat_map
           (fun ty ->
             let cap = StringUtils.capitalize_first_letter ty in
             [
-              fmt ("core::fmt::Debug<" ^ ty ^ ">") ~extract_name:(Some ("core.fmt.Debug" ^ cap)) ();
-              fmt ("core::fmt::Display<" ^ ty ^ ">") ~extract_name:(Some ("core.fmt.Display" ^ cap)) ();
-              fmt ("core::iter::range::Step<" ^ ty ^ ">") ~extract_name:(Some ("core.iter.range.Step" ^ cap)) ();
+              fmt
+                ("core::fmt::Debug<" ^ ty ^ ">")
+                ~extract_name:(Some ("core.fmt.Debug" ^ cap))
+                ();
+              fmt
+                ("core::fmt::Display<" ^ ty ^ ">")
+                ~extract_name:(Some ("core.fmt.Display" ^ cap))
+                ();
+              fmt
+                ("core::iter::range::Step<" ^ ty ^ ">")
+                ~extract_name:(Some ("core.iter.range.Step" ^ cap))
+                ();
             ])
           all_int_names)
   @ mk_lean_only lean_builtin_trait_impls
@@ -597,7 +630,8 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
         fmt
           ("core::cmp::PartialOrd<" ^ ty ^ "," ^ ty ^ ">")
           ~extract_name:
-            (Some ("core.cmp.PartialOrd" ^ StringUtils.capitalize_first_letter ty))
+            (Some
+               ("core.cmp.PartialOrd" ^ StringUtils.capitalize_first_letter ty))
           ())
       all_int_names
   (* Ord<INT> *)
@@ -936,18 +970,19 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
   @ mk_isabelle_only
       ([
          (* core::ops::range::RangeInclusive *)
-         mk_fun "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::new"
+         mk_fun
+           "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::new"
            ~extract_name:(Some "core.ops.range.RangeInclusive.new") ();
          mk_fun
            "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::contains"
            ~extract_name:(Some "core.ops.range.RangeInclusive.contains") ();
          (* core::option *)
          mk_fun "core::option::{core::option::Option<@T>}::is_none"
-           ~extract_name:(Some "core.option.Option.is_none")
-           ~can_fail:false ~lift:false ();
+           ~extract_name:(Some "core.option.Option.is_none") ~can_fail:false
+           ~lift:false ();
          mk_fun "core::option::{core::option::Option<@T>}::is_some"
-           ~extract_name:(Some "core.option.Option.is_some")
-           ~can_fail:false ~lift:false ();
+           ~extract_name:(Some "core.option.Option.is_some") ~can_fail:false
+           ~lift:false ();
          mk_fun "core::option::{core::option::Option<@T>}::ok_or"
            ~extract_name:(Some "core.option.Option.ok_or") ();
          mk_fun
@@ -969,8 +1004,7 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
            ();
          (* core::convert *)
          mk_fun "core::convert::{core::convert::From<@T, @T>}::from"
-           ~extract_name:(Some "core.convert.FromSame.from")
-           ~can_fail:false ();
+           ~extract_name:(Some "core.convert.FromSame.from") ~can_fail:false ();
          (* alloc::vec *)
          mk_fun "alloc::vec::from_elem"
            ~extract_name:(Some "alloc.vec.from_elem") ();
@@ -1006,7 +1040,14 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
               ~extract_name:
                 (Some ("core::slice::index::SliceIndexRangeToUsizeSlice::" ^ m))
               ())
-          [ "get"; "get_mut"; "get_unchecked"; "get_unchecked_mut"; "index"; "index_mut" ]
+          [
+            "get";
+            "get_mut";
+            "get_unchecked";
+            "get_unchecked_mut";
+            "index";
+            "index_mut";
+          ]
       (* comparison / clone of std types *)
       @ [
           mk_fun "core::cmp::impls::{core::cmp::PartialEq<bool, bool>}::eq"
@@ -1023,23 +1064,36 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
             ~extract_name:(Some "core.cmp.impls.PartialEqShared.ne") ();
           mk_fun "alloc::boxed::{core::cmp::PartialEq<Box<@T>, Box<@T>>}::eq"
             ~extract_name:(Some "alloc.boxed.PartialEqBox.eq")
-            ~keep_params:(Some [ true; false ]) ();
+            ~keep_params:(Some [ true; false ])
+            ();
           mk_fun "alloc::boxed::{core::cmp::PartialEq<Box<@T>, Box<@T>>}::ne"
             ~extract_name:(Some "alloc.boxed.PartialEqBox.ne")
-            ~keep_params:(Some [ true; false ]) ();
-          mk_fun "alloc::vec::partial_eq::{core::cmp::PartialEq<alloc::vec::Vec<@T>, alloc::vec::Vec<@U>>}::eq"
+            ~keep_params:(Some [ true; false ])
+            ();
+          mk_fun
+            "alloc::vec::partial_eq::{core::cmp::PartialEq<alloc::vec::Vec<@T>, \
+             alloc::vec::Vec<@U>>}::eq"
             ~extract_name:(Some "alloc.vec.partial_eq.PartialEqVec.eq")
-            ~keep_params:(Some [ true; true; false; false ]) ();
-          mk_fun "alloc::vec::partial_eq::{core::cmp::PartialEq<alloc::vec::Vec<@T>, alloc::vec::Vec<@U>>}::ne"
+            ~keep_params:(Some [ true; true; false; false ])
+            ();
+          mk_fun
+            "alloc::vec::partial_eq::{core::cmp::PartialEq<alloc::vec::Vec<@T>, \
+             alloc::vec::Vec<@U>>}::ne"
             ~extract_name:(Some "alloc.vec.partial_eq.PartialEqVec.ne")
-            ~keep_params:(Some [ true; true; false; false ]) ();
+            ~keep_params:(Some [ true; true; false; false ])
+            ();
           mk_fun "alloc::boxed::{core::clone::Clone<Box<@T>>}::clone"
             ~extract_name:(Some "alloc.boxed.CloneBox.clone")
-            ~keep_params:(Some [ true; false ]) ~keep_trait_clauses:(Some [ true; false ]) ();
+            ~keep_params:(Some [ true; false ])
+            ~keep_trait_clauses:(Some [ true; false ])
+            ();
           mk_fun "alloc::vec::{core::clone::Clone<alloc::vec::Vec<@T>>}::clone"
             ~extract_name:(Some "alloc.vec.CloneVec.clone")
-            ~keep_params:(Some [ true; false ]) ~keep_trait_clauses:(Some [ true; false ]) ();
-          mk_fun "alloc::alloc::{core::clone::Clone<alloc::alloc::Global>}::clone"
+            ~keep_params:(Some [ true; false ])
+            ~keep_trait_clauses:(Some [ true; false ])
+            ();
+          mk_fun
+            "alloc::alloc::{core::clone::Clone<alloc::alloc::Global>}::clone"
             ~extract_name:(Some "alloc.alloc.CloneGlobal.clone") ();
         ]
       (* core::iter *)
@@ -1051,13 +1105,23 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
           mk_fun
             "core::iter::adapters::step_by::{core::iter::traits::iterator::Iterator<core::iter::adapters::step_by::StepBy<@I>, \
              @Clause0_Item>}::next"
-            ~extract_name:(Some "core.iter.adapters.step_by.IteratorStepBy.next") ();
+            ~extract_name:
+              (Some "core.iter.adapters.step_by.IteratorStepBy.next") ();
         ]
       @ mk_scalar_funs
-          (fun ty fn -> "core::iter::range::{core::iter::range::Step<" ^ ty ^ ">}::" ^ fn)
-          (fun ty fn -> "core.iter.range.Step" ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
-          [ (true, "steps_between"); (true, "forward_checked"); (true, "backward_checked");
-            (true, "forward_overflowing"); (true, "backward_overflowing") ]
+          (fun ty fn ->
+            "core::iter::range::{core::iter::range::Step<" ^ ty ^ ">}::" ^ fn)
+          (fun ty fn ->
+            "core.iter.range.Step"
+            ^ StringUtils.capitalize_first_letter ty
+            ^ "." ^ fn)
+          [
+            (true, "steps_between");
+            (true, "forward_checked");
+            (true, "backward_checked");
+            (true, "forward_overflowing");
+            (true, "backward_overflowing");
+          ]
       (* core::fmt *)
       @ [
           mk_fun "core::fmt::{core::fmt::Debug<&'0 @T>}::fmt"
@@ -1068,7 +1132,8 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
             ~extract_name:(Some "core.fmt.DebugBool.fmt") ();
           mk_fun "alloc::vec::{core::fmt::Debug<alloc::vec::Vec<@T>>}::fmt"
             ~extract_name:(Some "alloc.vec.DebugVec.fmt")
-            ~keep_params:(Some [ true; false ]) ();
+            ~keep_params:(Some [ true; false ])
+            ();
           mk_fun "core::array::{core::fmt::Debug<[@T; @N]>}::fmt"
             ~extract_name:(Some "core.array.DebugArray.fmt") ();
           mk_fun "core::slice::{core::fmt::Debug<[@T]>}::fmt"
@@ -1077,10 +1142,14 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
             ~extract_name:(Some "core.fmt.Formatter.write_str") ();
           mk_fun "core::fmt::{core::fmt::Formatter<'a>}::write_fmt"
             ~extract_name:(Some "core.fmt.Formatter.write_fmt") ();
-          mk_fun "core::fmt::{core::fmt::Formatter<'a>}::debug_struct_fields_finish"
-            ~extract_name:(Some "core.fmt.Formatter.debug_struct_fields_finish") ();
-          mk_fun "core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_fields_finish"
-            ~extract_name:(Some "core.fmt.Formatter.debug_tuple_fields_finish") ();
+          mk_fun
+            "core::fmt::{core::fmt::Formatter<'a>}::debug_struct_fields_finish"
+            ~extract_name:(Some "core.fmt.Formatter.debug_struct_fields_finish")
+            ();
+          mk_fun
+            "core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_fields_finish"
+            ~extract_name:(Some "core.fmt.Formatter.debug_tuple_fields_finish")
+            ();
           mk_fun "core::result::{core::result::Result<@T, @E>}::unwrap"
             ~extract_name:(Some "core.result.Result.unwrap") ();
           mk_fun "core::result::{core::result::Result<@T, @E>}::expect"
@@ -1092,39 +1161,73 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
           (fun n ->
             let n = string_of_int n in
             [
-              mk_fun ("core::fmt::{core::fmt::Formatter<'a>}::debug_struct_field" ^ n ^ "_finish")
-                ~extract_name:(Some ("core.fmt.Formatter.debug_struct_field" ^ n ^ "_finish")) ();
-              mk_fun ("core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_field" ^ n ^ "_finish")
-                ~extract_name:(Some ("core.fmt.Formatter.debug_tuple_field" ^ n ^ "_finish")) ();
+              mk_fun
+                ("core::fmt::{core::fmt::Formatter<'a>}::debug_struct_field" ^ n
+               ^ "_finish")
+                ~extract_name:
+                  (Some ("core.fmt.Formatter.debug_struct_field" ^ n ^ "_finish"))
+                ();
+              mk_fun
+                ("core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_field" ^ n
+               ^ "_finish")
+                ~extract_name:
+                  (Some ("core.fmt.Formatter.debug_tuple_field" ^ n ^ "_finish"))
+                ();
             ])
           [ 1; 2; 3; 4; 5 ]
       @ mk_scalar_funs
           (fun ty fn -> "core::fmt::num::{core::fmt::Debug<" ^ ty ^ ">}::" ^ fn)
-          (fun ty fn -> "core.fmt.num.Debug" ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
+          (fun ty fn ->
+            "core.fmt.num.Debug"
+            ^ StringUtils.capitalize_first_letter ty
+            ^ "." ^ fn)
           [ (true, "fmt") ]
       @ mk_scalar_funs
-          (fun ty fn -> "core::fmt::num::imp::{core::fmt::Display<" ^ ty ^ ">}::" ^ fn)
-          (fun ty fn -> "core.fmt.num.imp.Display" ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
+          (fun ty fn ->
+            "core::fmt::num::imp::{core::fmt::Display<" ^ ty ^ ">}::" ^ fn)
+          (fun ty fn ->
+            "core.fmt.num.imp.Display"
+            ^ StringUtils.capitalize_first_letter ty
+            ^ "." ^ fn)
           [ (true, "fmt") ]
       (* wrapping arithmetic: core::num::{INT}::wrapping_* *)
       @ mk_scalar_funs
           (fun ty fn -> "core::num::{" ^ ty ^ "}::" ^ fn)
-          (fun ty fn -> "core.num." ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
-          [ (false, "wrapping_add"); (false, "wrapping_sub"); (false, "wrapping_mul");
-            (false, "wrapping_neg"); (false, "wrapping_shl"); (false, "wrapping_shr") ]
+          (fun ty fn ->
+            "core.num." ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
+          [
+            (false, "wrapping_add");
+            (false, "wrapping_sub");
+            (false, "wrapping_mul");
+            (false, "wrapping_neg");
+            (false, "wrapping_shl");
+            (false, "wrapping_shr");
+          ]
       (* PartialEq<INT> / PartialOrd<INT> methods *)
       @ mk_scalar_funs
           (fun ty fn ->
-            "core::cmp::impls::{core::cmp::PartialEq<" ^ ty ^ ", " ^ ty ^ ">}::" ^ fn)
+            "core::cmp::impls::{core::cmp::PartialEq<" ^ ty ^ ", " ^ ty ^ ">}::"
+            ^ fn)
           (fun ty fn ->
-            "core.cmp.impls.PartialEq" ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
+            "core.cmp.impls.PartialEq"
+            ^ StringUtils.capitalize_first_letter ty
+            ^ "." ^ fn)
           [ (true, "eq"); (true, "ne") ]
       @ mk_scalar_funs
           (fun ty fn ->
-            "core::cmp::impls::{core::cmp::PartialOrd<" ^ ty ^ ", " ^ ty ^ ">}::" ^ fn)
+            "core::cmp::impls::{core::cmp::PartialOrd<" ^ ty ^ ", " ^ ty
+            ^ ">}::" ^ fn)
           (fun ty fn ->
-            "core.cmp.impls.PartialOrd" ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
-          [ (true, "partial_cmp"); (true, "lt"); (true, "le"); (true, "gt"); (true, "ge") ]
+            "core.cmp.impls.PartialOrd"
+            ^ StringUtils.capitalize_first_letter ty
+            ^ "." ^ fn)
+          [
+            (true, "partial_cmp");
+            (true, "lt");
+            (true, "le");
+            (true, "gt");
+            (true, "ge");
+          ]
       (* TryFrom<DST, SRC, TryFromIntError>::try_from for distinct integer types *)
       @ List.concat_map
           (fun dst ->
@@ -1134,8 +1237,9 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
                 else
                   Some
                     (mk_fun
-                       ("core::convert::num::{core::convert::TryFrom<" ^ dst ^ ", "
-                      ^ src ^ ", core::num::error::TryFromIntError>}::try_from")
+                       ("core::convert::num::{core::convert::TryFrom<" ^ dst
+                      ^ ", " ^ src
+                      ^ ", core::num::error::TryFromIntError>}::try_from")
                        ~extract_name:
                          (Some
                             ("core.convert.num.TryFrom"
@@ -1244,11 +1348,13 @@ let builtin_funs : unit -> (pattern * Pure.builtin_fun_info) list =
                     extract_name =
                       (* For Isabelle the method's extract name is already
                          prefixed with the trait name *)
-                      (if backend () = Isabelle
-                          && String.starts_with ~prefix:(d.extract_name ^ sep)
-                               f.extract_name
+                      (if
+                         backend () = Isabelle
+                         && String.starts_with ~prefix:(d.extract_name ^ sep)
+                              f.extract_name
                        then f.extract_name ^ sep ^ "default"
-                       else d.extract_name ^ sep ^ f.extract_name ^ sep ^ "default");
+                       else
+                         d.extract_name ^ sep ^ f.extract_name ^ sep ^ "default");
                   }
                 in
                 Some (pattern, info)

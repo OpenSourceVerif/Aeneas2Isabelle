@@ -9,7 +9,7 @@ module T = Types
 
 let extract_str (_span : Meta.span) (fmt : F.formatter) ~(inside : bool)
     (s : string) : unit =
-  if Config.backend () = Isabelle then (
+  if Config.backend () = Isabelle then
     (* HOL string literals: [''abc''] when the string is plain printable ASCII
        without quotes or backslashes, an explicit list of characters otherwise. *)
     let chars = StringUtils.string_to_chars s in
@@ -22,23 +22,25 @@ let extract_str (_span : Meta.span) (fmt : F.formatter) ~(inside : bool)
       F.pp_print_string fmt
         ("["
         ^ String.concat ", "
-            (List.map (fun c -> Printf.sprintf "CHR 0x%02x" (Char.code c)) chars)
-        ^ "]"))
+            (List.map
+               (fun c -> Printf.sprintf "CHR 0x%02x" (Char.code c))
+               chars)
+        ^ "]")
   else
-  let chars = StringUtils.string_to_chars s in
-  (* Using the OCaml escape conventions for now.
+    let chars = StringUtils.string_to_chars s in
+    (* Using the OCaml escape conventions for now.
 
      TODO: does this really work? *)
-  let s = String.concat "" (List.map Char.escaped chars) in
-  let s = "\"" ^ s ^ "\"" in
+    let s = String.concat "" (List.map Char.escaped chars) in
+    let s = "\"" ^ s ^ "\"" in
 
-  (* We need to convert the string to a str (the conversion inserts a static check
+    (* We need to convert the string to a str (the conversion inserts a static check
      that the string is not too long) *)
-  if inside then F.pp_print_string fmt "(";
-  F.pp_print_string fmt "toStr";
-  F.pp_print_space fmt ();
-  F.pp_print_string fmt s;
-  if inside then F.pp_print_string fmt ")"
+    if inside then F.pp_print_string fmt "(";
+    F.pp_print_string fmt "toStr";
+    F.pp_print_space fmt ();
+    F.pp_print_string fmt s;
+    if inside then F.pp_print_string fmt ")"
 
 (** Format a constant value.
 
@@ -55,7 +57,9 @@ let extract_literal (span : Meta.span) (fmt : F.formatter) ~(is_pattern : bool)
       match backend () with
       | FStar -> F.pp_print_string fmt (Z.to_string (Scalars.get_val sv))
       | Coq | HOL4 | Lean | Isabelle ->
-          let print_brackets = inside && (backend () = HOL4 || backend () = Isabelle) in
+          let print_brackets =
+            inside && (backend () = HOL4 || backend () = Isabelle)
+          in
           if print_brackets then F.pp_print_string fmt "(";
           (match backend () with
           | Coq | Lean | Isabelle -> ()
@@ -117,7 +121,8 @@ let extract_literal (span : Meta.span) (fmt : F.formatter) ~(is_pattern : bool)
           in
           F.pp_print_string fmt c;
           if inside then F.pp_print_string fmt ")"
-      | Isabelle ->  (* Isabelle *)
+      | Isabelle ->
+          (* Isabelle *)
           F.pp_print_string fmt "(CHR ";
           F.pp_print_string fmt (string_of_int (Char.code c));
           F.pp_print_string fmt ")")
@@ -260,7 +265,7 @@ let start_type_decl_group (ctx : extraction_ctx) (fmt : F.formatter)
 let end_type_decl_group (fmt : F.formatter) (is_rec : bool)
     (dg : Pure.type_decl list) =
   match backend () with
-  | FStar | Isabelle-> ()
+  | FStar | Isabelle -> ()
   | Coq ->
       (* For aesthetic reasons, we print the Coq end group delimiter directly
          in {!extract_fun_decl}. *)
@@ -298,7 +303,8 @@ let unit_name () =
 (** Small helper *)
 let extract_arrow (fmt : F.formatter) () : unit =
   if Config.backend () = Lean then F.pp_print_string fmt "→"
-  else if Config.backend() = Isabelle then F.pp_print_string fmt "\\<Rightarrow>"
+  else if Config.backend () = Isabelle then
+    F.pp_print_string fmt "\\<Rightarrow>"
   else F.pp_print_string fmt "->"
 
 let extract_const_generic (span : Meta.span) (ctx : extraction_ctx)
@@ -325,8 +331,12 @@ let extract_literal_type (_ctx : extraction_ctx) (fmt : F.formatter)
       let prefix = if backend () = Lean then "Std." else "" in
       F.pp_print_string fmt (prefix ^ int_name (Unsigned int_ty))
   | TFloat float_ty -> F.pp_print_string fmt (float_name float_ty)
-  | TPureNat -> if backend () = Isabelle then F.pp_print_string fmt "nat" else F.pp_print_string fmt "ℕ"
-  | TPureInt -> if backend () = Isabelle then F.pp_print_string fmt "int" else F.pp_print_string fmt "ℤ"
+  | TPureNat ->
+      if backend () = Isabelle then F.pp_print_string fmt "nat"
+      else F.pp_print_string fmt "ℕ"
+  | TPureInt ->
+      if backend () = Isabelle then F.pp_print_string fmt "int"
+      else F.pp_print_string fmt "ℤ"
 
 (** [inside] constrols whether we should add parentheses or not around type
     applications (if [true] we add parentheses).
@@ -457,23 +467,24 @@ let rec extract_ty (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
               let generics =
                 match type_id with
                 | TAdtId id -> (
-                    match TypeDeclId.Map.find_opt id ctx.types_filter_type_args_map with
+                    match
+                      TypeDeclId.Map.find_opt id ctx.types_filter_type_args_map
+                    with
                     | None -> generics
                     | Some filter ->
                         if List.length filter <> List.length generics.types then (
                           [%save_error] span
-                            "Ill-formed type argument filter when generating Isabelle";
+                            "Ill-formed type argument filter when generating \
+                             Isabelle";
                           generics)
                         else
-                        let types =
-                          List.filter_map
-                            (fun (keep, ty) ->
-                              if keep then Some ty else None)
-                            (List.combine filter generics.types)
-                        in
-                        { generics with types })
-                | _ ->
-                    generics
+                          let types =
+                            List.filter_map
+                              (fun (keep, ty) -> if keep then Some ty else None)
+                              (List.combine filter generics.types)
+                          in
+                          { generics with types })
+                | _ -> generics
               in
               let has_type_args = generics.types <> [] in
               let print_paren = inside && has_type_args in
@@ -485,7 +496,7 @@ let rec extract_ty (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
               in
               if has_printed_args then F.pp_print_space fmt ();
               F.pp_print_string fmt (ctx_get_type (Some span) type_id ctx);
-              if print_paren then F.pp_print_string fmt ")";
+              if print_paren then F.pp_print_string fmt ")"
           | HOL4 ->
               let { types; const_generics; trait_refs } = generics in
               (* Const generics are not supported in HOL4 *)
@@ -627,54 +638,52 @@ and extract_generic_args (span : Meta.span) (ctx : extraction_ctx)
     (fmt : F.formatter) (no_params_tys : TypeDeclId.Set.t)
     ?(explicit : explicit_info option = None) (generics : generic_args) : unit =
   let { types; const_generics; trait_refs } = generics in
-  if backend () <> HOL4 then (
-    (* Filter the input parameters if some of them are implicit *)
-    let types, const_generics =
-      match explicit with
-      | None -> (types, const_generics)
-      | Some explicit ->
-          let filter (x, e) = if e = Explicit then Some x else None in
-          let filter xl explicit =
-            List.filter_map filter (List.combine xl explicit)
-          in
-          ( filter types explicit.explicit_types,
-            filter const_generics explicit.explicit_const_generics )
-    in
-    match backend () with
-    | Isabelle -> (
-      match types with
-      | [] -> ()
-      | [ ty ] ->
-        extract_ty span ctx fmt no_params_tys ~inside:true ty
-      | _ ->
-        F.pp_print_string fmt "(";
-        Collections.List.iter_link
-          (fun () ->
-            F.pp_print_string fmt ",";
-            F.pp_print_space fmt ())
-          (extract_ty span ctx fmt no_params_tys ~inside:true)
-          types;
-        F.pp_print_string fmt ")");
-      
-      (* Isabelle/HOL has no dependent types.  Const generic arguments are
+  (if backend () <> HOL4 then
+     (* Filter the input parameters if some of them are implicit *)
+     let types, const_generics =
+       match explicit with
+       | None -> (types, const_generics)
+       | Some explicit ->
+           let filter (x, e) = if e = Explicit then Some x else None in
+           let filter xl explicit =
+             List.filter_map filter (List.combine xl explicit)
+           in
+           ( filter types explicit.explicit_types,
+             filter const_generics explicit.explicit_const_generics )
+     in
+     match backend () with
+     | Isabelle -> (
+         match types with
+         | [] -> ()
+         | [ ty ] -> extract_ty span ctx fmt no_params_tys ~inside:true ty
+         | _ ->
+             F.pp_print_string fmt "(";
+             Collections.List.iter_link
+               (fun () ->
+                 F.pp_print_string fmt ",";
+                 F.pp_print_space fmt ())
+               (extract_ty span ctx fmt no_params_tys ~inside:true)
+               types;
+             F.pp_print_string fmt ")")
+     (* Isabelle/HOL has no dependent types.  Const generic arguments are
          therefore erased from type applications.  They are kept as explicit
          term arguments on functions and globals whenever their values are
          needed by the translated program. *)
-    | _ ->
-      if types <> [] then (
-        F.pp_print_space fmt ();
-        Collections.List.iter_link (F.pp_print_space fmt)
-          (extract_ty span ctx fmt no_params_tys ~inside:true)
-          types);
-      if const_generics <> [] then (
-        [%cassert] span
-          (backend () <> HOL4)
-          "Constant generics are not supported yet when generating code for HOL4";
-        F.pp_print_space fmt ();
-        Collections.List.iter_link (F.pp_print_space fmt)
-          (extract_const_generic span ctx fmt ~inside:true)
-          const_generics)
-  );
+     | _ ->
+         if types <> [] then (
+           F.pp_print_space fmt ();
+           Collections.List.iter_link (F.pp_print_space fmt)
+             (extract_ty span ctx fmt no_params_tys ~inside:true)
+             types);
+         if const_generics <> [] then (
+           [%cassert] span
+             (backend () <> HOL4)
+             "Constant generics are not supported yet when generating code for \
+              HOL4";
+           F.pp_print_space fmt ();
+           Collections.List.iter_link (F.pp_print_space fmt)
+             (extract_const_generic span ctx fmt ~inside:true)
+             const_generics));
   if trait_refs <> [] then (
     F.pp_print_space fmt ();
     Collections.List.iter_link (F.pp_print_space fmt)
@@ -834,7 +843,8 @@ and extract_trait_clause_type (span : Meta.span) (ctx : extraction_ctx)
   if backend () = Isabelle then (
     extract_generic_args span ctx fmt no_params_tys clause.generics;
     if
-      clause.generics.types <> [] || clause.generics.const_generics <> []
+      clause.generics.types <> []
+      || clause.generics.const_generics <> []
       || clause.generics.trait_refs <> []
     then F.pp_print_space fmt ();
     F.pp_print_string fmt trait_name)
@@ -851,13 +861,11 @@ let isabelle_type_decl_has_const_generic_fields (ctx : extraction_ctx)
   && (match def.kind with
      | Struct (_ :: _) -> true
      | Struct [] | Enum _ | Opaque -> false)
-  && not
-       (TypesUtils.type_decl_from_decl_id_is_tuple_struct
-          ctx.trans_ctx.type_ctx.type_infos def.def_id)
+  && (not
+        (TypesUtils.type_decl_from_decl_id_is_tuple_struct
+           ctx.trans_ctx.type_ctx.type_infos def.def_id))
   &&
-  let info =
-    TypeDeclId.Map.find def.def_id ctx.trans_ctx.type_ctx.type_infos
-  in
+  let info = TypeDeclId.Map.find def.def_id ctx.trans_ctx.type_ctx.type_infos in
   not info.TypesAnalysis.is_rec
 
 let ctx_compute_isabelle_const_generic_field_name (ctx : extraction_ctx)
@@ -1036,11 +1044,11 @@ let extract_type_decl_variant (span : Meta.span) (ctx : extraction_ctx)
   (* [| Cons :]
    * Note that we really don't want any break above so we print everything
    * at once. *)
-  let opt_colon = if backend () <> HOL4 && backend () <> Isabelle then " :" else "" in
-  if backend () = Isabelle then
-    F.pp_print_string fmt cons_name
-  else
-    F.pp_print_string fmt ("| " ^ cons_name ^ opt_colon);
+  let opt_colon =
+    if backend () <> HOL4 && backend () <> Isabelle then " :" else ""
+  in
+  if backend () = Isabelle then F.pp_print_string fmt cons_name
+  else F.pp_print_string fmt ("| " ^ cons_name ^ opt_colon);
   let print_field (fid : FieldId.id) (f : field) (ctx : extraction_ctx) :
       extraction_ctx =
     F.pp_print_space fmt ();
@@ -1066,13 +1074,11 @@ let extract_type_decl_variant (span : Meta.span) (ctx : extraction_ctx)
               ctx)
       | Coq | Lean | HOL4 | Isabelle -> ctx
     in
-    if backend () = Isabelle then
-      F.pp_print_string fmt "\"";
+    if backend () = Isabelle then F.pp_print_string fmt "\"";
     (* Print the field type *)
     let inside = backend () = HOL4 in
     extract_ty span ctx fmt type_decl_group ~inside f.field_ty;
-    if backend () = Isabelle then
-      F.pp_print_string fmt "\"";
+    if backend () = Isabelle then F.pp_print_string fmt "\"";
     (* Print the arrow [->] *)
     if backend () <> HOL4 && backend () <> Isabelle then (
       F.pp_print_space fmt ();
@@ -1255,7 +1261,7 @@ let extract_type_decl_struct_body (ctx : extraction_ctx) (fmt : F.formatter)
   (* Note that we already printed: [type t =] *)
   let is_rec = decl_is_from_rec_group kind in
   let _ =
-    if backend () = Isabelle then (
+    if backend () = Isabelle then
       (* Isabelle records cannot be recursive.  Non-recursive structures are
          extracted as records, while recursive ones are extracted as datatypes
          with named selectors. *)
@@ -1318,7 +1324,7 @@ let extract_type_decl_struct_body (ctx : extraction_ctx) (fmt : F.formatter)
         Collections.List.iter_link (F.pp_print_space fmt)
           (fun (fid, f) -> print_field false fid f)
           fields;
-        F.pp_close_box fmt ()))
+        F.pp_close_box fmt ())
     else if backend () = FStar && fields = [] then (
       F.pp_print_space fmt ();
       F.pp_print_string fmt (unit_name ()))
@@ -1528,7 +1534,7 @@ let insert_req_space (fmt : F.formatter) (space : bool ref) : unit =
   if !space then space := false else F.pp_print_space fmt ()
 
 (** Print the type parameters on the left-hand side of an Isabelle type
-    declaration.  Isabelle implicitly quantifies type variables in function
+    declaration. Isabelle implicitly quantifies type variables in function
     declarations, but type constructors declare their parameters before their
     name: ['a list_t] or [('a, 'b) pair_t]. *)
 let extract_isabelle_type_decl_params (fmt : F.formatter)
@@ -1565,8 +1571,7 @@ let rec isabelle_ty_has_const_generic_wf (ctx : extraction_ctx)
   match ty with
   | TAdt
       ( TBuiltin TArray,
-        { types = [ _ ]; const_generics = [ _ ]; trait_refs = [] } ) ->
-      true
+        { types = [ _ ]; const_generics = [ _ ]; trait_refs = [] } ) -> true
   | TAdt
       ( TBuiltin TResult,
         { types = [ ty ]; const_generics = []; trait_refs = [] } ) ->
@@ -1579,19 +1584,15 @@ let rec isabelle_ty_has_const_generic_wf (ctx : extraction_ctx)
 
 (** Print the proposition saying that [value] is a well-formed Isabelle
     representation of [ty], with erased const-generic indices restored as
-    term-level predicates.  The caller must first check
+    term-level predicates. The caller must first check
     {!isabelle_ty_has_const_generic_wf}. *)
 let rec extract_isabelle_ty_const_generic_wf (span : Meta.span)
-    (ctx : extraction_ctx) (fmt : F.formatter) (ty : ty)
-    (value : unit -> unit) : unit =
+    (ctx : extraction_ctx) (fmt : F.formatter) (ty : ty) (value : unit -> unit)
+    : unit =
   match ty with
   | TAdt
       ( TBuiltin TArray,
-        {
-          types = [ _ ];
-          const_generics = [ array_len ];
-          trait_refs = [];
-        } ) ->
+        { types = [ _ ]; const_generics = [ array_len ]; trait_refs = [] } ) ->
       F.pp_print_string fmt "array_wf";
       F.pp_print_space fmt ();
       extract_const_generic span ctx fmt ~inside:true array_len;
@@ -1628,9 +1629,9 @@ let rec extract_isabelle_ty_const_generic_wf (span : Meta.span)
     generic parameters were erased from its type constructor.
 
     For ordinary structures we currently recover constraints from fields whose
-    types are arrays or other non-recursive const-generic ADTs.  Empty,
-    opaque, tuple and enum representations receive [True] for now; the latter
-    two require representation-specific pattern traversal. *)
+    types are arrays or other non-recursive const-generic ADTs. Empty, opaque,
+    tuple and enum representations receive [True] for now; the latter two
+    require representation-specific pattern traversal. *)
 let extract_isabelle_const_generic_type_wf (ctx : extraction_ctx)
     (fmt : F.formatter) (def : type_decl) : unit =
   if def.generics.const_generics <> [] then (
@@ -1639,9 +1640,7 @@ let extract_isabelle_const_generic_type_wf (ctx : extraction_ctx)
       ctx_add_generic_params span def.item_meta.name Item def.llbc_generics
         def.generics ctx
     in
-    let wf_name =
-      isabelle_const_generic_wf_name span ctx (TAdtId def.def_id)
-    in
+    let wf_name = isabelle_const_generic_wf_name span ctx (TAdtId def.def_id) in
     let value_name = basename_to_unique ctx_body "value" in
     let self_ty =
       TAdt (TAdtId def.def_id, generic_args_of_params def.generics)
@@ -1775,119 +1774,124 @@ let extract_generic_params (span : Meta.span) (ctx : extraction_ctx)
             extract_trait_clause_type span ctx fmt no_params_tys clause))
       trait_clauses generics.trait_clauses)
   else
-  let all_params = List.concat [ type_params; cg_params; trait_clauses ] in
-  (* HOL4 doesn't support const generics *)
-  [%cassert] span
-    (cg_params = [] || backend () <> HOL4)
-    "Constant generics are not supported yet when generating code for HOL4";
-  let left_bracket (explicit : explicit) =
-    if explicit = Implicit && backend () <> FStar then F.pp_print_string fmt "{"
-    else F.pp_print_string fmt "("
-  in
-  let right_bracket (explicit : explicit) =
-    if explicit = Implicit && backend () <> FStar then F.pp_print_string fmt "}"
-    else F.pp_print_string fmt ")"
-  in
-  let print_implicit_symbol (explicit : explicit) =
-    if explicit = Implicit && backend () = FStar then F.pp_print_string fmt "#"
-    else ()
-  in
-  let insert_req_space () =
-    match space with
-    | None -> F.pp_print_space fmt ()
-    | Some space -> insert_req_space fmt space
-  in
-  (* Print the type/const generic parameters *)
-  if all_params <> [] then begin
-    if use_forall then (
-      if use_forall_use_sep then (
+    let all_params = List.concat [ type_params; cg_params; trait_clauses ] in
+    (* HOL4 doesn't support const generics *)
+    [%cassert] span
+      (cg_params = [] || backend () <> HOL4)
+      "Constant generics are not supported yet when generating code for HOL4";
+    let left_bracket (explicit : explicit) =
+      if explicit = Implicit && backend () <> FStar then
+        F.pp_print_string fmt "{"
+      else F.pp_print_string fmt "("
+    in
+    let right_bracket (explicit : explicit) =
+      if explicit = Implicit && backend () <> FStar then
+        F.pp_print_string fmt "}"
+      else F.pp_print_string fmt ")"
+    in
+    let print_implicit_symbol (explicit : explicit) =
+      if explicit = Implicit && backend () = FStar then
+        F.pp_print_string fmt "#"
+      else ()
+    in
+    let insert_req_space () =
+      match space with
+      | None -> F.pp_print_space fmt ()
+      | Some space -> insert_req_space fmt space
+    in
+    (* Print the type/const generic parameters *)
+    if all_params <> [] then begin
+      if use_forall then (
+        if use_forall_use_sep then (
+          insert_req_space ();
+          F.pp_print_string fmt ":");
         insert_req_space ();
-        F.pp_print_string fmt ":");
-      insert_req_space ();
-      F.pp_print_string fmt "forall");
-    if use_fun then (
-      insert_req_space ();
-      F.pp_print_string fmt "fun");
-    (* Small helper - we may need to split the parameters *)
-    let print_generics (type_params : (explicit * string) list)
-        (const_generics : (explicit * const_generic_param) list)
-        (trait_clauses : (explicit * trait_param) list) : unit =
-      (* Note that in HOL4 we don't print the type parameters. *)
-      if backend () <> HOL4 then (
-        (* Print the type parameters *)
-        if type_params <> [] then (
+        F.pp_print_string fmt "forall");
+      if use_fun then (
+        insert_req_space ();
+        F.pp_print_string fmt "fun");
+      (* Small helper - we may need to split the parameters *)
+      let print_generics (type_params : (explicit * string) list)
+          (const_generics : (explicit * const_generic_param) list)
+          (trait_clauses : (explicit * trait_param) list) : unit =
+        (* Note that in HOL4 we don't print the type parameters. *)
+        if backend () <> HOL4 then (
+          (* Print the type parameters *)
+          if type_params <> [] then (
+            List.iter
+              (fun (expl, s) ->
+                (* ( *)
+                insert_req_space ();
+                left_bracket expl;
+                print_implicit_symbol expl;
+                F.pp_print_string fmt s;
+                F.pp_print_space fmt ();
+                F.pp_print_string fmt ":";
+                F.pp_print_space fmt ();
+                F.pp_print_string fmt (type_keyword span);
+                (* ) *)
+                right_bracket expl)
+              type_params;
+            if use_arrows then (
+              F.pp_print_space fmt ();
+              F.pp_print_string fmt "->"));
+          (* Print the const generic parameters *)
           List.iter
-            (fun (expl, s) ->
-              (* ( *)
+            (fun ((expl, var) : explicit * const_generic_param) ->
               insert_req_space ();
+              (* ( *)
               left_bracket expl;
+              let n = ctx_get_const_generic_var span origin var.index ctx in
               print_implicit_symbol expl;
-              F.pp_print_string fmt s;
+              F.pp_print_string fmt n;
               F.pp_print_space fmt ();
               F.pp_print_string fmt ":";
               F.pp_print_space fmt ();
-              F.pp_print_string fmt (type_keyword span);
+              extract_literal_type ctx fmt var.ty;
               (* ) *)
-              right_bracket expl)
-            type_params;
-          if use_arrows then (
-            F.pp_print_space fmt ();
-            F.pp_print_string fmt "->"));
-        (* Print the const generic parameters *)
+              right_bracket expl;
+              if use_arrows then (
+                F.pp_print_space fmt ();
+                F.pp_print_string fmt "->"))
+            const_generics);
+        (* Print the trait clauses *)
         List.iter
-          (fun ((expl, var) : explicit * const_generic_param) ->
+          (fun ((expl, clause) : explicit * trait_param) ->
             insert_req_space ();
             (* ( *)
             left_bracket expl;
-            let n = ctx_get_const_generic_var span origin var.index ctx in
+            let n =
+              ctx_get_local_trait_clause span origin clause.clause_id ctx
+            in
             print_implicit_symbol expl;
             F.pp_print_string fmt n;
             F.pp_print_space fmt ();
             F.pp_print_string fmt ":";
             F.pp_print_space fmt ();
-            extract_literal_type ctx fmt var.ty;
+            extract_trait_clause_type span ctx fmt no_params_tys clause;
             (* ) *)
             right_bracket expl;
             if use_arrows then (
               F.pp_print_space fmt ();
               F.pp_print_string fmt "->"))
-          const_generics);
-      (* Print the trait clauses *)
-      List.iter
-        (fun ((expl, clause) : explicit * trait_param) ->
-          insert_req_space ();
-          (* ( *)
-          left_bracket expl;
-          let n = ctx_get_local_trait_clause span origin clause.clause_id ctx in
-          print_implicit_symbol expl;
-          F.pp_print_string fmt n;
-          F.pp_print_space fmt ();
-          F.pp_print_string fmt ":";
-          F.pp_print_space fmt ();
-          extract_trait_clause_type span ctx fmt no_params_tys clause;
-          (* ) *)
-          right_bracket expl;
-          if use_arrows then (
-            F.pp_print_space fmt ();
-            F.pp_print_string fmt "->"))
-        trait_clauses
-    in
-    (* Associate the explicit/implicit information with the parameters *)
-    let type_params, const_generics, trait_clauses =
-      match explicit with
-      | None ->
-          let expl = if as_implicits then Implicit else Explicit in
-          ( List.map (fun x -> (expl, x)) type_params,
-            List.map (fun x -> (expl, x)) generics.const_generics,
-            List.map (fun x -> (expl, x)) generics.trait_clauses )
-      | Some explicit ->
-          ( List.combine explicit.explicit_types type_params,
-            List.combine explicit.explicit_const_generics
-              generics.const_generics,
-            List.map (fun x -> (Explicit, x)) generics.trait_clauses )
-    in
-    print_generics type_params const_generics trait_clauses
-  end
+          trait_clauses
+      in
+      (* Associate the explicit/implicit information with the parameters *)
+      let type_params, const_generics, trait_clauses =
+        match explicit with
+        | None ->
+            let expl = if as_implicits then Implicit else Explicit in
+            ( List.map (fun x -> (expl, x)) type_params,
+              List.map (fun x -> (expl, x)) generics.const_generics,
+              List.map (fun x -> (expl, x)) generics.trait_clauses )
+        | Some explicit ->
+            ( List.combine explicit.explicit_types type_params,
+              List.combine explicit.explicit_const_generics
+                generics.const_generics,
+              List.map (fun x -> (Explicit, x)) generics.trait_clauses )
+      in
+      print_generics type_params const_generics trait_clauses
+    end
 
 (** Extract a type declaration.
 
@@ -2051,18 +2055,18 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
   F.pp_open_hovbox fmt ctx.indent_incr;
   (* > "type TYPE_NAME" *)
   let qualif = type_decl_kind_to_qualif span kind type_kind in
-  if backend () = Isabelle then (
-    (match qualif with
-    | Some qualif ->
-        F.pp_print_string fmt qualif;
-        F.pp_print_space fmt ()
-    | None -> ());
-    extract_isabelle_type_decl_params fmt type_params;
-    F.pp_print_string fmt def_name)
-  else
-    (match qualif with
-    | Some qualif -> F.pp_print_string fmt (qualif ^ " " ^ def_name)
-    | None -> F.pp_print_string fmt def_name);
+  (if backend () = Isabelle then (
+     (match qualif with
+     | Some qualif ->
+         F.pp_print_string fmt qualif;
+         F.pp_print_space fmt ()
+     | None -> ());
+     extract_isabelle_type_decl_params fmt type_params;
+     F.pp_print_string fmt def_name)
+   else
+     match qualif with
+     | Some qualif -> F.pp_print_string fmt (qualif ^ " " ^ def_name)
+     | None -> F.pp_print_string fmt def_name);
   (* HOL4 doesn't support const generics, and type definitions in HOL4 don't
      support trait clauses *)
   [%cassert] span
@@ -2071,8 +2075,10 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
      supported yet when generating code for HOL4";
   (* Print the generic parameters *)
   if backend () = Isabelle then (
-    (* Const generic parameters are erased from Isabelle type constructors. *)
-    if trait_clauses <> [] then
+    if
+      (* Const generic parameters are erased from Isabelle type constructors. *)
+      trait_clauses <> []
+    then
       [%save_error] span
         "Trait clauses on Isabelle type declarations are not supported")
   else
@@ -2132,7 +2138,8 @@ let extract_type_decl_gen (ctx : extraction_ctx) (fmt : F.formatter)
   if backend () <> HOL4 || decl_is_not_last_from_group kind then
     F.pp_print_break fmt 0 0
 
-let extract_type_decl_isabelle_opaque (ctx : extraction_ctx) (fmt : F.formatter) (def : type_decl) : unit =
+let extract_type_decl_isabelle_opaque (ctx : extraction_ctx) (fmt : F.formatter)
+    (def : type_decl) : unit =
   let span = def.item_meta.span in
   let def_name = ctx_get_local_type span def.def_id ctx in
   let _, type_params, _cg_params, trait_clauses =
@@ -2176,9 +2183,10 @@ let extract_type_decl_isabelle_empty_enum (ctx : extraction_ctx)
 
 (** Extract an empty record type declaration for Isabelle.
 
-    Empty records are represented as [unit], consistently with the extraction
-    of their values. *)
-let extract_type_decl_isabelle_empty_record (ctx : extraction_ctx) (fmt : F.formatter) (def : type_decl) : unit =
+    Empty records are represented as [unit], consistently with the extraction of
+    their values. *)
+let extract_type_decl_isabelle_empty_record (ctx : extraction_ctx)
+    (fmt : F.formatter) (def : type_decl) : unit =
   let def_name = ctx_get_local_type def.item_meta.span def.def_id ctx in
   let _, type_params, _cg_params, trait_clauses =
     ctx_add_generic_params def.item_meta.span def.item_meta.name Item
@@ -2266,21 +2274,20 @@ let extract_type_decl (ctx : extraction_ctx) (fmt : F.formatter)
     | Builtin | Declared -> false
   in
   (if extract_body then
-    match backend () with
-    | HOL4 when is_empty_record_type_decl def ->
-        extract_type_decl_hol4_empty_record ctx fmt def
-    | Isabelle when def.kind = Enum [] ->
-        extract_type_decl_isabelle_empty_enum ctx fmt def
-    | Isabelle when is_empty_record_type_decl def ->
-        extract_type_decl_isabelle_empty_record ctx fmt def
-    | _ ->
-        extract_type_decl_gen ctx fmt type_decl_group kind def extract_body
-  else
-    match backend () with
-    | FStar | Coq | Lean ->
-        extract_type_decl_gen ctx fmt type_decl_group kind def extract_body
-    | Isabelle -> extract_type_decl_isabelle_opaque ctx fmt def
-    | HOL4 -> extract_type_decl_hol4_opaque ctx fmt def);
+     match backend () with
+     | HOL4 when is_empty_record_type_decl def ->
+         extract_type_decl_hol4_empty_record ctx fmt def
+     | Isabelle when def.kind = Enum [] ->
+         extract_type_decl_isabelle_empty_enum ctx fmt def
+     | Isabelle when is_empty_record_type_decl def ->
+         extract_type_decl_isabelle_empty_record ctx fmt def
+     | _ -> extract_type_decl_gen ctx fmt type_decl_group kind def extract_body
+   else
+     match backend () with
+     | FStar | Coq | Lean ->
+         extract_type_decl_gen ctx fmt type_decl_group kind def extract_body
+     | Isabelle -> extract_type_decl_isabelle_opaque ctx fmt def
+     | HOL4 -> extract_type_decl_hol4_opaque ctx fmt def);
   if
     backend () = Isabelle
     && def.generics.const_generics <> []

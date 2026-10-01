@@ -891,9 +891,10 @@ let export_functions_group_scc (fmt : Format.formatter) (config : gen_config)
 
     if
       Config.backend () = Isabelle
-      && is_mut_rec
-      && config.extract_transparent
-      && List.for_all (fun (def : Pure.fun_decl) -> Option.is_some def.body) decls
+      && is_mut_rec && config.extract_transparent
+      && List.for_all
+           (fun (def : Pure.fun_decl) -> Option.is_some def.body)
+           decls
       && Extract.isabelle_supports_u32_mut_rec_group decls
     then (
       Extract.extract_isabelle_mut_rec_group ctx fmt decls;
@@ -927,7 +928,9 @@ let export_fun_decls_decreases_templates (fmt : Format.formatter)
         | HOL4 ->
             raise (Failure "HOL4 doesn't have decreases/termination clauses")
         | Isabelle ->
-            raise (Failure "Isabelle doesn't have template decreases/termination clauses")
+            raise
+              (Failure
+                 "Isabelle doesn't have template decreases/termination clauses")
     in
     List.iter extract_decrease decls
 
@@ -1243,31 +1246,31 @@ let extract_definitions (fmt : Format.formatter) (config : gen_config)
             (* We actually have a special elaboration in Lean that allows us
                to support recursive trait impls *)
             (if List.length decls = 1 then
-              match Config.backend () with
-              | Lean -> ()
-              | Isabelle ->
-                  [%warn_opt_span] None
-                    ("Recursive trait implementations are represented by \
-                      axiomatizations in Isabelle:\n"
-                   ^ String.concat "\n" decls)
-              | FStar | Coq | HOL4 ->
-                  [%warn_opt_span] None
-                    ("Recursive trait implementations are not supported; the \
-                      following recursive impl is going to be extracted but \
-                      its model will not type-check:\n"
-                   ^ String.concat "\n" decls)
-            else
-              let message =
-                if Config.backend () = Isabelle then
-                  "Mutually recursive trait implementations are represented \
-                   by axiomatizations in Isabelle:\n"
-                else
-                  "Mutually recursive trait implementations are not \
-                   supported; the following group of mutually recursive impls \
-                   is going to be extracted but their model will not \
-                   type-check:\n"
-              in
-              [%warn_opt_span] None (message ^ String.concat "\n" decls));
+               match Config.backend () with
+               | Lean -> ()
+               | Isabelle ->
+                   [%warn_opt_span] None
+                     ("Recursive trait implementations are represented by \
+                       axiomatizations in Isabelle:\n"
+                    ^ String.concat "\n" decls)
+               | FStar | Coq | HOL4 ->
+                   [%warn_opt_span] None
+                     ("Recursive trait implementations are not supported; the \
+                       following recursive impl is going to be extracted but \
+                       its model will not type-check:\n"
+                    ^ String.concat "\n" decls)
+             else
+               let message =
+                 if Config.backend () = Isabelle then
+                   "Mutually recursive trait implementations are represented \
+                    by axiomatizations in Isabelle:\n"
+                 else
+                   "Mutually recursive trait implementations are not \
+                    supported; the following group of mutually recursive impls \
+                    is going to be extracted but their model will not \
+                    type-check:\n"
+               in
+               [%warn_opt_span] None (message ^ String.concat "\n" decls));
             (* We still extract something so that the user can look at it and
                eventually fix it *)
             (* TODO: update to extract groups *)
@@ -1833,8 +1836,7 @@ let extract_translated_crate (filename : string) (dest_dir : string)
       | Coq -> Some ("/backends/coq/Primitives.v", "Primitives.v")
       | Lean -> None
       | HOL4 -> None
-      | Isabelle ->
-          Some ("/backends/isabelle/Primitives.thy", "Primitives.thy")
+      | Isabelle -> Some ("/backends/isabelle/Primitives.thy", "Primitives.thy")
     in
     match primitives_src_dest with
     | None -> ()
