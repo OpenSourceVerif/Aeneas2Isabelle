@@ -1,3 +1,4 @@
+module
 import Aeneas.Do
 import Aeneas.Std.Slice
 import Aeneas.Tactic.Step
@@ -17,7 +18,7 @@ theorem pairProg_spec : pairProg ⦃ p => p.1 = 1 ∧ p.2 = 2 ⦄ := by
 /--
 info: Try this:
 
-  [apply]     let* ⟨ p, p_post1, p_post2 ⟩ ← pairProg_spec
+  [apply]     let* ⟨ p, p_post, p_post1 ⟩ ← pairProg_spec
     agrind
 -/
 #guard_msgs in
@@ -27,7 +28,7 @@ example : pairProg ⦃ p => p.1 = 1 ∧ p.2 = 2 ⦄ := by
 /--
 info: Try this:
 
-  [apply]     let* ⟨ p, p_post1, p_post2 ⟩ ← pairProg_spec
+  [apply]     let* ⟨ p, p_post, p_post1 ⟩ ← pairProg_spec
     agrind
 -/
 #guard_msgs in
@@ -43,7 +44,7 @@ theorem threeProg_spec : threeProg ⦃ a b c => a = 1 ∧ b = 2 ∧ c = 3 ⦄ :=
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3 ⟩ ← threeProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, b_post, c_post ⟩ ← threeProg_spec
     agrind
 -/
 #guard_msgs in
@@ -53,7 +54,7 @@ example : threeProg ⦃ a b c => a = 1 ∧ b = 2 ∧ c = 3 ⦄ := by
 /--
 info: Try this:
 
-  [apply]     let* ⟨ x, y, x_post1, x_post2, x_post3 ⟩ ← threeProg_spec
+  [apply]     let* ⟨ x, y, x_post, x_post1, x_post2 ⟩ ← threeProg_spec
     agrind
 -/
 #guard_msgs in
@@ -69,7 +70,7 @@ theorem nestedProg_spec : nestedProg ⦃ ((a, b), c) => a = 5 ∧ b = 6 ∧ c = 
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3 ⟩ ← nestedProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, b_post, c_post ⟩ ← nestedProg_spec
     agrind
 -/
 #guard_msgs in
@@ -81,9 +82,9 @@ error: unsolved goals
 case a
 a : ℕ × ℕ
 b : ℕ
-a_post1 : a.1 = 5
-a_post2 : a.2 = 6
-a_post3 : b = 7
+a_post : a.1 = 5
+a_post1 : a.2 = 6
+b_post : b = 7
 ⊢ a.1 = 5 ∧ a.2 = 6 ∧ b = 7
 -/
 #guard_msgs in
@@ -93,7 +94,7 @@ example : nestedProg ⦃ a b => a.1 = 5 ∧ a.2 = 6 ∧ b = 7 ⦄ := by
 /--
 info: Try this:
 
-  [apply]     let* ⟨ x, y, x_post1, x_post2, x_post3 ⟩ ← nestedProg_spec
+  [apply]     let* ⟨ x, y, x_post, x_post1, y_post ⟩ ← nestedProg_spec
     agrind
 -/
 #guard_msgs in
@@ -140,7 +141,7 @@ theorem quadProg_spec :
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, a_post, a_post1, a_post2, a_post3 ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -150,12 +151,12 @@ example : (do let (a, b) ← quadProg
 /--
 error: unsolved goals
 case a
-c : ℕ × ℕ
 a b : ℕ
-a_post1 : a = 8
-a_post2 : b = 9
-a_post3 : c.1 = 10
-a_post4 : c.2 = 11
+c : ℕ × ℕ
+a_post : a = 8
+b_post : b = 9
+a_post1 : c.1 = 10
+a_post2 : c.2 = 11
 ⊢ a + b * 2 + c.1 + c.2 = 47
 -/
 #guard_msgs in
@@ -166,7 +167,7 @@ example : (do let ((a, b), c) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, a_post1, b_post, c_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -176,7 +177,7 @@ example : (do let (a, (b, c)) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, d, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, d, a_post, b_post, c_post, d_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -194,10 +195,10 @@ theorem quadProg_spec :
 error: unsolved goals
 case a
 a b : ℕ × ℕ
-a_post1 : a.1 = 8
-a_post2 : a.2 = 9
-a_post3 : b.1 = 10
-a_post4 : b.2 = 11
+a_post : a.1 = 8
+a_post1 : a.2 = 9
+a_post2 : b.1 = 10
+a_post3 : b.2 = 11
 ⊢ a.1 + a.2 + b.1 + b.2 = 38
 -/
 #guard_msgs in
@@ -208,7 +209,7 @@ example : (do let (a, b) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, b_post, a_post1, a_post2 ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -218,7 +219,7 @@ example : (do let ((a, b), c) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, a_post1, b_post, c_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -228,7 +229,7 @@ example : (do let (a, (b, c)) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, d, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, d, a_post, b_post, c_post, d_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -245,7 +246,7 @@ theorem quadProg_spec :
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, a_post, a_post1, a_post2, a_post3 ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -255,7 +256,7 @@ example : (do let (a, b) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, b_post, a_post1, a_post2 ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -265,7 +266,7 @@ example : (do let ((a, b), c) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, a_post1, b_post, c_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -275,7 +276,7 @@ example : (do let (a, (b, c)) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, d, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, d, a_post, b_post, c_post, d_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -292,7 +293,7 @@ theorem quadProg_spec :
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, a_post, a_post1, a_post2, a_post3 ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -302,7 +303,7 @@ example : (do let (a, b) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, b_post, a_post1, a_post2 ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -312,7 +313,7 @@ example : (do let ((a, b), c) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, a_post1, b_post, c_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -322,7 +323,7 @@ example : (do let (a, (b, c)) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, d, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, d, a_post, b_post, c_post, d_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -339,7 +340,7 @@ theorem quadProg_spec :
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, a_post, a_post1, a_post2, a_post3 ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -349,7 +350,7 @@ example : (do let (a, b) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, b_post, a_post1, a_post2 ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -359,7 +360,7 @@ example : (do let ((a, b), c) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, a_post1, b_post, c_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -369,7 +370,7 @@ example : (do let (a, (b, c)) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, d, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, d, a_post, b_post, c_post, d_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -386,7 +387,7 @@ theorem quadProg_spec :
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, a_post, a_post1, a_post2, a_post3 ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -396,7 +397,7 @@ example : (do let (a, b) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, b_post, a_post1, a_post2 ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -406,7 +407,7 @@ example : (do let ((a, b), c) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, a_post1, b_post, c_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -416,7 +417,7 @@ example : (do let (a, (b, c)) ← quadProg
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, d, a_post1, a_post2, a_post3, a_post4 ⟩ ← quadProg_spec
+  [apply]     let* ⟨ a, b, c, d, a_post, b_post, c_post, d_post ⟩ ← quadProg_spec
     agrind
 -/
 #guard_msgs in
@@ -445,20 +446,19 @@ h : y = z + 1
 example : (do let (x, y) ← existentialProg; ok (x + y)) ⦃ res => res > 2 ⦄ := by
   step with existentialProg_spec as ⟨ x, y, hx, z, hz, h ⟩
 
-/- A *nested*-tuple result combined with a *leading* existential in the post.
-   The post's `∃` only becomes visible after the output is destructured, so it
-   must be split by the post-destructure cleanup pass. -/
+/- Outputs must precede existentially quantified variables, including when using nested tuples. -/
 def nestedExistentialProg : Result ((Nat × Nat) × Nat) := ok ((1, 2), 3)
 
 @[step]
 theorem nestedExistentialProg_spec :
     nestedExistentialProg ⦃ (a, b) c => ∃ (_ : a = 1), b = 2 ∧ c = 3 ⦄ := by
-  unfold nestedExistentialProg; exact ⟨rfl, rfl, rfl⟩
+  constructor
+  simp
 
 /--
 info: Try this:
 
-  [apply]     let* ⟨ a, b, c, a_post1, a_post2, a_post3 ⟩ ← nestedExistentialProg_spec
+  [apply]     let* ⟨ a, b, c, a_post, b_post, c_post ⟩ ← nestedExistentialProg_spec
     agrind
 -/
 #guard_msgs in
@@ -469,7 +469,7 @@ example :
 /--
 error: unsolved goals
 case a
-c a b : ℕ
+a b c : ℕ
 ha : a = 1
 hb : b = 2
 hc : c = 3
@@ -496,8 +496,8 @@ error: unsolved goals
 case a
 a : ℕ × ℕ
 b c : ℕ
-a_post1 : pred a
-a_post2 : pred (b, c)
+a_post : pred a
+a_post1 : pred (b, c)
 ⊢ a.1 + a.2 + b + c = 38
 -/
 #guard_msgs in
@@ -508,3 +508,178 @@ example :
   step with quadProg_spec
 
 end
+
+/- Abbreviations can be inspected using reducible transparency. -/
+abbrev NestedOutput := (Nat × Nat) × Nat
+
+example (f : Result NestedOutput) (h : f ⦃ ((a, b), c) => a = 1 ∧ b = 2 ∧ c = 3 ⦄) :
+    (do let ((a, b), c) ← f; ok (a + b + c)) ⦃ r => r = 6 ⦄ := by
+  step with h as ⟨a, b, c, ha, hb, hc⟩
+  simp [ha, hb, hc]
+
+def genericPair {α : Type u} (x : α) : Result (α × Nat) := ok (x, 1)
+
+@[step]
+theorem genericPair_spec {α : Type u} (x : α) :
+    genericPair x ⦃ (y : α) (k : Nat) => y = x ∧ k = 1 ⦄ := by
+  unfold genericPair
+  step*
+
+example {α : Type u} (x : α) :
+    (do let (y, k) ← genericPair x; ok (y, k + 1))
+      ⦃ (y : α) (k : Nat) => y = x ∧ k = 2 ⦄ := by
+  step*
+
+/- Output binder types retain local let-bound variables. -/
+example {α : Type u} (m : Nat) :
+    let n := m + 1
+    let size := n + 1
+    ∀ x : Vector α size,
+      (do let (y, k) ← genericPair x; ok (y, k + 1))
+        ⦃ y k => y = x ∧ k = 2 ⦄ := by
+  intro n size x
+  step with genericPair_spec as ⟨y, k, hy, hk⟩
+  guard_hyp y :ₛ Vector α size
+  simp [hy, hk]
+
+/- Test with the partial correctness predicate. -/
+example :
+    (do let ((a, b), c) ← nestedProg; ok (a + b + c))
+      ⦃ (r : Nat) => r = 18 ⦄div := by
+  step with nestedProg_spec as ⟨a, b, c, ha, hb, hc⟩
+  simp [ha, hb, hc]
+
+/- Outputs of type unit disappear even when the postcondition uses them explicitly. -/
+def unitProg : Result Unit := ok ()
+
+@[step]
+theorem unitProg_spec : unitProg ⦃ (u : Unit) => u = () ⦄ := by
+  unfold unitProg
+  step*
+
+abbrev UnitOutput := Unit
+
+/- We preserve the anonymous name slots -/
+run_cmd Lean.Elab.Command.liftTermElabM do
+  let post ← Lean.Elab.Term.elabTerm (← `(fun (_ : Unit) => True)) none
+  let names ← Aeneas.Step.getPostNames post
+  unless names == #[none] do
+    throwError "Expected an anonymous name slot, got {names}"
+
+example (f : Result UnitOutput) (h : f ⦃ (u : UnitOutput) => u = () ⦄) :
+    (do let _ ← f; genericPair 5) ⦃ y k => y = 5 ∧ k = 1 ⦄ := by
+  step with h as ⟨⟩
+  step*
+
+example : (do let _ ← unitProg; genericPair 5) ⦃ y k => y = 5 ∧ k = 1 ⦄ := by
+  step*
+
+example (g : Unit → Result Nat) (hg : ∀ u, g u ⦃ (n : Nat) => n = 0 ⦄) :
+    (do let u ← unitProg; g u) ⦃ (n : Nat) => n = 0 ⦄ := by
+  step with unitProg_spec
+  step with hg as ⟨n, hn⟩
+  exact hn
+
+/- Outputs of type unit get eliminated, even when they are used in the post-condition. -/
+example (f : Result (Bool × Unit)) (h : f ⦃ b u => b = true ∧ u = () ⦄)
+    (g : Bool → Unit → Result Nat)
+    (hg : ∀ b u, g b u ⦃ n => n = 0 ⦄) :
+    (do let (b, u) ← f; g b u) ⦃ n => n = 0 ⦄ := by
+  step with h as ⟨b, hb⟩
+  guard_hyp b : Bool
+  guard_hyp hb : b = true
+  step with hg as ⟨n, hn⟩
+  exact hn
+
+example (f : Result ((Unit × Nat) × (Bool × Unit)))
+    (h : f ⦃ ((u, n), (b, v)) => u = () ∧ n = 1 ∧ b = true ∧ v = () ⦄) :
+    (do let ((_, n), (b, _)) ← f; ok (n, b)) ⦃ n b => n = 1 ∧ b = true ⦄ := by
+  step with h as ⟨n, b, hn, hb⟩
+  guard_hyp n : Nat
+  guard_hyp b : Bool
+  simp [hn, hb]
+
+/- Inferred names skip outputs of type unit; they must not become postcondition names. -/
+example (f : Result ((Unit × Nat) × (Bool × Unit)))
+    (h : f ⦃ ((u, n), (b, v)) => u = () ∧ n = 1 ∧ b = true ∧ v = () ⦄) :
+    (do let ((u, n), (b, v)) ← f; ok (u, n, b, v))
+      ⦃ u n b v => u = () ∧ n = 1 ∧ b = true ∧ v = () ⦄ := by
+  step with h
+  guard_hyp n : Nat
+  guard_hyp b : Bool
+  guard_hyp n_post : n = 1
+  guard_hyp b_post : b = true
+  simp [n_post, b_post]
+
+/- Quantifiers belonging to the final goal must remain for the caller to introduce. -/
+example (f : Result Nat) (h : f ⦃ n => n = 0 ⦄) :
+    (do let n ← f; ok n) ⦃ n => ∀ k : Nat, n + k = k ⦄ := by
+  step with h as ⟨n, hn⟩
+  intro k
+  simp [hn]
+
+/- Instantiating a Boolean input with `true` must not leave `True ∧ P` inside an iff. -/
+example (f : Bool → Result Bool) (P : Prop)
+    (h : ∀ valid, f valid ⦃ b => b = true ↔ valid = true ∧ P ⦄) :
+    f true ⦃ b => b = true ↔ P ⦄ := by
+  step with h as ⟨b, hb⟩
+  guard_hyp hb : b = true ↔ P
+  exact hb
+
+/- We normalize equality-defined existentials below matches, without reordering tuple outputs. -/
+example (f : Result (Nat × Bool)) (compute : Nat → Nat) (P R : Nat → Prop)
+    (hR : ∀ k, R k)
+    (h : f ⦃ n b => match b with
+      | true => ∃ s, s = compute n ∧ P s
+      | false => True ⦄) :
+    (do let (n, b) ← f; ok (n, b))
+      ⦃ n b => ∀ k : Nat, b = true → P (compute n) ∧ R k ⦄ := by
+  step with h as ⟨n, b, hp⟩
+  guard_hyp n : Nat
+  guard_hyp b : Bool
+  guard_hyp hp : match b with | true => P (compute n) | false => True
+  intro k hb
+  simp [hb] at hp
+  exact ⟨hp, hR k⟩
+
+/- Even a trivial postcondition must preserve the output and leave final quantifiers alone. -/
+example (f : Result Nat) (R : Nat → Prop) (hR : ∀ k, R k)
+    (h : f ⦃ _ => True ∧ True ⦄) :
+    (do let n ← f; ok n) ⦃ _ => ∀ k : Nat, R k ⦄ := by
+  step with h as ⟨n⟩
+  guard_hyp n : Nat
+  intro k
+  exact hR k
+
+example (f : Bool → Result Bool) (P : Prop)
+    (h : ∀ valid, f valid ⦃ b => b = true ↔ valid = true ∧ P ⦄div) :
+    (do let b ← f true; ok b) ⦃ b => b = true ↔ P ⦄div := by
+  step with h as ⟨b, hb⟩
+  guard_hyp hb : b = true ↔ P
+  simpa only [WP.dspec_ok] using hb
+
+/- Normalization must preserve even unused outputs and simplifiable final postconditions.
+Also check native implications, as used by custom WPs. -/
+abbrev normalizationFinalGoal (n : Nat) : Prop := (True ∧ True) → ∀ k : Nat, k = n
+
+run_cmd Lean.Elab.Command.liftTermElabM do
+  let cases ← #[
+    (← `(∀ n : Nat, WP.imp (True ∧ True) (∀ k : Nat, True ∧ k = n)),
+     ← `(∀ n : Nat, WP.imp True (∀ k : Nat, True ∧ k = n))),
+    (← `(∀ _ : Nat, WP.imp (False ∧ True) (∀ _ : Nat, True ∧ True)),
+     ← `(∀ _ : Nat, WP.imp False (∀ _ : Nat, True ∧ True))),
+    (← `(∀ n : Nat, (True ∧ n = 0) → (∀ k : Nat, True ∧ k = n)),
+     ← `(∀ n : Nat, n = 0 → (∀ k : Nat, True ∧ k = n))),
+    (← `(∀ n : Nat, normalizationFinalGoal n),
+     ← `(∀ n : Nat, normalizationFinalGoal n)),
+    (← `(∀ h : True ∧ True, h.1 = h.2),
+     ← `(∀ h : True ∧ True, h.1 = h.2))
+  ].mapM fun (input, expected) => do
+    return (← Lean.Elab.Term.elabTerm input none, ← Lean.Elab.Term.elabTerm expected none)
+  Lean.Elab.Term.synthesizeSyntheticMVarsNoPostponing
+  for (input, expected) in cases do
+    let input ← Lean.instantiateMVars input
+    let expected ← Lean.instantiateMVars expected
+    let target ← Aeneas.Step.simpOutputPost input
+    unless target == expected do
+      throwError "Unexpected normalized output target:\n{target}\nExpected:\n{expected}"

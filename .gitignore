@@ -75,7 +75,6 @@ tests/fstar/misc/obj/
 *~
 nohup.out
 .vscode
-.github
 *#
 *.txt
 */.#*
