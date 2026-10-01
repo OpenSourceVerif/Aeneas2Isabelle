@@ -17,12 +17,14 @@ STRICT=0
 if [ "${1:-}" = "--strict" ]; then STRICT=1; shift; fi
 ISABELLE="${1:-isabelle}"
 WORK="${ISABELLE_CHECK_DIR:-$(mktemp -d /tmp/aeneas-isabelle-check.XXXXXX)}"
+# Directory holding the generated theories (default: the regression outputs).
+SRC="${ISABELLE_CHECK_SRC:-tests/isabelle}"
 rm -rf "$WORK/prelude" "$WORK/tests"; mkdir -p "$WORK/prelude" "$WORK/tests"
 cp backends/isabelle/Primitives.thy backends/isabelle/ROOT "$WORK/prelude/"
 : > "$WORK/tests/ROOT"
 SESSIONS=""
-for f in tests/isabelle/*.thy; do
-  [ -e "$f" ] || { echo "no theories in tests/isabelle (run make test-isabelle first)"; exit 1; }
+for f in "$SRC"/*.thy; do
+  [ -e "$f" ] || { echo "no theories in $SRC (run make test-isabelle first)"; exit 1; }
   b=$(basename "$f" .thy)
   # the prelude copied next to the generated theories is checked from backends/isabelle
   [ "$b" = Primitives ] && continue
