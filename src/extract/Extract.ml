@@ -989,8 +989,10 @@ and extract_App (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
           if inside then F.pp_print_string fmt "(";
           F.pp_print_string fmt (dyn_constructor ());
           F.pp_print_space fmt ();
-          F.pp_print_string fmt "_";
-          F.pp_print_space fmt ();
+          (* Lean takes the (implicit) Self type as first argument *)
+          if backend () <> Isabelle then (
+            F.pp_print_string fmt "_";
+            F.pp_print_space fmt ());
           extract_trait_ref_term span ctx fmt ~inside:true trait_ref;
           (* Print the arguments *)
           List.iter
@@ -1645,8 +1647,46 @@ and extract_lets (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
     | FStar | Coq | Lean | Isabelle -> raw_destruct_lets e
   in
   (* Extract the let-bindings *)
+  (* Isabelle: [let] and the do-bind notation only accept variable and tuple
+     patterns, so a binding whose pattern is a datatype constructor (e.g.
+     destructuring a single-variant enum or a record-less struct) is printed
+     as a single-branch [case] instead. *)
+  let is_isabelle_ctor_pat (lv : tpat) : bool =
+    backend () = Isabelle
+    &&
+    match (lv.pat, lv.ty) with
+    | PAdt _, TAdt (TTuple, _) -> false
+    | PAdt _, _ -> true
+    | _ -> false
+  in
+  let extract_let_as_case (ctx : extraction_ctx) (monadic : bool) (lv : tpat)
+      (re : texpr) : extraction_ctx =
+    F.pp_open_hvbox fmt ctx.indent_incr;
+    if monadic then (
+      F.pp_print_string fmt "isabelle_bound <-";
+      F.pp_print_space fmt ();
+      extract_texpr span ctx fmt ~inside:false ~inside_do:true re;
+      F.pp_print_string fmt ";";
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt "case isabelle_bound of")
+    else (
+      F.pp_print_string fmt "case";
+      F.pp_print_space fmt ();
+      extract_texpr span ctx fmt ~inside:true ~inside_do:false re;
+      F.pp_print_space fmt ();
+      F.pp_print_string fmt "of");
+    F.pp_print_space fmt ();
+    let ctx = extract_tpat span ctx fmt ~is_let:false ~inside:false lv in
+    F.pp_print_space fmt ();
+    F.pp_print_string fmt "=>";
+    F.pp_close_box fmt ();
+    F.pp_print_space fmt ();
+    ctx
+  in
   let extract_let (ctx : extraction_ctx) (monadic : bool) (lv : tpat)
       (re : texpr) : extraction_ctx =
+    if is_isabelle_ctor_pat lv then extract_let_as_case ctx monadic lv re
+    else begin
     (* Open a box for the let-binding *)
     F.pp_open_hvbox fmt 0;
     F.pp_open_hvbox fmt ctx.indent_incr;
@@ -1749,6 +1789,7 @@ and extract_lets (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
     F.pp_print_space fmt ();
     (* Return *)
     ctx
+    end
   in
   (* Open parentheses *)
   if inside then F.pp_print_string fmt "(";
@@ -4848,61 +4889,103 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
             in
             fun item_name -> Collections.StringSet.mem item_name method_names
     in
-    List.iter
-      (fun (method_id, name, bound_fn) ->
-        if keep_method name && not (is_polymorphic_method_id method_id) then
-          extract_trait_impl_method_items ~before:before_isabelle_item ctx fmt
-            impl method_id bound_fn)
-      impl.methods;
+    (* Isabelle: default methods of builtin traits.
 
-    (* Isabelle records do not support default field values.  Consequently,
-       when rustc omits a default method (e.g. [Clone::clone_from],
-       [PartialEq::ne], [PartialOrd::lt]) from an implementation of a builtin
-       trait, we still have to initialize the corresponding record field.  We
-       do so with the prelude's default implementation of the method, applied
-       to the implementation's required method it is derived from.
+       Isabelle records do not support default field values, and the default
+       implementation Aeneas extracts for a trait's default method takes the
+       whole dictionary as argument, which would make the impl record
+       self-referential.  For the builtin traits of the prelude we therefore
+       initialize such fields with the prelude's default implementation of the
+       method, applied to the implementation's required method it is derived
+       from, both when rustc bound the method to the trait's default and when
+       it omitted it altogether.
 
        This is Isabelle-specific: Lean fills the structure field from its
-       default value, while the other backends keep their existing behavior. *)
-    if backend () = Isabelle then (
-      match trans_trait_decl.builtin_info with
-      | Some info -> (
-          (* (default method, prelude default function, required method) *)
-          let defaults =
+       default value (tying the knot with [impl_def]), while the other
+       backends keep their existing behavior. *)
+    let isabelle_defaults : (string * string * string) list =
+      if backend () <> Isabelle then []
+      else
+        match trans_trait_decl.builtin_info with
+        | None -> []
+        | Some info -> (
+            (* (default method, prelude default function, required method) *)
             match info.extract_name with
             | "core_clone_Clone" ->
                 [ ("clone_from", "core_clone_Clone_clone_from_default", "clone") ]
             | "core_cmp_PartialEq" ->
                 [ ("ne", "core_cmp_PartialEq_ne_default", "eq") ]
+            | "core_cmp_Eq" ->
+                (* The default does not depend on any required method *)
+                [ ("assert_fields_are_eq", "core_cmp_Eq_assert_fields_are_eq_default", "") ]
             | "core_cmp_PartialOrd" ->
                 List.map
                   (fun m -> (m, "core_cmp_PartialOrd_" ^ m ^ "_default", "partial_cmp"))
                   [ "lt"; "le"; "gt"; "ge" ]
-            | _ -> []
+            | _ -> [])
+    in
+    let find_impl_method (item_name : string) =
+      List.find_opt (fun (_, name, _) -> name = item_name) impl.methods
+    in
+    (* Print [dflt_fn] applied to the required method, as the value of the
+       record field of [dflt]; returns [false] if this is not possible. *)
+    let print_isabelle_default (dflt : string) : bool =
+      match List.assoc_opt dflt (List.map (fun (d, f, r) -> (d, (f, r))) isabelle_defaults) with
+      | None -> false
+      | Some (dflt_fn, required) -> (
+          let required_fn =
+            if required = "" then Some None
+            else Option.map (fun (_, _, f) -> Some f) (find_impl_method required)
           in
-          let find_impl_method (item_name : string) =
-            List.find_opt (fun (_, name, _) -> name = item_name) impl.methods
+          let default_info =
+            match trans_trait_decl.builtin_info with
+            | Some info -> List.assoc_opt dflt info.methods
+            | None -> None
           in
-          List.iter
-            (fun (dflt, dflt_fn, required) ->
-              match
-                ( find_impl_method required,
-                  find_impl_method dflt,
-                  List.assoc_opt dflt info.methods )
-              with
-              | Some (_, _, required_fn), None, Some default_info
-                when default_info.has_default ->
-                  let print_default () =
-                    F.pp_print_space fmt ();
-                    F.pp_print_string fmt ("(" ^ dflt_fn);
+          match (required_fn, default_info) with
+          | Some required_fn, Some default_info ->
+              let print_default () =
+                F.pp_print_space fmt ();
+                match required_fn with
+                | None -> F.pp_print_string fmt dflt_fn
+                | Some required_fn ->
+                    F.pp_print_string fmt ("(" ^ dflt_fn ^ " (");
                     extract_trait_impl_method_term ctx fmt impl required_fn;
-                    F.pp_print_string fmt ")"
-                  in
-                  extract_trait_impl_item ~before:before_isabelle_item ctx fmt
-                    default_info.extract_name print_default
-              | _ -> ())
-            defaults)
-      | None -> ());
+                    F.pp_print_string fmt "))"
+              in
+              extract_trait_impl_item ~before:before_isabelle_item ctx fmt
+                default_info.extract_name print_default;
+              true
+          | _ -> false)
+    in
+    (* Is the method bound to the trait's default implementation? *)
+    let is_bound_to_trait_default (bound_fn : fun_decl_ref binder) : bool =
+      match ctx_lookup_fun_decl_info ctx bound_fn.binder_value.fun_id with
+      | Some trans -> fun_source_is_trait_default ctx trans.f.src
+      | None -> false
+    in
+    List.iter
+      (fun (method_id, name, bound_fn) ->
+        if keep_method name && not (is_polymorphic_method_id method_id) then
+          if
+            backend () = Isabelle
+            && List.exists (fun (d, _, _) -> d = name) isabelle_defaults
+            && is_bound_to_trait_default bound_fn
+            && print_isabelle_default name
+          then ()
+          else
+            extract_trait_impl_method_items ~before:before_isabelle_item ctx fmt
+              impl method_id bound_fn)
+      impl.methods;
+
+    (* Default methods that rustc omitted from the implementation *)
+    if backend () = Isabelle then
+      List.iter
+        (fun (dflt, _, _) ->
+          match find_impl_method dflt with
+          | None -> ignore (print_isabelle_default dflt)
+          | Some _ -> ())
+        isabelle_defaults;
 
     (* Close the outer boxes for the definition, as well as the brackets *)
     F.pp_close_box fmt ();

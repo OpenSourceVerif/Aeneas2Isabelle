@@ -9,6 +9,22 @@ module T = Types
 
 let extract_str (_span : Meta.span) (fmt : F.formatter) ~(inside : bool)
     (s : string) : unit =
+  if Config.backend () = Isabelle then (
+    (* HOL string literals: [''abc''] when the string is plain printable ASCII
+       without quotes or backslashes, an explicit list of characters otherwise. *)
+    let chars = StringUtils.string_to_chars s in
+    let plain c =
+      let k = Char.code c in
+      k >= 32 && k < 127 && c <> '\'' && c <> '\\'
+    in
+    if List.for_all plain chars then F.pp_print_string fmt ("''" ^ s ^ "''")
+    else
+      F.pp_print_string fmt
+        ("["
+        ^ String.concat ", "
+            (List.map (fun c -> Printf.sprintf "CHR 0x%02x" (Char.code c)) chars)
+        ^ "]"))
+  else
   let chars = StringUtils.string_to_chars s in
   (* Using the OCaml escape conventions for now.
 
@@ -544,6 +560,11 @@ let rec extract_ty (span : Meta.span) (ctx : extraction_ctx) (fmt : F.formatter)
             F.pp_print_string fmt ("." ^ add_brackets type_name))
   | TNever -> F.pp_print_string fmt "Never"
   | TError -> extract_ty_errors fmt
+  | TDynTrait _ when backend () = Isabelle ->
+      (* Trait objects are represented by the abstract type [dyn] of the
+         prelude (HOL has no existential types): a value of a trait object type
+         is built with the uninterpreted [dyn_mk] and cannot be inspected. *)
+      F.pp_print_string fmt "dyn"
   | TDynTrait params -> (
       [%ltrace "dyn trait:\n" ^ dyn_predicate_to_string ctx params];
       match params.params with

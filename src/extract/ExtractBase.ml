@@ -989,7 +989,10 @@ let named_binop_name (binop : binop) : string =
   | BoolXor -> "bool_xor"
   | _ -> raise (Failure "Unreachable")
 
-let dyn_constructor () = "Dyn.mk" (* TODO: backends other than Lean *)
+let dyn_constructor () =
+  match backend () with
+  | Isabelle -> "dyn_mk"
+  | _ -> "Dyn.mk" (* TODO: backends other than Lean *)
 let dyn_ty = "Dyn"
 
 (** A list of keywords/identifiers used by the backend and with which we want to

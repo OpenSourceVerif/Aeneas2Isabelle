@@ -1,4 +1,4 @@
-//@ [!lean] skip
+//@ [!lean,isabelle] skip
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum CopyEnumOneVariant {

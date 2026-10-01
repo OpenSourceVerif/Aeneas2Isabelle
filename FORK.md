@@ -21,6 +21,30 @@ There is no branch that mirrors upstream verbatim; use the `upstream` remote for
 - `casestudy/sbpf/` — the SBPF JIT safe-mode case study and its generated theories.
 - `paper/` — sources of the Rust2Isabelle paper.
 
+## How the Isabelle backend models Rust (summary)
+
+- **Failure and divergence**: `'a result = Ok | Fail error | Diverge`. Recursive
+  functions and loop bodies are least fixed points via `partial_function (result)`
+  (mode defined in `Primitives.thy`, with monotonicity lemmas for `bind` and tuple
+  destructuring and an induction rule `f.fixp_induct`); no termination proof is needed.
+  Mutually recursive groups are still emitted as opaque constants.
+- **std models**: functions, types and traits of `core`/`alloc` that the prelude models
+  are registered in `src/extract/ExtractBuiltin.ml` inside `mk_isabelle_only` lists
+  (the Lean backend's `ExtractBuiltinLean.ml` is the reference); the extract name
+  `a.b.c` becomes the Isabelle constant `a_b_c`, which must be defined in the prelude.
+  Default trait methods omitted by an impl are filled with
+  `<trait>_<method>_default` prelude functions (table in `Extract.ml`).
+- **Trait objects**: `dyn Trait` is the abstract prelude type `dyn`, built with the
+  uninterpreted `dyn_mk`. Enough for `derive(Debug)` (the formatting model ignores
+  its arguments), not for calling methods on a trait object.
+- **Formatting**: `core::fmt` follows Lean's simplistic model (abstract `Formatter`,
+  every operation succeeds).
+- **Matches on integer literals** become `if` chains (`case` only matches constructors).
+- **Known gaps**: generics instantiated with `&mut` (Aeneas-level; e.g. `Option::ok_or`
+  on `Option<&mut [u8]>` in the SBPF JIT), trait methods with their own type
+  parameters (axiomatized), const-generic well-formedness lemmas for functions with
+  loops (admitted with `sorry`), mutual recursion.
+
 ## Building
 
 ```sh

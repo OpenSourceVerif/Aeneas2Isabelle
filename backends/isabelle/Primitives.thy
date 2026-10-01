@@ -83,9 +83,46 @@ interpretation result:
   rewrites "flat_lub Diverge {} \<equiv> Diverge"
   by (rule flat_interpretation) (simp add: flat_lub_def)
 
+(* Admissibility of "every successful result satisfies P", which gives the
+   induction rule [f.fixp_induct] for every function defined with
+   [partial_function (result)]: to prove [P x y] from [f x = Ok y] it
+   suffices to prove it for one unfolding of the body, assuming it for the
+   recursive calls. *)
+lemma result_admissible:
+  "result.admissible (\<lambda>(f :: 'a \<Rightarrow> 'b result). \<forall>x y. f x = Ok y \<longrightarrow> P x y)"
+proof (rule ccpo.admissibleI)
+  fix A :: "('a \<Rightarrow> 'b result) set"
+  assume ch: "Complete_Partial_Order.chain result.le_fun A"
+    and IH: "\<forall>f\<in>A. \<forall>x y. f x = Ok y \<longrightarrow> P x y"
+  from ch have ch': "\<And>x. Complete_Partial_Order.chain result_ord {y. \<exists>f\<in>A. y = f x}"
+    by (rule chain_fun)
+  show "\<forall>x y. result.lub_fun A x = Ok y \<longrightarrow> P x y"
+  proof (intro allI impI)
+    fix x y assume "result.lub_fun A x = Ok y"
+    from flat_lub_in_chain[OF ch' this[unfolded fun_lub_def]]
+    have "Ok y \<in> {y. \<exists>f\<in>A. y = f x}" by simp
+    then have "\<exists>f\<in>A. f x = Ok y" by auto
+    with IH show "P x y" by auto
+  qed
+qed
+
+lemma fixp_induct_result:
+  fixes F :: "'c \<Rightarrow> 'c" and
+    U :: "'c \<Rightarrow> 'b \<Rightarrow> 'a result" and
+    C :: "('b \<Rightarrow> 'a result) \<Rightarrow> 'c" and
+    P :: "'b \<Rightarrow> 'a \<Rightarrow> bool"
+  assumes mono: "\<And>x. mono_result (\<lambda>f. U (F (C f)) x)"
+  assumes eq: "f \<equiv> C (ccpo.fixp (fun_lub (flat_lub Diverge)) (fun_ord result_ord) (\<lambda>f. U (F (C f))))"
+  assumes inverse2: "\<And>f. U (C f) = f"
+  assumes step: "\<And>f x y. (\<And>x y. U f x = Ok y \<Longrightarrow> P x y) \<Longrightarrow> U (F f) x = Ok y \<Longrightarrow> P x y"
+  assumes defined: "U f x = Ok y"
+  shows "P x y"
+  using step defined result.fixp_induct_uc[of U F C, OF mono eq inverse2 result_admissible]
+  unfolding fun_lub_def flat_lub_def by (auto 9 2)
+
 declaration \<open>Partial_Function.init "result" @{term result.fixp_fun}
   @{term result.mono_body} @{thm result.fixp_rule_uc} @{thm result.fixp_induct_uc}
-  NONE\<close>
+  (SOME @{thm fixp_induct_result})\<close>
 
 lemma result_bind_mono [partial_function_mono]:
   assumes mf: "mono_result B" and mg: "\<And>y. mono_result (\<lambda>f. C y f)"
@@ -2968,5 +3005,354 @@ definition core_slice_index_SliceIndexRangeToUsizeSliceInst ::
     core_slice_index_SliceIndex_index = core_slice_index_SliceIndexRangeToUsizeSlice_index,
     core_slice_index_SliceIndex_index_mut = core_slice_index_SliceIndexRangeToUsizeSlice_index_mut
   |)"
+
+
+(*** Trait objects *)
+
+(* HOL has no existential types, so a trait object ([dyn Trait]) is an
+   abstract value built by the uninterpreted constructor [dyn_mk] from a
+   dictionary and a value.  Such values cannot be inspected: this is enough
+   for the formatting machinery below, whose models ignore their arguments,
+   but not for calling methods on trait objects. *)
+typedecl dyn
+consts dyn_mk :: "'inst \<Rightarrow> 'self \<Rightarrow> dyn"
+
+(*** core::fmt
+
+   A simplistic model, following the Lean backend: the formatter is abstract
+   and every formatting operation succeeds without changing it. *)
+
+typedecl core_fmt_Formatter
+type_synonym core_fmt_Error = unit
+type_synonym core_fmt_Arguments = unit
+type_synonym core_fmt_rt_Argument = unit
+
+type_synonym fmt_result = "((unit, core_fmt_Error) core_result_Result \<times> core_fmt_Formatter) result"
+
+definition fmt_ok :: "core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "fmt_ok f = Ok (core_result_Result_Ok (), f)"
+
+(* Trait declarations: [core::fmt::Debug], [Display], [LowerHex] *)
+record 'self core_fmt_Debug =
+  core_fmt_Debug_fmt :: "'self \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result"
+record 'self core_fmt_Display =
+  core_fmt_Display_fmt :: "'self \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result"
+record 'self core_fmt_LowerHex =
+  core_fmt_LowerHex_fmt :: "'self \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result"
+
+(* Formatter methods *)
+definition core_fmt_Formatter_write_str :: "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_write_str f _ = fmt_ok f"
+definition core_fmt_Formatter_write_fmt :: "core_fmt_Formatter \<Rightarrow> core_fmt_Arguments \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_write_fmt f _ = fmt_ok f"
+definition core_fmt_Formatter_debug_struct_fields_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> str slice \<Rightarrow> dyn slice \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_struct_fields_finish f _ _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_tuple_fields_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> dyn slice \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_tuple_fields_finish f _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_struct_field1_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_struct_field1_finish f _ _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_tuple_field1_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_tuple_field1_finish f _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_struct_field2_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_struct_field2_finish f _ _ _ _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_tuple_field2_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> dyn \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_tuple_field2_finish f _ _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_struct_field3_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_struct_field3_finish f _ _ _ _ _ _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_tuple_field3_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> dyn \<Rightarrow> dyn \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_tuple_field3_finish f _ _ _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_struct_field4_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_struct_field4_finish f _ _ _ _ _ _ _ _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_tuple_field4_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> dyn \<Rightarrow> dyn \<Rightarrow> dyn \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_tuple_field4_finish f _ _ _ _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_struct_field5_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_struct_field5_finish f _ _ _ _ _ _ _ _ _ _ _ = fmt_ok f"
+definition core_fmt_Formatter_debug_tuple_field5_finish ::
+  "core_fmt_Formatter \<Rightarrow> str \<Rightarrow> dyn \<Rightarrow> dyn \<Rightarrow> dyn \<Rightarrow> dyn \<Rightarrow> dyn \<Rightarrow> fmt_result" where
+  "core_fmt_Formatter_debug_tuple_field5_finish f _ _ _ _ _ _ = fmt_ok f"
+
+(* Debug instances *)
+definition core_fmt_DebugShared_fmt :: "'t core_fmt_Debug \<Rightarrow> 't \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_DebugShared_fmt inst x f = core_fmt_Debug_fmt inst x f"
+definition core_fmt_DebugShared :: "'t core_fmt_Debug \<Rightarrow> 't core_fmt_Debug" where
+  "core_fmt_DebugShared inst = (| core_fmt_Debug_fmt = core_fmt_DebugShared_fmt inst |)"
+definition core_fmt_DebugUnit_fmt :: "unit \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_DebugUnit_fmt _ f = fmt_ok f"
+definition core_fmt_DebugUnit :: "unit core_fmt_Debug" where
+  "core_fmt_DebugUnit = (| core_fmt_Debug_fmt = core_fmt_DebugUnit_fmt |)"
+definition core_fmt_DebugBool_fmt :: "bool \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_DebugBool_fmt _ f = fmt_ok f"
+definition core_fmt_DebugBool :: "bool core_fmt_Debug" where
+  "core_fmt_DebugBool = (| core_fmt_Debug_fmt = core_fmt_DebugBool_fmt |)"
+definition alloc_vec_DebugVec_fmt :: "'t core_fmt_Debug \<Rightarrow> 't alloc_vec_Vec \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "alloc_vec_DebugVec_fmt _ _ f = fmt_ok f"
+definition core_fmt_DebugVec :: "'t core_fmt_Debug \<Rightarrow> ('t alloc_vec_Vec) core_fmt_Debug" where
+  "core_fmt_DebugVec inst = (| core_fmt_Debug_fmt = alloc_vec_DebugVec_fmt inst |)"
+definition core_array_DebugArray_fmt :: "usize \<Rightarrow> 't core_fmt_Debug \<Rightarrow> 't array \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_array_DebugArray_fmt _ _ _ f = fmt_ok f"
+definition core_fmt_DebugArray :: "usize \<Rightarrow> 't core_fmt_Debug \<Rightarrow> ('t array) core_fmt_Debug" where
+  "core_fmt_DebugArray n inst = (| core_fmt_Debug_fmt = core_array_DebugArray_fmt n inst |)"
+definition core_slice_DebugSlice_fmt :: "'t core_fmt_Debug \<Rightarrow> 't slice \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_slice_DebugSlice_fmt _ _ f = fmt_ok f"
+definition core_fmt_DebugSlice :: "'t core_fmt_Debug \<Rightarrow> ('t slice) core_fmt_Debug" where
+  "core_fmt_DebugSlice inst = (| core_fmt_Debug_fmt = core_slice_DebugSlice_fmt inst |)"
+definition core_fmt_num_DebugI8_fmt :: "i8 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugI8_fmt _ f = fmt_ok f"
+definition core_fmt_DebugI8 :: "i8 core_fmt_Debug" where
+  "core_fmt_DebugI8 = (| core_fmt_Debug_fmt = core_fmt_num_DebugI8_fmt |)"
+definition core_fmt_num_imp_DisplayI8_fmt :: "i8 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayI8_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayI8 :: "i8 core_fmt_Display" where
+  "core_fmt_DisplayI8 = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayI8_fmt |)"
+definition core_fmt_num_DebugI16_fmt :: "i16 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugI16_fmt _ f = fmt_ok f"
+definition core_fmt_DebugI16 :: "i16 core_fmt_Debug" where
+  "core_fmt_DebugI16 = (| core_fmt_Debug_fmt = core_fmt_num_DebugI16_fmt |)"
+definition core_fmt_num_imp_DisplayI16_fmt :: "i16 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayI16_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayI16 :: "i16 core_fmt_Display" where
+  "core_fmt_DisplayI16 = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayI16_fmt |)"
+definition core_fmt_num_DebugI32_fmt :: "i32 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugI32_fmt _ f = fmt_ok f"
+definition core_fmt_DebugI32 :: "i32 core_fmt_Debug" where
+  "core_fmt_DebugI32 = (| core_fmt_Debug_fmt = core_fmt_num_DebugI32_fmt |)"
+definition core_fmt_num_imp_DisplayI32_fmt :: "i32 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayI32_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayI32 :: "i32 core_fmt_Display" where
+  "core_fmt_DisplayI32 = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayI32_fmt |)"
+definition core_fmt_num_DebugI64_fmt :: "i64 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugI64_fmt _ f = fmt_ok f"
+definition core_fmt_DebugI64 :: "i64 core_fmt_Debug" where
+  "core_fmt_DebugI64 = (| core_fmt_Debug_fmt = core_fmt_num_DebugI64_fmt |)"
+definition core_fmt_num_imp_DisplayI64_fmt :: "i64 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayI64_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayI64 :: "i64 core_fmt_Display" where
+  "core_fmt_DisplayI64 = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayI64_fmt |)"
+definition core_fmt_num_DebugI128_fmt :: "i128 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugI128_fmt _ f = fmt_ok f"
+definition core_fmt_DebugI128 :: "i128 core_fmt_Debug" where
+  "core_fmt_DebugI128 = (| core_fmt_Debug_fmt = core_fmt_num_DebugI128_fmt |)"
+definition core_fmt_num_imp_DisplayI128_fmt :: "i128 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayI128_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayI128 :: "i128 core_fmt_Display" where
+  "core_fmt_DisplayI128 = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayI128_fmt |)"
+definition core_fmt_num_DebugIsize_fmt :: "isize \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugIsize_fmt _ f = fmt_ok f"
+definition core_fmt_DebugIsize :: "isize core_fmt_Debug" where
+  "core_fmt_DebugIsize = (| core_fmt_Debug_fmt = core_fmt_num_DebugIsize_fmt |)"
+definition core_fmt_num_imp_DisplayIsize_fmt :: "isize \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayIsize_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayIsize :: "isize core_fmt_Display" where
+  "core_fmt_DisplayIsize = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayIsize_fmt |)"
+definition core_fmt_num_DebugU8_fmt :: "u8 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugU8_fmt _ f = fmt_ok f"
+definition core_fmt_DebugU8 :: "u8 core_fmt_Debug" where
+  "core_fmt_DebugU8 = (| core_fmt_Debug_fmt = core_fmt_num_DebugU8_fmt |)"
+definition core_fmt_num_imp_DisplayU8_fmt :: "u8 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayU8_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayU8 :: "u8 core_fmt_Display" where
+  "core_fmt_DisplayU8 = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayU8_fmt |)"
+definition core_fmt_num_DebugU16_fmt :: "u16 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugU16_fmt _ f = fmt_ok f"
+definition core_fmt_DebugU16 :: "u16 core_fmt_Debug" where
+  "core_fmt_DebugU16 = (| core_fmt_Debug_fmt = core_fmt_num_DebugU16_fmt |)"
+definition core_fmt_num_imp_DisplayU16_fmt :: "u16 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayU16_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayU16 :: "u16 core_fmt_Display" where
+  "core_fmt_DisplayU16 = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayU16_fmt |)"
+definition core_fmt_num_DebugU32_fmt :: "u32 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugU32_fmt _ f = fmt_ok f"
+definition core_fmt_DebugU32 :: "u32 core_fmt_Debug" where
+  "core_fmt_DebugU32 = (| core_fmt_Debug_fmt = core_fmt_num_DebugU32_fmt |)"
+definition core_fmt_num_imp_DisplayU32_fmt :: "u32 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayU32_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayU32 :: "u32 core_fmt_Display" where
+  "core_fmt_DisplayU32 = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayU32_fmt |)"
+definition core_fmt_num_DebugU64_fmt :: "u64 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugU64_fmt _ f = fmt_ok f"
+definition core_fmt_DebugU64 :: "u64 core_fmt_Debug" where
+  "core_fmt_DebugU64 = (| core_fmt_Debug_fmt = core_fmt_num_DebugU64_fmt |)"
+definition core_fmt_num_imp_DisplayU64_fmt :: "u64 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayU64_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayU64 :: "u64 core_fmt_Display" where
+  "core_fmt_DisplayU64 = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayU64_fmt |)"
+definition core_fmt_num_DebugU128_fmt :: "u128 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugU128_fmt _ f = fmt_ok f"
+definition core_fmt_DebugU128 :: "u128 core_fmt_Debug" where
+  "core_fmt_DebugU128 = (| core_fmt_Debug_fmt = core_fmt_num_DebugU128_fmt |)"
+definition core_fmt_num_imp_DisplayU128_fmt :: "u128 \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayU128_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayU128 :: "u128 core_fmt_Display" where
+  "core_fmt_DisplayU128 = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayU128_fmt |)"
+definition core_fmt_num_DebugUsize_fmt :: "usize \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_DebugUsize_fmt _ f = fmt_ok f"
+definition core_fmt_DebugUsize :: "usize core_fmt_Debug" where
+  "core_fmt_DebugUsize = (| core_fmt_Debug_fmt = core_fmt_num_DebugUsize_fmt |)"
+definition core_fmt_num_imp_DisplayUsize_fmt :: "usize \<Rightarrow> core_fmt_Formatter \<Rightarrow> fmt_result" where
+  "core_fmt_num_imp_DisplayUsize_fmt _ f = fmt_ok f"
+definition core_fmt_DisplayUsize :: "usize core_fmt_Display" where
+  "core_fmt_DisplayUsize = (| core_fmt_Display_fmt = core_fmt_num_imp_DisplayUsize_fmt |)"
+
+(* [Result::unwrap], [Result::expect], [Option::expect]: panic on the error
+   case (the [Debug] dictionary used to print the error is ignored). *)
+definition core_result_Result_unwrap :: "'e core_fmt_Debug \<Rightarrow> ('t, 'e) core_result_Result \<Rightarrow> 't result" where
+  "core_result_Result_unwrap _ r = (case r of core_result_Result_Ok x \<Rightarrow> Ok x | core_result_Result_Err _ \<Rightarrow> Fail Failure)"
+definition core_result_Result_expect :: "'e core_fmt_Debug \<Rightarrow> ('t, 'e) core_result_Result \<Rightarrow> str \<Rightarrow> 't result" where
+  "core_result_Result_expect _ r _ = (case r of core_result_Result_Ok x \<Rightarrow> Ok x | core_result_Result_Err _ \<Rightarrow> Fail Failure)"
+definition core_option_Option_expect :: "'t option \<Rightarrow> str \<Rightarrow> 't result" where
+  "core_option_Option_expect x _ = (case x of Some v \<Rightarrow> Ok v | None \<Rightarrow> Fail Failure)"
+
+
+(*** alloc::alloc::Global: the global allocator, an opaque unit-like type *)
+type_synonym alloc_alloc_Global = unit
+
+(* [Clone] / [Copy] for [bool] *)
+definition core_clone_impls_CloneBool_clone :: "bool \<Rightarrow> bool" where
+  "core_clone_impls_CloneBool_clone x = x"
+definition core_clone_impls_CloneBool_clone_from :: "bool \<Rightarrow> bool \<Rightarrow> bool" where
+  "core_clone_impls_CloneBool_clone_from _ y = y"
+definition core_clone_CloneBool :: "bool core_clone_Clone" where
+  "core_clone_CloneBool = (| core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_marker_CopyBool :: "bool core_marker_Copy" where
+  "core_marker_CopyBool = (| cloneInst = core_clone_CloneBool |)"
+
+(* Builtin [Clone]/[Copy] instances used by Aeneas for the builtin types
+   whose clone is the identity (unit, tuples, ...). *)
+definition BuiltinClone :: "'a core_clone_Clone" where
+  "BuiltinClone = (| core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition BuiltinCopy :: "'a core_marker_Copy" where
+  "BuiltinCopy = (| cloneInst = BuiltinClone |)"
+
+(* Builtin [FnOnce]/[FnMut]/[Fn] instances for function values. *)
+definition BuiltinFnOnce :: "('i \<Rightarrow> 'o result, 'i, 'o) core_ops_function_FnOnce" where
+  "BuiltinFnOnce = (| core_ops_function_FnOnce_call_once = (\<lambda>f x. f x) |)"
+definition BuiltinFnMut :: "('i \<Rightarrow> 'o result, 'i, 'o) core_ops_function_FnMut" where
+  "BuiltinFnMut = (| fnOnceInst = BuiltinFnOnce,
+    core_ops_function_FnMut_call_mut = (\<lambda>f x. (v <- f x; Ok (v, f))) |)"
+definition BuiltinFn :: "('i \<Rightarrow> 'o result, 'i, 'o) core_ops_function_Fn" where
+  "BuiltinFn = (| fnMutInst = BuiltinFnMut, core_ops_function_Fn_call = (\<lambda>f x. f x) |)"
+
+(*** core::cmp (continued): Eq, and PartialEq / Clone of std types *)
+
+(* Trait declaration: [core::cmp::Eq] *)
+record 'self core_cmp_Eq =
+  partialEqInst :: "('self, 'self) core_cmp_PartialEq"
+  core_cmp_Eq_assert_fields_are_eq :: "'self \<Rightarrow> unit result"
+
+definition core_cmp_Eq_assert_fields_are_eq_default :: "'self \<Rightarrow> unit result" where
+  "core_cmp_Eq_assert_fields_are_eq_default _ = Ok ()"
+
+definition core_cmp_impls_PartialEqBool_eq :: "bool \<Rightarrow> bool \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqBool_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqBool_ne :: "bool \<Rightarrow> bool \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqBool_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqBool :: "(bool, bool) core_cmp_PartialEq" where
+  "core_cmp_PartialEqBool = (| core_cmp_PartialEq_eq = core_cmp_impls_PartialEqBool_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqBool_ne |)"
+
+definition core_cmp_impls_PartialEqUnit_eq :: "unit \<Rightarrow> unit \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqUnit_eq _ _ = Ok True"
+definition core_cmp_impls_PartialEqUnit_ne :: "unit \<Rightarrow> unit \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqUnit_ne _ _ = Ok False"
+definition core_cmp_PartialEqUnit :: "(unit, unit) core_cmp_PartialEq" where
+  "core_cmp_PartialEqUnit = (| core_cmp_PartialEq_eq = core_cmp_impls_PartialEqUnit_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqUnit_ne |)"
+
+(* [impl PartialEq<&B> for &A]: compare the referenced values *)
+definition core_cmp_impls_PartialEqShared_eq ::
+  "('a, 'b) core_cmp_PartialEq \<Rightarrow> 'a \<Rightarrow> 'b \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqShared_eq inst x y = core_cmp_PartialEq_eq inst x y"
+definition core_cmp_impls_PartialEqShared_ne ::
+  "('a, 'b) core_cmp_PartialEq \<Rightarrow> 'a \<Rightarrow> 'b \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqShared_ne inst x y = core_cmp_PartialEq_ne inst x y"
+definition core_cmp_PartialEqShared ::
+  "('a, 'b) core_cmp_PartialEq \<Rightarrow> ('a, 'b) core_cmp_PartialEq" where
+  "core_cmp_PartialEqShared inst = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqShared_eq inst,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqShared_ne inst |)"
+
+(* [impl PartialEq for Box<T>]: boxes are transparent *)
+definition alloc_boxed_PartialEqBox_eq ::
+  "('t, 't) core_cmp_PartialEq \<Rightarrow> 't \<Rightarrow> 't \<Rightarrow> bool result" where
+  "alloc_boxed_PartialEqBox_eq inst x y = core_cmp_PartialEq_eq inst x y"
+definition alloc_boxed_PartialEqBox_ne ::
+  "('t, 't) core_cmp_PartialEq \<Rightarrow> 't \<Rightarrow> 't \<Rightarrow> bool result" where
+  "alloc_boxed_PartialEqBox_ne inst x y = core_cmp_PartialEq_ne inst x y"
+definition core_cmp_PartialEqBox ::
+  "('t, 't) core_cmp_PartialEq \<Rightarrow> ('t, 't) core_cmp_PartialEq" where
+  "core_cmp_PartialEqBox inst = (|
+    core_cmp_PartialEq_eq = alloc_boxed_PartialEqBox_eq inst,
+    core_cmp_PartialEq_ne = alloc_boxed_PartialEqBox_ne inst |)"
+
+(* [impl PartialEq<Vec<U>> for Vec<T>]: element-wise comparison *)
+partial_function (result) list_all2_result ::
+  "('t \<Rightarrow> 'u \<Rightarrow> bool result) \<Rightarrow> 't list \<Rightarrow> 'u list \<Rightarrow> bool result" where
+  "list_all2_result eq xs ys =
+    (case (xs, ys) of
+       ([], []) \<Rightarrow> Ok True
+     | (x # xs', y # ys') \<Rightarrow> (b <- eq x y; if b then list_all2_result eq xs' ys' else Ok False)
+     | _ \<Rightarrow> Ok False)"
+
+definition alloc_vec_partial_eq_PartialEqVec_eq ::
+  "('t, 'u) core_cmp_PartialEq \<Rightarrow> 't alloc_vec_Vec \<Rightarrow> 'u alloc_vec_Vec \<Rightarrow> bool result" where
+  "alloc_vec_partial_eq_PartialEqVec_eq inst xs ys =
+    list_all2_result (core_cmp_PartialEq_eq inst) xs ys"
+definition alloc_vec_partial_eq_PartialEqVec_ne ::
+  "('t, 'u) core_cmp_PartialEq \<Rightarrow> 't alloc_vec_Vec \<Rightarrow> 'u alloc_vec_Vec \<Rightarrow> bool result" where
+  "alloc_vec_partial_eq_PartialEqVec_ne inst xs ys =
+    (b <- alloc_vec_partial_eq_PartialEqVec_eq inst xs ys; Ok (\<not> b))"
+definition core_cmp_PartialEqVec ::
+  "('t, 'u) core_cmp_PartialEq \<Rightarrow> ('t alloc_vec_Vec, 'u alloc_vec_Vec) core_cmp_PartialEq" where
+  "core_cmp_PartialEqVec inst = (|
+    core_cmp_PartialEq_eq = alloc_vec_partial_eq_PartialEqVec_eq inst,
+    core_cmp_PartialEq_ne = alloc_vec_partial_eq_PartialEqVec_ne inst |)"
+
+(* [impl Clone for Box<T>], [impl Clone for Vec<T>], [impl Clone for Global] *)
+definition alloc_boxed_CloneBox_clone ::
+  "'t core_clone_Clone \<Rightarrow> 't \<Rightarrow> 't result" where
+  "alloc_boxed_CloneBox_clone inst x = core_clone_Clone_clone inst x"
+definition core_clone_CloneBox ::
+  "'t core_clone_Clone \<Rightarrow> 't core_clone_Clone" where
+  "core_clone_CloneBox inst = (|
+    core_clone_Clone_clone = alloc_boxed_CloneBox_clone inst,
+    core_clone_Clone_clone_from =
+      core_clone_Clone_clone_from_default (alloc_boxed_CloneBox_clone inst) |)"
+
+partial_function (result) list_clone_result ::
+  "('t \<Rightarrow> 't result) \<Rightarrow> 't list \<Rightarrow> 't list result" where
+  "list_clone_result clone xs =
+    (case xs of
+       [] \<Rightarrow> Ok []
+     | x # xs' \<Rightarrow> (y <- clone x; ys <- list_clone_result clone xs'; Ok (y # ys)))"
+
+definition alloc_vec_CloneVec_clone ::
+  "'t core_clone_Clone \<Rightarrow> 't alloc_vec_Vec \<Rightarrow> 't alloc_vec_Vec result" where
+  "alloc_vec_CloneVec_clone inst v = list_clone_result (core_clone_Clone_clone inst) v"
+definition core_clone_CloneVec ::
+  "'t core_clone_Clone \<Rightarrow> ('t alloc_vec_Vec) core_clone_Clone" where
+  "core_clone_CloneVec inst = (|
+    core_clone_Clone_clone = alloc_vec_CloneVec_clone inst,
+    core_clone_Clone_clone_from =
+      core_clone_Clone_clone_from_default (alloc_vec_CloneVec_clone inst) |)"
+
+definition alloc_alloc_CloneGlobal_clone :: "alloc_alloc_Global \<Rightarrow> alloc_alloc_Global result" where
+  "alloc_alloc_CloneGlobal_clone x = Ok x"
+definition core_clone_CloneGlobal :: "alloc_alloc_Global core_clone_Clone" where
+  "core_clone_CloneGlobal = (|
+    core_clone_Clone_clone = alloc_alloc_CloneGlobal_clone,
+    core_clone_Clone_clone_from = core_clone_Clone_clone_from_default alloc_alloc_CloneGlobal_clone |)"
 
 end

@@ -192,6 +192,11 @@ let builtin_types () : Pure.builtin_type_info list =
          mk_type "core::slice::iter::Iter"
            ~kind:(KStruct [ ("slice", None); ("i", None) ])
            ();
+         (* core::fmt *)
+         mk_type "core::fmt::Error" ();
+         mk_type "core::fmt::Formatter" ();
+         mk_type "core::fmt::Arguments" ();
+         mk_type "core::fmt::rt::Argument" ();
        ])
   @ mk_lean_only lean_builtin_types
 
@@ -360,6 +365,13 @@ let builtin_trait_decls_info () =
           ~methods:[ "call_mut" ] ();
         mk_trait "core::ops::function::Fn" ~parent_clauses:[ "fnMutInst" ]
           ~methods:[ "call" ] ();
+        (* Eq *)
+        mk_trait "core::cmp::Eq" ~parent_clauses:[ "partialEqInst" ]
+          ~default_methods:[ "assert_fields_are_eq" ] ();
+        (* core::fmt *)
+        mk_trait "core::fmt::Debug" ~methods:[ "fmt" ] ();
+        mk_trait "core::fmt::Display" ~methods:[ "fmt" ] ();
+        mk_trait "core::fmt::LowerHex" ~methods:[ "fmt" ] ();
       ]
   @ mk_lean_only lean_builtin_trait_decls
 
@@ -449,7 +461,7 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
         ~extract_name:(Some "core::clone::CloneBool") ();
     ]
   @ mk_isabelle_only
-      [
+      ([
          (* core::slice::index::SliceIndex<RangeTo<usize>, [T]> *)
          fmt
            "core::slice::index::SliceIndex<core::ops::range::RangeTo<usize>, \
@@ -463,7 +475,38 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
          (* From<T, T> *)
          fmt "core::convert::From<@Self, @Self>"
            ~extract_name:(Some "core.convert.FromSame") ();
+         (* PartialEq / Clone for bool, (), &T, Box<T>, Vec<T>, Global *)
+         fmt "core::cmp::PartialEq<bool, bool>" ~extract_name:(Some "core.cmp.PartialEqBool") ();
+         fmt "core::cmp::PartialEq<(), ()>" ~extract_name:(Some "core.cmp.PartialEqUnit") ();
+         fmt "core::cmp::PartialEq<&'a @A, &'b @B>" ~extract_name:(Some "core.cmp.PartialEqShared") ();
+         fmt "core::cmp::PartialEq<Box<@T>, Box<@T>>" ~extract_name:(Some "core.cmp.PartialEqBox")
+           ~keep_params:(Some [ true; false ]) ();
+         fmt "core::cmp::PartialEq<alloc::vec::Vec<@T>, alloc::vec::Vec<@U>>"
+           ~extract_name:(Some "core.cmp.PartialEqVec")
+           ~keep_params:(Some [ true; true; false; false ]) ();
+         fmt "core::clone::Clone<Box<@T>>" ~extract_name:(Some "core.clone.CloneBox")
+           ~keep_params:(Some [ true; false ]) ();
+         fmt "core::clone::Clone<alloc::vec::Vec<@T>>" ~extract_name:(Some "core.clone.CloneVec")
+           ~keep_params:(Some [ true; false ]) ();
+         fmt "core::clone::Clone<alloc::alloc::Global>" ~extract_name:(Some "core.clone.CloneGlobal") ();
+         (* core::fmt::Debug *)
+         fmt "core::fmt::Debug<&'0 @T>" ~extract_name:(Some "core.fmt.DebugShared") ();
+         fmt "core::fmt::Debug<()>" ~extract_name:(Some "core.fmt.DebugUnit") ();
+         fmt "core::fmt::Debug<bool>" ~extract_name:(Some "core.fmt.DebugBool") ();
+         fmt "core::fmt::Debug<alloc::vec::Vec<@T>>"
+           ~extract_name:(Some "core.fmt.DebugVec")
+           ~keep_params:(Some [ true; false ]) ();
+         fmt "core::fmt::Debug<[@T; @N]>" ~extract_name:(Some "core.fmt.DebugArray") ();
+         fmt "core::fmt::Debug<[@T]>" ~extract_name:(Some "core.fmt.DebugSlice") ();
        ]
+      @ List.concat_map
+          (fun ty ->
+            let cap = StringUtils.capitalize_first_letter ty in
+            [
+              fmt ("core::fmt::Debug<" ^ ty ^ ">") ~extract_name:(Some ("core.fmt.Debug" ^ cap)) ();
+              fmt ("core::fmt::Display<" ^ ty ^ ">") ~extract_name:(Some ("core.fmt.Display" ^ cap)) ();
+            ])
+          all_int_names)
   @ mk_lean_only lean_builtin_trait_impls
   (* From<INT, bool> *)
   @ List.map
@@ -933,6 +976,89 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
                 (Some ("core::slice::index::SliceIndexRangeToUsizeSlice::" ^ m))
               ())
           [ "get"; "get_mut"; "get_unchecked"; "get_unchecked_mut"; "index"; "index_mut" ]
+      (* comparison / clone of std types *)
+      @ [
+          mk_fun "core::cmp::impls::{core::cmp::PartialEq<bool, bool>}::eq"
+            ~extract_name:(Some "core.cmp.impls.PartialEqBool.eq") ();
+          mk_fun "core::cmp::impls::{core::cmp::PartialEq<bool, bool>}::ne"
+            ~extract_name:(Some "core.cmp.impls.PartialEqBool.ne") ();
+          mk_fun "core::cmp::impls::{core::cmp::PartialEq<(), ()>}::eq"
+            ~extract_name:(Some "core.cmp.impls.PartialEqUnit.eq") ();
+          mk_fun "core::cmp::impls::{core::cmp::PartialEq<(), ()>}::ne"
+            ~extract_name:(Some "core.cmp.impls.PartialEqUnit.ne") ();
+          mk_fun "core::cmp::impls::{core::cmp::PartialEq<&'a @A, &'b @B>}::eq"
+            ~extract_name:(Some "core.cmp.impls.PartialEqShared.eq") ();
+          mk_fun "core::cmp::impls::{core::cmp::PartialEq<&'a @A, &'b @B>}::ne"
+            ~extract_name:(Some "core.cmp.impls.PartialEqShared.ne") ();
+          mk_fun "alloc::boxed::{core::cmp::PartialEq<Box<@T>, Box<@T>>}::eq"
+            ~extract_name:(Some "alloc.boxed.PartialEqBox.eq")
+            ~keep_params:(Some [ true; false ]) ();
+          mk_fun "alloc::boxed::{core::cmp::PartialEq<Box<@T>, Box<@T>>}::ne"
+            ~extract_name:(Some "alloc.boxed.PartialEqBox.ne")
+            ~keep_params:(Some [ true; false ]) ();
+          mk_fun "alloc::vec::partial_eq::{core::cmp::PartialEq<alloc::vec::Vec<@T>, alloc::vec::Vec<@U>>}::eq"
+            ~extract_name:(Some "alloc.vec.partial_eq.PartialEqVec.eq")
+            ~keep_params:(Some [ true; true; false; false ]) ();
+          mk_fun "alloc::vec::partial_eq::{core::cmp::PartialEq<alloc::vec::Vec<@T>, alloc::vec::Vec<@U>>}::ne"
+            ~extract_name:(Some "alloc.vec.partial_eq.PartialEqVec.ne")
+            ~keep_params:(Some [ true; true; false; false ]) ();
+          mk_fun "alloc::boxed::{core::clone::Clone<Box<@T>>}::clone"
+            ~extract_name:(Some "alloc.boxed.CloneBox.clone")
+            ~keep_params:(Some [ true; false ]) ~keep_trait_clauses:(Some [ true; false ]) ();
+          mk_fun "alloc::vec::{core::clone::Clone<alloc::vec::Vec<@T>>}::clone"
+            ~extract_name:(Some "alloc.vec.CloneVec.clone")
+            ~keep_params:(Some [ true; false ]) ~keep_trait_clauses:(Some [ true; false ]) ();
+          mk_fun "alloc::alloc::{core::clone::Clone<alloc::alloc::Global>}::clone"
+            ~extract_name:(Some "alloc.alloc.CloneGlobal.clone") ();
+        ]
+      (* core::fmt *)
+      @ [
+          mk_fun "core::fmt::{core::fmt::Debug<&'0 @T>}::fmt"
+            ~extract_name:(Some "core.fmt.DebugShared.fmt") ();
+          mk_fun "core::fmt::{core::fmt::Debug<()>}::fmt"
+            ~extract_name:(Some "core.fmt.DebugUnit.fmt") ();
+          mk_fun "core::fmt::{core::fmt::Debug<bool>}::fmt"
+            ~extract_name:(Some "core.fmt.DebugBool.fmt") ();
+          mk_fun "alloc::vec::{core::fmt::Debug<alloc::vec::Vec<@T>>}::fmt"
+            ~extract_name:(Some "alloc.vec.DebugVec.fmt")
+            ~keep_params:(Some [ true; false ]) ();
+          mk_fun "core::array::{core::fmt::Debug<[@T; @N]>}::fmt"
+            ~extract_name:(Some "core.array.DebugArray.fmt") ();
+          mk_fun "core::slice::{core::fmt::Debug<[@T]>}::fmt"
+            ~extract_name:(Some "core.slice.DebugSlice.fmt") ();
+          mk_fun "core::fmt::{core::fmt::Formatter<'a>}::write_str"
+            ~extract_name:(Some "core.fmt.Formatter.write_str") ();
+          mk_fun "core::fmt::{core::fmt::Formatter<'a>}::write_fmt"
+            ~extract_name:(Some "core.fmt.Formatter.write_fmt") ();
+          mk_fun "core::fmt::{core::fmt::Formatter<'a>}::debug_struct_fields_finish"
+            ~extract_name:(Some "core.fmt.Formatter.debug_struct_fields_finish") ();
+          mk_fun "core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_fields_finish"
+            ~extract_name:(Some "core.fmt.Formatter.debug_tuple_fields_finish") ();
+          mk_fun "core::result::{core::result::Result<@T, @E>}::unwrap"
+            ~extract_name:(Some "core.result.Result.unwrap") ();
+          mk_fun "core::result::{core::result::Result<@T, @E>}::expect"
+            ~extract_name:(Some "core.result.Result.expect") ();
+          mk_fun "core::option::{core::option::Option<@T>}::expect"
+            ~extract_name:(Some "core.option.Option.expect") ();
+        ]
+      @ List.concat_map
+          (fun n ->
+            let n = string_of_int n in
+            [
+              mk_fun ("core::fmt::{core::fmt::Formatter<'a>}::debug_struct_field" ^ n ^ "_finish")
+                ~extract_name:(Some ("core.fmt.Formatter.debug_struct_field" ^ n ^ "_finish")) ();
+              mk_fun ("core::fmt::{core::fmt::Formatter<'a>}::debug_tuple_field" ^ n ^ "_finish")
+                ~extract_name:(Some ("core.fmt.Formatter.debug_tuple_field" ^ n ^ "_finish")) ();
+            ])
+          [ 1; 2; 3; 4; 5 ]
+      @ mk_scalar_funs
+          (fun ty fn -> "core::fmt::num::{core::fmt::Debug<" ^ ty ^ ">}::" ^ fn)
+          (fun ty fn -> "core.fmt.num.Debug" ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
+          [ (true, "fmt") ]
+      @ mk_scalar_funs
+          (fun ty fn -> "core::fmt::num::imp::{core::fmt::Display<" ^ ty ^ ">}::" ^ fn)
+          (fun ty fn -> "core.fmt.num.imp.Display" ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
+          [ (true, "fmt") ]
       (* wrapping arithmetic: core::num::{INT}::wrapping_* *)
       @ mk_scalar_funs
           (fun ty fn -> "core::num::{" ^ ty ^ "}::" ^ fn)
