@@ -4855,44 +4855,53 @@ let extract_trait_impl (ctx : extraction_ctx) (fmt : F.formatter)
       impl.methods;
 
     (* Isabelle records do not support default field values.  Consequently,
-       when rustc omits [Clone::clone_from] from an implementation because it
-       uses the trait's default method, we still have to initialize the
-       corresponding record field.  The default implementation ignores the
-       old value and delegates to [clone] on the source value.
+       when rustc omits a default method (e.g. [Clone::clone_from],
+       [PartialEq::ne], [PartialOrd::lt]) from an implementation of a builtin
+       trait, we still have to initialize the corresponding record field.  We
+       do so with the prelude's default implementation of the method, applied
+       to the implementation's required method it is derived from.
 
        This is Isabelle-specific: Lean fills the structure field from its
        default value, while the other backends keep their existing behavior. *)
     if backend () = Isabelle then (
       match trans_trait_decl.builtin_info with
-      | Some info when info.extract_name = "core_clone_Clone" ->
+      | Some info -> (
+          (* (default method, prelude default function, required method) *)
+          let defaults =
+            match info.extract_name with
+            | "core_clone_Clone" ->
+                [ ("clone_from", "core_clone_Clone_clone_from_default", "clone") ]
+            | "core_cmp_PartialEq" ->
+                [ ("ne", "core_cmp_PartialEq_ne_default", "eq") ]
+            | "core_cmp_PartialOrd" ->
+                List.map
+                  (fun m -> (m, "core_cmp_PartialOrd_" ^ m ^ "_default", "partial_cmp"))
+                  [ "lt"; "le"; "gt"; "ge" ]
+            | _ -> []
+          in
           let find_impl_method (item_name : string) =
-            List.find_opt
-              (fun (_, name, _) -> name = item_name)
-              impl.methods
+            List.find_opt (fun (_, name, _) -> name = item_name) impl.methods
           in
-          let clone_from_info =
-            List.assoc_opt "clone_from" info.methods
-          in
-          begin
-            match
-              ( find_impl_method "clone",
-                find_impl_method "clone_from",
-                clone_from_info )
-            with
-            | Some (_, _, clone_fn), None, Some default_info
-              when default_info.has_default ->
-                let default_clone_from () =
-                  F.pp_print_space fmt ();
-                  F.pp_print_string fmt "(\\<lambda> _ source.";
-                  extract_trait_impl_method_term ctx fmt impl clone_fn;
-                  F.pp_print_space fmt ();
-                  F.pp_print_string fmt "source)"
-                in
-                extract_trait_impl_item ~before:before_isabelle_item ctx fmt
-                  default_info.extract_name default_clone_from
-            | _ -> ()
-          end
-      | _ -> ());
+          List.iter
+            (fun (dflt, dflt_fn, required) ->
+              match
+                ( find_impl_method required,
+                  find_impl_method dflt,
+                  List.assoc_opt dflt info.methods )
+              with
+              | Some (_, _, required_fn), None, Some default_info
+                when default_info.has_default ->
+                  let print_default () =
+                    F.pp_print_space fmt ();
+                    F.pp_print_string fmt ("(" ^ dflt_fn);
+                    extract_trait_impl_method_term ctx fmt impl required_fn;
+                    F.pp_print_string fmt ")"
+                  in
+                  extract_trait_impl_item ~before:before_isabelle_item ctx fmt
+                    default_info.extract_name print_default
+              | _ -> ())
+            defaults)
+      | None -> ());
 
     (* Close the outer boxes for the definition, as well as the brackets *)
     F.pp_close_box fmt ();

@@ -169,6 +169,29 @@ let builtin_types () : Pure.builtin_type_info list =
                     };
                   ]);
          };
+       ]
+   @ mk_isabelle_only
+       [
+         (* Types modelled in the Isabelle prelude (Primitives.thy) so that
+            prelude-level models of std functions can mention them. *)
+         mk_type "core::cmp::Ordering"
+           ~kind:(KEnum [ ("Less", None); ("Equal", None); ("Greater", None) ])
+           ();
+         mk_type "core::result::Result"
+           ~kind:(KEnum [ ("Ok", None); ("Err", None) ])
+           ();
+         mk_type "core::ops::control_flow::ControlFlow"
+           ~kind:(KEnum [ ("Continue", None); ("Break", None) ])
+           ();
+         mk_type "core::num::error::TryFromIntError" ();
+         mk_type "core::ops::range::RangeInclusive"
+           ~kind:
+             (KStruct
+                [ ("start", None); ("end", Some "end_"); ("exhausted", None) ])
+           ();
+         mk_type "core::slice::iter::Iter"
+           ~kind:(KStruct [ ("slice", None); ("i", None) ])
+           ();
        ])
   @ mk_lean_only lean_builtin_types
 
@@ -321,6 +344,23 @@ let builtin_trait_decls_info () =
       (* Copy *)
       mk_trait "core::marker::Copy" ~parent_clauses:[ "cloneInst" ] ();
     ]
+  @ mk_isabelle_only
+      [
+        (* PartialEq / PartialOrd *)
+        mk_trait "core::cmp::PartialEq" ~methods:[ "eq" ]
+          ~default_methods:[ "ne" ] ();
+        mk_trait "core::cmp::PartialOrd" ~parent_clauses:[ "partialEqInst" ]
+          ~methods:[ "partial_cmp" ]
+          ~default_methods:[ "lt"; "le"; "gt"; "ge" ]
+          ();
+        (* FnOnce / FnMut / Fn *)
+        mk_trait "core::ops::function::FnOnce" ~types:[ "Output" ]
+          ~methods:[ "call_once" ] ();
+        mk_trait "core::ops::function::FnMut" ~parent_clauses:[ "fnOnceInst" ]
+          ~methods:[ "call_mut" ] ();
+        mk_trait "core::ops::function::Fn" ~parent_clauses:[ "fnMutInst" ]
+          ~methods:[ "call" ] ();
+      ]
   @ mk_lean_only lean_builtin_trait_decls
 
 let mk_builtin_trait_decls_map () =
@@ -408,6 +448,22 @@ let builtin_trait_impls_info () : (pattern * Pure.builtin_trait_impl_info) list
       fmt "core::clone::Clone<bool>"
         ~extract_name:(Some "core::clone::CloneBool") ();
     ]
+  @ mk_isabelle_only
+      [
+         (* core::slice::index::SliceIndex<RangeTo<usize>, [T]> *)
+         fmt
+           "core::slice::index::SliceIndex<core::ops::range::RangeTo<usize>, \
+            [@T], [@T]>"
+           ~extract_name:
+             (Some "core::slice::index::SliceIndexRangeToUsizeSliceInst")
+           ();
+         (* Clone<Option<T>> *)
+         fmt "core::clone::Clone<core::option::Option<@T>>"
+           ~extract_name:(Some "core.option.CloneOption") ();
+         (* From<T, T> *)
+         fmt "core::convert::From<@Self, @Self>"
+           ~extract_name:(Some "core.convert.FromSame") ();
+       ]
   @ mk_lean_only lean_builtin_trait_impls
   (* From<INT, bool> *)
   @ List.map
@@ -803,6 +859,119 @@ let mk_builtin_funs () : (pattern * Pure.builtin_fun_info) list =
           ();
       ]
   (* Lean-only definitions *)
+  @ mk_isabelle_only
+      ([
+         (* core::ops::range::RangeInclusive *)
+         mk_fun "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::new"
+           ~extract_name:(Some "core.ops.range.RangeInclusive.new") ();
+         mk_fun
+           "core::ops::range::{core::ops::range::RangeInclusive<@Idx>}::contains"
+           ~extract_name:(Some "core.ops.range.RangeInclusive.contains") ();
+         (* core::option *)
+         mk_fun "core::option::{core::option::Option<@T>}::is_none"
+           ~extract_name:(Some "core.option.Option.is_none")
+           ~can_fail:false ~lift:false ();
+         mk_fun "core::option::{core::option::Option<@T>}::is_some"
+           ~extract_name:(Some "core.option.Option.is_some")
+           ~can_fail:false ~lift:false ();
+         mk_fun "core::option::{core::option::Option<@T>}::ok_or"
+           ~extract_name:(Some "core.option.Option.ok_or") ();
+         mk_fun
+           "core::option::{core::clone::Clone<core::option::Option<@T>>}::clone"
+           ~extract_name:(Some "core.option.CloneOption.clone") ();
+         (* core::result *)
+         mk_fun "core::result::{core::result::Result<@T, @E>}::map_err"
+           ~extract_name:(Some "core.result.Result.map_err") ();
+         mk_fun
+           "core::result::{core::ops::try_trait::Try<core::result::Result<@T, \
+            @E>>}::branch"
+           ~extract_name:(Some "core.result.Result.Insts.CoreOpsTry.branch") ();
+         mk_fun
+           "core::result::{core::ops::try_trait::FromResidual<core::result::Result<@T, \
+            @F>, core::result::Result<!, @E>>}::from_residual"
+           ~extract_name:
+             (Some
+                "core.result.Result.Insts.CoreOpsTryFromResidual.from_residual")
+           ();
+         (* core::convert *)
+         mk_fun "core::convert::{core::convert::From<@T, @T>}::from"
+           ~extract_name:(Some "core.convert.FromSame.from")
+           ~can_fail:false ();
+         (* alloc::vec *)
+         mk_fun "alloc::vec::from_elem"
+           ~extract_name:(Some "alloc.vec.from_elem") ();
+         mk_fun "alloc::vec::{alloc::vec::Vec<@T>}::clear"
+           ~extract_name:(Some "alloc.vec.Vec.clear")
+           ~keep_params:(Some [ true; false ])
+           ~can_fail:false ();
+         mk_fun "alloc::vec::{alloc::vec::Vec<@T>}::extend_from_slice"
+           ~extract_name:(Some "alloc.vec.Vec.extend_from_slice")
+           ~keep_params:(Some [ true; false ])
+           ();
+         mk_fun
+           "alloc::vec::{core::iter::traits::collect::IntoIterator<&'a \
+            alloc::vec::Vec<@T>, &'a @T, core::slice::iter::Iter<'a, \
+            @T>>}::into_iter"
+           ~extract_name:(Some "alloc.vec.IntoIteratorSharedVec.into_iter")
+           ~keep_params:(Some [ true; false ])
+           ();
+         (* core::slice *)
+         mk_fun "core::slice::{[@T]}::copy_from_slice"
+           ~extract_name:(Some "core.slice.Slice.copy_from_slice") ();
+         mk_fun
+           "core::slice::iter::{core::iter::traits::iterator::Iterator<core::slice::iter::Iter<'a, \
+            @T>, &'a @T>}::next"
+           ~extract_name:(Some "core.slice.iter.IteratorSliceIter.next") ();
+       ]
+      (* SliceIndex<RangeTo<usize>, [T]> methods *)
+      @ List.map
+          (fun m ->
+            mk_fun
+              ("core::slice::index::{core::slice::index::SliceIndex<core::ops::range::RangeTo<usize>, \
+                [@T], [@T]>}::" ^ m)
+              ~extract_name:
+                (Some ("core::slice::index::SliceIndexRangeToUsizeSlice::" ^ m))
+              ())
+          [ "get"; "get_mut"; "get_unchecked"; "get_unchecked_mut"; "index"; "index_mut" ]
+      (* wrapping arithmetic: core::num::{INT}::wrapping_* *)
+      @ mk_scalar_funs
+          (fun ty fn -> "core::num::{" ^ ty ^ "}::" ^ fn)
+          (fun ty fn -> "core.num." ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
+          [ (false, "wrapping_add"); (false, "wrapping_sub"); (false, "wrapping_mul");
+            (false, "wrapping_neg"); (false, "wrapping_shl"); (false, "wrapping_shr") ]
+      (* PartialEq<INT> / PartialOrd<INT> methods *)
+      @ mk_scalar_funs
+          (fun ty fn ->
+            "core::cmp::impls::{core::cmp::PartialEq<" ^ ty ^ ", " ^ ty ^ ">}::" ^ fn)
+          (fun ty fn ->
+            "core.cmp.impls.PartialEq" ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
+          [ (true, "eq"); (true, "ne") ]
+      @ mk_scalar_funs
+          (fun ty fn ->
+            "core::cmp::impls::{core::cmp::PartialOrd<" ^ ty ^ ", " ^ ty ^ ">}::" ^ fn)
+          (fun ty fn ->
+            "core.cmp.impls.PartialOrd" ^ StringUtils.capitalize_first_letter ty ^ "." ^ fn)
+          [ (true, "partial_cmp"); (true, "lt"); (true, "le"); (true, "gt"); (true, "ge") ]
+      (* TryFrom<DST, SRC, TryFromIntError>::try_from for distinct integer types *)
+      @ List.concat_map
+          (fun dst ->
+            List.filter_map
+              (fun src ->
+                if src = dst then None
+                else
+                  Some
+                    (mk_fun
+                       ("core::convert::num::{core::convert::TryFrom<" ^ dst ^ ", "
+                      ^ src ^ ", core::num::error::TryFromIntError>}::try_from")
+                       ~extract_name:
+                         (Some
+                            ("core.convert.num.TryFrom"
+                            ^ StringUtils.capitalize_first_letter dst
+                            ^ StringUtils.capitalize_first_letter src
+                            ^ ".try_from"))
+                       ()))
+              all_int_names)
+          all_int_names)
   @ mk_lean_only
       ((* PartialEq, Eq, PartialOrd, Ord *)
        mk_scalar_funs

@@ -142,6 +142,12 @@ lemma loop_unfold:
      | Ok (LoopBreak value) \<Rightarrow> Ok value)"
   by (subst loop.simps) (cases "body state", auto split: control_flow.split)
 
+(** The Rust never type [!].  Aeneas prints it as [Never].  Every HOL type is
+    inhabited, so an abstract type is the closest encoding: no closed term of
+    type [Never] is ever produced by a translated program, but the type itself
+    cannot be empty. *)
+typedecl Never
+
 (*** Misc *)
 
 type_synonym string = String.string
@@ -997,29 +1003,549 @@ record 'self core_clone_Clone =
   core_clone_Clone_clone :: "'self \<Rightarrow> 'self result"
   core_clone_Clone_clone_from :: "'self \<Rightarrow> 'self \<Rightarrow> 'self result"
 
-definition core_clone_impls_CloneUsize_clone :: "usize \<Rightarrow> usize" where "core_clone_impls_CloneUsize_clone x = x"
-(* ... other scalar clone impls ... *)
-
+(* [Clone] and [Copy] instances for the machine integers: cloning is the
+   identity. *)
+definition core_clone_impls_CloneI8_clone :: "i8 \<Rightarrow> i8" where
+  "core_clone_impls_CloneI8_clone x = x"
+definition core_clone_impls_CloneI8_clone_from :: "i8 \<Rightarrow> i8 \<Rightarrow> i8" where
+  "core_clone_impls_CloneI8_clone_from _ y = y"
+definition core_clone_CloneI8 :: "i8 core_clone_Clone" where
+  "core_clone_CloneI8 = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneI16_clone :: "i16 \<Rightarrow> i16" where
+  "core_clone_impls_CloneI16_clone x = x"
+definition core_clone_impls_CloneI16_clone_from :: "i16 \<Rightarrow> i16 \<Rightarrow> i16" where
+  "core_clone_impls_CloneI16_clone_from _ y = y"
+definition core_clone_CloneI16 :: "i16 core_clone_Clone" where
+  "core_clone_CloneI16 = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneI32_clone :: "i32 \<Rightarrow> i32" where
+  "core_clone_impls_CloneI32_clone x = x"
+definition core_clone_impls_CloneI32_clone_from :: "i32 \<Rightarrow> i32 \<Rightarrow> i32" where
+  "core_clone_impls_CloneI32_clone_from _ y = y"
+definition core_clone_CloneI32 :: "i32 core_clone_Clone" where
+  "core_clone_CloneI32 = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneI64_clone :: "i64 \<Rightarrow> i64" where
+  "core_clone_impls_CloneI64_clone x = x"
+definition core_clone_impls_CloneI64_clone_from :: "i64 \<Rightarrow> i64 \<Rightarrow> i64" where
+  "core_clone_impls_CloneI64_clone_from _ y = y"
+definition core_clone_CloneI64 :: "i64 core_clone_Clone" where
+  "core_clone_CloneI64 = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneI128_clone :: "i128 \<Rightarrow> i128" where
+  "core_clone_impls_CloneI128_clone x = x"
+definition core_clone_impls_CloneI128_clone_from :: "i128 \<Rightarrow> i128 \<Rightarrow> i128" where
+  "core_clone_impls_CloneI128_clone_from _ y = y"
+definition core_clone_CloneI128 :: "i128 core_clone_Clone" where
+  "core_clone_CloneI128 = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneIsize_clone :: "isize \<Rightarrow> isize" where
+  "core_clone_impls_CloneIsize_clone x = x"
+definition core_clone_impls_CloneIsize_clone_from :: "isize \<Rightarrow> isize \<Rightarrow> isize" where
+  "core_clone_impls_CloneIsize_clone_from _ y = y"
+definition core_clone_CloneIsize :: "isize core_clone_Clone" where
+  "core_clone_CloneIsize = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneU8_clone :: "u8 \<Rightarrow> u8" where
+  "core_clone_impls_CloneU8_clone x = x"
+definition core_clone_impls_CloneU8_clone_from :: "u8 \<Rightarrow> u8 \<Rightarrow> u8" where
+  "core_clone_impls_CloneU8_clone_from _ y = y"
+definition core_clone_CloneU8 :: "u8 core_clone_Clone" where
+  "core_clone_CloneU8 = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneU16_clone :: "u16 \<Rightarrow> u16" where
+  "core_clone_impls_CloneU16_clone x = x"
+definition core_clone_impls_CloneU16_clone_from :: "u16 \<Rightarrow> u16 \<Rightarrow> u16" where
+  "core_clone_impls_CloneU16_clone_from _ y = y"
+definition core_clone_CloneU16 :: "u16 core_clone_Clone" where
+  "core_clone_CloneU16 = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneU32_clone :: "u32 \<Rightarrow> u32" where
+  "core_clone_impls_CloneU32_clone x = x"
+definition core_clone_impls_CloneU32_clone_from :: "u32 \<Rightarrow> u32 \<Rightarrow> u32" where
+  "core_clone_impls_CloneU32_clone_from _ y = y"
+definition core_clone_CloneU32 :: "u32 core_clone_Clone" where
+  "core_clone_CloneU32 = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneU64_clone :: "u64 \<Rightarrow> u64" where
+  "core_clone_impls_CloneU64_clone x = x"
+definition core_clone_impls_CloneU64_clone_from :: "u64 \<Rightarrow> u64 \<Rightarrow> u64" where
+  "core_clone_impls_CloneU64_clone_from _ y = y"
+definition core_clone_CloneU64 :: "u64 core_clone_Clone" where
+  "core_clone_CloneU64 = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneU128_clone :: "u128 \<Rightarrow> u128" where
+  "core_clone_impls_CloneU128_clone x = x"
+definition core_clone_impls_CloneU128_clone_from :: "u128 \<Rightarrow> u128 \<Rightarrow> u128" where
+  "core_clone_impls_CloneU128_clone_from _ y = y"
+definition core_clone_CloneU128 :: "u128 core_clone_Clone" where
+  "core_clone_CloneU128 = (|
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
+definition core_clone_impls_CloneUsize_clone :: "usize \<Rightarrow> usize" where
+  "core_clone_impls_CloneUsize_clone x = x"
+definition core_clone_impls_CloneUsize_clone_from :: "usize \<Rightarrow> usize \<Rightarrow> usize" where
+  "core_clone_impls_CloneUsize_clone_from _ y = y"
 definition core_clone_CloneUsize :: "usize core_clone_Clone" where
   "core_clone_CloneUsize = (|
-    core_clone_Clone_clone = (\<lambda>x. return (core_clone_impls_CloneUsize_clone x)),
-    core_clone_Clone_clone_from = (\<lambda> _ y. return y)
-  |)"
-(* ... other scalar clone instances ... *)
-axiomatization core_clone_CloneI8 :: "i8 core_clone_Clone"
-axiomatization core_clone_CloneU32 :: "u32 core_clone_Clone"
-(* ... *)
+    core_clone_Clone_clone = (\<lambda>x. Ok x),
+    core_clone_Clone_clone_from = (\<lambda>_ y. Ok y) |)"
 
 record 'self core_marker_Copy =
   cloneInst :: "'self core_clone_Clone"
 
-(*
+definition core_marker_CopyI8 :: "i8 core_marker_Copy" where
+  "core_marker_CopyI8 = (| cloneInst = core_clone_CloneI8 |)"
+definition core_marker_CopyI16 :: "i16 core_marker_Copy" where
+  "core_marker_CopyI16 = (| cloneInst = core_clone_CloneI16 |)"
+definition core_marker_CopyI32 :: "i32 core_marker_Copy" where
+  "core_marker_CopyI32 = (| cloneInst = core_clone_CloneI32 |)"
+definition core_marker_CopyI64 :: "i64 core_marker_Copy" where
+  "core_marker_CopyI64 = (| cloneInst = core_clone_CloneI64 |)"
+definition core_marker_CopyI128 :: "i128 core_marker_Copy" where
+  "core_marker_CopyI128 = (| cloneInst = core_clone_CloneI128 |)"
+definition core_marker_CopyIsize :: "isize core_marker_Copy" where
+  "core_marker_CopyIsize = (| cloneInst = core_clone_CloneIsize |)"
 definition core_marker_CopyU8 :: "u8 core_marker_Copy" where
-  "core_marker_CopyU8 = (| cloneInst = core_clone_CloneU8 |)" *)
-(* ... other scalar copy instances ... *)
-axiomatization core_marker_CopyI8 :: "i8 core_marker_Copy"
-axiomatization core_marker_CopyU32 :: "u32 core_marker_Copy"
-(* ... *)
+  "core_marker_CopyU8 = (| cloneInst = core_clone_CloneU8 |)"
+definition core_marker_CopyU16 :: "u16 core_marker_Copy" where
+  "core_marker_CopyU16 = (| cloneInst = core_clone_CloneU16 |)"
+definition core_marker_CopyU32 :: "u32 core_marker_Copy" where
+  "core_marker_CopyU32 = (| cloneInst = core_clone_CloneU32 |)"
+definition core_marker_CopyU64 :: "u64 core_marker_Copy" where
+  "core_marker_CopyU64 = (| cloneInst = core_clone_CloneU64 |)"
+definition core_marker_CopyU128 :: "u128 core_marker_Copy" where
+  "core_marker_CopyU128 = (| cloneInst = core_clone_CloneU128 |)"
+definition core_marker_CopyUsize :: "usize core_marker_Copy" where
+  "core_marker_CopyUsize = (| cloneInst = core_clone_CloneUsize |)"
+
+(* Checked arithmetic ([checked_add], ...): [None] on overflow or division
+   by zero, following [core::num::{INT}::checked_*]. *)
+definition scalar_checked_op :: "scalar_ty \<Rightarrow> int result \<Rightarrow> int option" where
+  "scalar_checked_op ty r = (case r of Ok v \<Rightarrow> Some v | _ \<Rightarrow> None)"
+
+(* Number of leading zero bits of the unsigned bit pattern of a value. *)
+definition scalar_leading_zeros :: "scalar_ty \<Rightarrow> int \<Rightarrow> u32" where
+  "scalar_leading_zeros ty x =
+    (let u = x mod scalar_modulus ty; b = scalar_bits ty in
+     int (b - (LEAST n. u < 2 ^ n)))"
+
+definition I8_checked_add :: "i8 \<Rightarrow> i8 \<Rightarrow> i8 option" where
+  "I8_checked_add x y = scalar_checked_op I8 (scalar_add I8 x y)"
+definition I8_checked_sub :: "i8 \<Rightarrow> i8 \<Rightarrow> i8 option" where
+  "I8_checked_sub x y = scalar_checked_op I8 (scalar_sub I8 x y)"
+definition I8_checked_mul :: "i8 \<Rightarrow> i8 \<Rightarrow> i8 option" where
+  "I8_checked_mul x y = scalar_checked_op I8 (scalar_mul I8 x y)"
+definition I8_checked_div :: "i8 \<Rightarrow> i8 \<Rightarrow> i8 option" where
+  "I8_checked_div x y = scalar_checked_op I8 (scalar_div I8 x y)"
+definition I8_checked_rem :: "i8 \<Rightarrow> i8 \<Rightarrow> i8 option" where
+  "I8_checked_rem x y = scalar_checked_op I8 (scalar_rem I8 x y)"
+definition core_num_I8_leading_zeros :: "i8 \<Rightarrow> u32" where
+  "core_num_I8_leading_zeros x = scalar_leading_zeros I8 x"
+definition I16_checked_add :: "i16 \<Rightarrow> i16 \<Rightarrow> i16 option" where
+  "I16_checked_add x y = scalar_checked_op I16 (scalar_add I16 x y)"
+definition I16_checked_sub :: "i16 \<Rightarrow> i16 \<Rightarrow> i16 option" where
+  "I16_checked_sub x y = scalar_checked_op I16 (scalar_sub I16 x y)"
+definition I16_checked_mul :: "i16 \<Rightarrow> i16 \<Rightarrow> i16 option" where
+  "I16_checked_mul x y = scalar_checked_op I16 (scalar_mul I16 x y)"
+definition I16_checked_div :: "i16 \<Rightarrow> i16 \<Rightarrow> i16 option" where
+  "I16_checked_div x y = scalar_checked_op I16 (scalar_div I16 x y)"
+definition I16_checked_rem :: "i16 \<Rightarrow> i16 \<Rightarrow> i16 option" where
+  "I16_checked_rem x y = scalar_checked_op I16 (scalar_rem I16 x y)"
+definition core_num_I16_leading_zeros :: "i16 \<Rightarrow> u32" where
+  "core_num_I16_leading_zeros x = scalar_leading_zeros I16 x"
+definition I32_checked_add :: "i32 \<Rightarrow> i32 \<Rightarrow> i32 option" where
+  "I32_checked_add x y = scalar_checked_op I32 (scalar_add I32 x y)"
+definition I32_checked_sub :: "i32 \<Rightarrow> i32 \<Rightarrow> i32 option" where
+  "I32_checked_sub x y = scalar_checked_op I32 (scalar_sub I32 x y)"
+definition I32_checked_mul :: "i32 \<Rightarrow> i32 \<Rightarrow> i32 option" where
+  "I32_checked_mul x y = scalar_checked_op I32 (scalar_mul I32 x y)"
+definition I32_checked_div :: "i32 \<Rightarrow> i32 \<Rightarrow> i32 option" where
+  "I32_checked_div x y = scalar_checked_op I32 (scalar_div I32 x y)"
+definition I32_checked_rem :: "i32 \<Rightarrow> i32 \<Rightarrow> i32 option" where
+  "I32_checked_rem x y = scalar_checked_op I32 (scalar_rem I32 x y)"
+definition core_num_I32_leading_zeros :: "i32 \<Rightarrow> u32" where
+  "core_num_I32_leading_zeros x = scalar_leading_zeros I32 x"
+definition I64_checked_add :: "i64 \<Rightarrow> i64 \<Rightarrow> i64 option" where
+  "I64_checked_add x y = scalar_checked_op I64 (scalar_add I64 x y)"
+definition I64_checked_sub :: "i64 \<Rightarrow> i64 \<Rightarrow> i64 option" where
+  "I64_checked_sub x y = scalar_checked_op I64 (scalar_sub I64 x y)"
+definition I64_checked_mul :: "i64 \<Rightarrow> i64 \<Rightarrow> i64 option" where
+  "I64_checked_mul x y = scalar_checked_op I64 (scalar_mul I64 x y)"
+definition I64_checked_div :: "i64 \<Rightarrow> i64 \<Rightarrow> i64 option" where
+  "I64_checked_div x y = scalar_checked_op I64 (scalar_div I64 x y)"
+definition I64_checked_rem :: "i64 \<Rightarrow> i64 \<Rightarrow> i64 option" where
+  "I64_checked_rem x y = scalar_checked_op I64 (scalar_rem I64 x y)"
+definition core_num_I64_leading_zeros :: "i64 \<Rightarrow> u32" where
+  "core_num_I64_leading_zeros x = scalar_leading_zeros I64 x"
+definition I128_checked_add :: "i128 \<Rightarrow> i128 \<Rightarrow> i128 option" where
+  "I128_checked_add x y = scalar_checked_op I128 (scalar_add I128 x y)"
+definition I128_checked_sub :: "i128 \<Rightarrow> i128 \<Rightarrow> i128 option" where
+  "I128_checked_sub x y = scalar_checked_op I128 (scalar_sub I128 x y)"
+definition I128_checked_mul :: "i128 \<Rightarrow> i128 \<Rightarrow> i128 option" where
+  "I128_checked_mul x y = scalar_checked_op I128 (scalar_mul I128 x y)"
+definition I128_checked_div :: "i128 \<Rightarrow> i128 \<Rightarrow> i128 option" where
+  "I128_checked_div x y = scalar_checked_op I128 (scalar_div I128 x y)"
+definition I128_checked_rem :: "i128 \<Rightarrow> i128 \<Rightarrow> i128 option" where
+  "I128_checked_rem x y = scalar_checked_op I128 (scalar_rem I128 x y)"
+definition core_num_I128_leading_zeros :: "i128 \<Rightarrow> u32" where
+  "core_num_I128_leading_zeros x = scalar_leading_zeros I128 x"
+definition Isize_checked_add :: "isize \<Rightarrow> isize \<Rightarrow> isize option" where
+  "Isize_checked_add x y = scalar_checked_op Isize (scalar_add Isize x y)"
+definition Isize_checked_sub :: "isize \<Rightarrow> isize \<Rightarrow> isize option" where
+  "Isize_checked_sub x y = scalar_checked_op Isize (scalar_sub Isize x y)"
+definition Isize_checked_mul :: "isize \<Rightarrow> isize \<Rightarrow> isize option" where
+  "Isize_checked_mul x y = scalar_checked_op Isize (scalar_mul Isize x y)"
+definition Isize_checked_div :: "isize \<Rightarrow> isize \<Rightarrow> isize option" where
+  "Isize_checked_div x y = scalar_checked_op Isize (scalar_div Isize x y)"
+definition Isize_checked_rem :: "isize \<Rightarrow> isize \<Rightarrow> isize option" where
+  "Isize_checked_rem x y = scalar_checked_op Isize (scalar_rem Isize x y)"
+definition core_num_Isize_leading_zeros :: "isize \<Rightarrow> u32" where
+  "core_num_Isize_leading_zeros x = scalar_leading_zeros Isize x"
+definition U8_checked_add :: "u8 \<Rightarrow> u8 \<Rightarrow> u8 option" where
+  "U8_checked_add x y = scalar_checked_op U8 (scalar_add U8 x y)"
+definition U8_checked_sub :: "u8 \<Rightarrow> u8 \<Rightarrow> u8 option" where
+  "U8_checked_sub x y = scalar_checked_op U8 (scalar_sub U8 x y)"
+definition U8_checked_mul :: "u8 \<Rightarrow> u8 \<Rightarrow> u8 option" where
+  "U8_checked_mul x y = scalar_checked_op U8 (scalar_mul U8 x y)"
+definition U8_checked_div :: "u8 \<Rightarrow> u8 \<Rightarrow> u8 option" where
+  "U8_checked_div x y = scalar_checked_op U8 (scalar_div U8 x y)"
+definition U8_checked_rem :: "u8 \<Rightarrow> u8 \<Rightarrow> u8 option" where
+  "U8_checked_rem x y = scalar_checked_op U8 (scalar_rem U8 x y)"
+definition core_num_U8_leading_zeros :: "u8 \<Rightarrow> u32" where
+  "core_num_U8_leading_zeros x = scalar_leading_zeros U8 x"
+definition U16_checked_add :: "u16 \<Rightarrow> u16 \<Rightarrow> u16 option" where
+  "U16_checked_add x y = scalar_checked_op U16 (scalar_add U16 x y)"
+definition U16_checked_sub :: "u16 \<Rightarrow> u16 \<Rightarrow> u16 option" where
+  "U16_checked_sub x y = scalar_checked_op U16 (scalar_sub U16 x y)"
+definition U16_checked_mul :: "u16 \<Rightarrow> u16 \<Rightarrow> u16 option" where
+  "U16_checked_mul x y = scalar_checked_op U16 (scalar_mul U16 x y)"
+definition U16_checked_div :: "u16 \<Rightarrow> u16 \<Rightarrow> u16 option" where
+  "U16_checked_div x y = scalar_checked_op U16 (scalar_div U16 x y)"
+definition U16_checked_rem :: "u16 \<Rightarrow> u16 \<Rightarrow> u16 option" where
+  "U16_checked_rem x y = scalar_checked_op U16 (scalar_rem U16 x y)"
+definition core_num_U16_leading_zeros :: "u16 \<Rightarrow> u32" where
+  "core_num_U16_leading_zeros x = scalar_leading_zeros U16 x"
+definition U32_checked_add :: "u32 \<Rightarrow> u32 \<Rightarrow> u32 option" where
+  "U32_checked_add x y = scalar_checked_op U32 (scalar_add U32 x y)"
+definition U32_checked_sub :: "u32 \<Rightarrow> u32 \<Rightarrow> u32 option" where
+  "U32_checked_sub x y = scalar_checked_op U32 (scalar_sub U32 x y)"
+definition U32_checked_mul :: "u32 \<Rightarrow> u32 \<Rightarrow> u32 option" where
+  "U32_checked_mul x y = scalar_checked_op U32 (scalar_mul U32 x y)"
+definition U32_checked_div :: "u32 \<Rightarrow> u32 \<Rightarrow> u32 option" where
+  "U32_checked_div x y = scalar_checked_op U32 (scalar_div U32 x y)"
+definition U32_checked_rem :: "u32 \<Rightarrow> u32 \<Rightarrow> u32 option" where
+  "U32_checked_rem x y = scalar_checked_op U32 (scalar_rem U32 x y)"
+definition core_num_U32_leading_zeros :: "u32 \<Rightarrow> u32" where
+  "core_num_U32_leading_zeros x = scalar_leading_zeros U32 x"
+definition U64_checked_add :: "u64 \<Rightarrow> u64 \<Rightarrow> u64 option" where
+  "U64_checked_add x y = scalar_checked_op U64 (scalar_add U64 x y)"
+definition U64_checked_sub :: "u64 \<Rightarrow> u64 \<Rightarrow> u64 option" where
+  "U64_checked_sub x y = scalar_checked_op U64 (scalar_sub U64 x y)"
+definition U64_checked_mul :: "u64 \<Rightarrow> u64 \<Rightarrow> u64 option" where
+  "U64_checked_mul x y = scalar_checked_op U64 (scalar_mul U64 x y)"
+definition U64_checked_div :: "u64 \<Rightarrow> u64 \<Rightarrow> u64 option" where
+  "U64_checked_div x y = scalar_checked_op U64 (scalar_div U64 x y)"
+definition U64_checked_rem :: "u64 \<Rightarrow> u64 \<Rightarrow> u64 option" where
+  "U64_checked_rem x y = scalar_checked_op U64 (scalar_rem U64 x y)"
+definition core_num_U64_leading_zeros :: "u64 \<Rightarrow> u32" where
+  "core_num_U64_leading_zeros x = scalar_leading_zeros U64 x"
+definition U128_checked_add :: "u128 \<Rightarrow> u128 \<Rightarrow> u128 option" where
+  "U128_checked_add x y = scalar_checked_op U128 (scalar_add U128 x y)"
+definition U128_checked_sub :: "u128 \<Rightarrow> u128 \<Rightarrow> u128 option" where
+  "U128_checked_sub x y = scalar_checked_op U128 (scalar_sub U128 x y)"
+definition U128_checked_mul :: "u128 \<Rightarrow> u128 \<Rightarrow> u128 option" where
+  "U128_checked_mul x y = scalar_checked_op U128 (scalar_mul U128 x y)"
+definition U128_checked_div :: "u128 \<Rightarrow> u128 \<Rightarrow> u128 option" where
+  "U128_checked_div x y = scalar_checked_op U128 (scalar_div U128 x y)"
+definition U128_checked_rem :: "u128 \<Rightarrow> u128 \<Rightarrow> u128 option" where
+  "U128_checked_rem x y = scalar_checked_op U128 (scalar_rem U128 x y)"
+definition core_num_U128_leading_zeros :: "u128 \<Rightarrow> u32" where
+  "core_num_U128_leading_zeros x = scalar_leading_zeros U128 x"
+definition Usize_checked_add :: "usize \<Rightarrow> usize \<Rightarrow> usize option" where
+  "Usize_checked_add x y = scalar_checked_op Usize (scalar_add Usize x y)"
+definition Usize_checked_sub :: "usize \<Rightarrow> usize \<Rightarrow> usize option" where
+  "Usize_checked_sub x y = scalar_checked_op Usize (scalar_sub Usize x y)"
+definition Usize_checked_mul :: "usize \<Rightarrow> usize \<Rightarrow> usize option" where
+  "Usize_checked_mul x y = scalar_checked_op Usize (scalar_mul Usize x y)"
+definition Usize_checked_div :: "usize \<Rightarrow> usize \<Rightarrow> usize option" where
+  "Usize_checked_div x y = scalar_checked_op Usize (scalar_div Usize x y)"
+definition Usize_checked_rem :: "usize \<Rightarrow> usize \<Rightarrow> usize option" where
+  "Usize_checked_rem x y = scalar_checked_op Usize (scalar_rem Usize x y)"
+definition core_num_Usize_leading_zeros :: "usize \<Rightarrow> u32" where
+  "core_num_Usize_leading_zeros x = scalar_leading_zeros Usize x"
+
+(* Wrapping arithmetic ([wrapping_add], ...): reduce modulo 2^bits. *)
+definition core_num_I8_wrapping_add :: "i8 \<Rightarrow> i8 \<Rightarrow> i8" where
+  "core_num_I8_wrapping_add x y = scalar_wrapping_add I8 x y"
+definition core_num_I8_wrapping_sub :: "i8 \<Rightarrow> i8 \<Rightarrow> i8" where
+  "core_num_I8_wrapping_sub x y = scalar_wrapping_sub I8 x y"
+definition core_num_I8_wrapping_mul :: "i8 \<Rightarrow> i8 \<Rightarrow> i8" where
+  "core_num_I8_wrapping_mul x y = scalar_wrapping_mul I8 x y"
+definition core_num_I8_wrapping_neg :: "i8 \<Rightarrow> i8" where
+  "core_num_I8_wrapping_neg x = scalar_wrapping_neg I8 x"
+definition core_num_I8_wrapping_shl :: "i8 \<Rightarrow> u32 \<Rightarrow> i8" where
+  "core_num_I8_wrapping_shl x n = scalar_wrapping_shl I8 x n"
+definition core_num_I8_wrapping_shr :: "i8 \<Rightarrow> u32 \<Rightarrow> i8" where
+  "core_num_I8_wrapping_shr x n = scalar_wrapping_shr I8 x n"
+definition core_num_I16_wrapping_add :: "i16 \<Rightarrow> i16 \<Rightarrow> i16" where
+  "core_num_I16_wrapping_add x y = scalar_wrapping_add I16 x y"
+definition core_num_I16_wrapping_sub :: "i16 \<Rightarrow> i16 \<Rightarrow> i16" where
+  "core_num_I16_wrapping_sub x y = scalar_wrapping_sub I16 x y"
+definition core_num_I16_wrapping_mul :: "i16 \<Rightarrow> i16 \<Rightarrow> i16" where
+  "core_num_I16_wrapping_mul x y = scalar_wrapping_mul I16 x y"
+definition core_num_I16_wrapping_neg :: "i16 \<Rightarrow> i16" where
+  "core_num_I16_wrapping_neg x = scalar_wrapping_neg I16 x"
+definition core_num_I16_wrapping_shl :: "i16 \<Rightarrow> u32 \<Rightarrow> i16" where
+  "core_num_I16_wrapping_shl x n = scalar_wrapping_shl I16 x n"
+definition core_num_I16_wrapping_shr :: "i16 \<Rightarrow> u32 \<Rightarrow> i16" where
+  "core_num_I16_wrapping_shr x n = scalar_wrapping_shr I16 x n"
+definition core_num_I32_wrapping_add :: "i32 \<Rightarrow> i32 \<Rightarrow> i32" where
+  "core_num_I32_wrapping_add x y = scalar_wrapping_add I32 x y"
+definition core_num_I32_wrapping_sub :: "i32 \<Rightarrow> i32 \<Rightarrow> i32" where
+  "core_num_I32_wrapping_sub x y = scalar_wrapping_sub I32 x y"
+definition core_num_I32_wrapping_mul :: "i32 \<Rightarrow> i32 \<Rightarrow> i32" where
+  "core_num_I32_wrapping_mul x y = scalar_wrapping_mul I32 x y"
+definition core_num_I32_wrapping_neg :: "i32 \<Rightarrow> i32" where
+  "core_num_I32_wrapping_neg x = scalar_wrapping_neg I32 x"
+definition core_num_I32_wrapping_shl :: "i32 \<Rightarrow> u32 \<Rightarrow> i32" where
+  "core_num_I32_wrapping_shl x n = scalar_wrapping_shl I32 x n"
+definition core_num_I32_wrapping_shr :: "i32 \<Rightarrow> u32 \<Rightarrow> i32" where
+  "core_num_I32_wrapping_shr x n = scalar_wrapping_shr I32 x n"
+definition core_num_I64_wrapping_add :: "i64 \<Rightarrow> i64 \<Rightarrow> i64" where
+  "core_num_I64_wrapping_add x y = scalar_wrapping_add I64 x y"
+definition core_num_I64_wrapping_sub :: "i64 \<Rightarrow> i64 \<Rightarrow> i64" where
+  "core_num_I64_wrapping_sub x y = scalar_wrapping_sub I64 x y"
+definition core_num_I64_wrapping_mul :: "i64 \<Rightarrow> i64 \<Rightarrow> i64" where
+  "core_num_I64_wrapping_mul x y = scalar_wrapping_mul I64 x y"
+definition core_num_I64_wrapping_neg :: "i64 \<Rightarrow> i64" where
+  "core_num_I64_wrapping_neg x = scalar_wrapping_neg I64 x"
+definition core_num_I64_wrapping_shl :: "i64 \<Rightarrow> u32 \<Rightarrow> i64" where
+  "core_num_I64_wrapping_shl x n = scalar_wrapping_shl I64 x n"
+definition core_num_I64_wrapping_shr :: "i64 \<Rightarrow> u32 \<Rightarrow> i64" where
+  "core_num_I64_wrapping_shr x n = scalar_wrapping_shr I64 x n"
+definition core_num_I128_wrapping_add :: "i128 \<Rightarrow> i128 \<Rightarrow> i128" where
+  "core_num_I128_wrapping_add x y = scalar_wrapping_add I128 x y"
+definition core_num_I128_wrapping_sub :: "i128 \<Rightarrow> i128 \<Rightarrow> i128" where
+  "core_num_I128_wrapping_sub x y = scalar_wrapping_sub I128 x y"
+definition core_num_I128_wrapping_mul :: "i128 \<Rightarrow> i128 \<Rightarrow> i128" where
+  "core_num_I128_wrapping_mul x y = scalar_wrapping_mul I128 x y"
+definition core_num_I128_wrapping_neg :: "i128 \<Rightarrow> i128" where
+  "core_num_I128_wrapping_neg x = scalar_wrapping_neg I128 x"
+definition core_num_I128_wrapping_shl :: "i128 \<Rightarrow> u32 \<Rightarrow> i128" where
+  "core_num_I128_wrapping_shl x n = scalar_wrapping_shl I128 x n"
+definition core_num_I128_wrapping_shr :: "i128 \<Rightarrow> u32 \<Rightarrow> i128" where
+  "core_num_I128_wrapping_shr x n = scalar_wrapping_shr I128 x n"
+definition core_num_Isize_wrapping_add :: "isize \<Rightarrow> isize \<Rightarrow> isize" where
+  "core_num_Isize_wrapping_add x y = scalar_wrapping_add Isize x y"
+definition core_num_Isize_wrapping_sub :: "isize \<Rightarrow> isize \<Rightarrow> isize" where
+  "core_num_Isize_wrapping_sub x y = scalar_wrapping_sub Isize x y"
+definition core_num_Isize_wrapping_mul :: "isize \<Rightarrow> isize \<Rightarrow> isize" where
+  "core_num_Isize_wrapping_mul x y = scalar_wrapping_mul Isize x y"
+definition core_num_Isize_wrapping_neg :: "isize \<Rightarrow> isize" where
+  "core_num_Isize_wrapping_neg x = scalar_wrapping_neg Isize x"
+definition core_num_Isize_wrapping_shl :: "isize \<Rightarrow> u32 \<Rightarrow> isize" where
+  "core_num_Isize_wrapping_shl x n = scalar_wrapping_shl Isize x n"
+definition core_num_Isize_wrapping_shr :: "isize \<Rightarrow> u32 \<Rightarrow> isize" where
+  "core_num_Isize_wrapping_shr x n = scalar_wrapping_shr Isize x n"
+definition core_num_U8_wrapping_add :: "u8 \<Rightarrow> u8 \<Rightarrow> u8" where
+  "core_num_U8_wrapping_add x y = scalar_wrapping_add U8 x y"
+definition core_num_U8_wrapping_sub :: "u8 \<Rightarrow> u8 \<Rightarrow> u8" where
+  "core_num_U8_wrapping_sub x y = scalar_wrapping_sub U8 x y"
+definition core_num_U8_wrapping_mul :: "u8 \<Rightarrow> u8 \<Rightarrow> u8" where
+  "core_num_U8_wrapping_mul x y = scalar_wrapping_mul U8 x y"
+definition core_num_U8_wrapping_neg :: "u8 \<Rightarrow> u8" where
+  "core_num_U8_wrapping_neg x = scalar_wrapping_neg U8 x"
+definition core_num_U8_wrapping_shl :: "u8 \<Rightarrow> u32 \<Rightarrow> u8" where
+  "core_num_U8_wrapping_shl x n = scalar_wrapping_shl U8 x n"
+definition core_num_U8_wrapping_shr :: "u8 \<Rightarrow> u32 \<Rightarrow> u8" where
+  "core_num_U8_wrapping_shr x n = scalar_wrapping_shr U8 x n"
+definition core_num_U16_wrapping_add :: "u16 \<Rightarrow> u16 \<Rightarrow> u16" where
+  "core_num_U16_wrapping_add x y = scalar_wrapping_add U16 x y"
+definition core_num_U16_wrapping_sub :: "u16 \<Rightarrow> u16 \<Rightarrow> u16" where
+  "core_num_U16_wrapping_sub x y = scalar_wrapping_sub U16 x y"
+definition core_num_U16_wrapping_mul :: "u16 \<Rightarrow> u16 \<Rightarrow> u16" where
+  "core_num_U16_wrapping_mul x y = scalar_wrapping_mul U16 x y"
+definition core_num_U16_wrapping_neg :: "u16 \<Rightarrow> u16" where
+  "core_num_U16_wrapping_neg x = scalar_wrapping_neg U16 x"
+definition core_num_U16_wrapping_shl :: "u16 \<Rightarrow> u32 \<Rightarrow> u16" where
+  "core_num_U16_wrapping_shl x n = scalar_wrapping_shl U16 x n"
+definition core_num_U16_wrapping_shr :: "u16 \<Rightarrow> u32 \<Rightarrow> u16" where
+  "core_num_U16_wrapping_shr x n = scalar_wrapping_shr U16 x n"
+definition core_num_U32_wrapping_add :: "u32 \<Rightarrow> u32 \<Rightarrow> u32" where
+  "core_num_U32_wrapping_add x y = scalar_wrapping_add U32 x y"
+definition core_num_U32_wrapping_sub :: "u32 \<Rightarrow> u32 \<Rightarrow> u32" where
+  "core_num_U32_wrapping_sub x y = scalar_wrapping_sub U32 x y"
+definition core_num_U32_wrapping_mul :: "u32 \<Rightarrow> u32 \<Rightarrow> u32" where
+  "core_num_U32_wrapping_mul x y = scalar_wrapping_mul U32 x y"
+definition core_num_U32_wrapping_neg :: "u32 \<Rightarrow> u32" where
+  "core_num_U32_wrapping_neg x = scalar_wrapping_neg U32 x"
+definition core_num_U32_wrapping_shl :: "u32 \<Rightarrow> u32 \<Rightarrow> u32" where
+  "core_num_U32_wrapping_shl x n = scalar_wrapping_shl U32 x n"
+definition core_num_U32_wrapping_shr :: "u32 \<Rightarrow> u32 \<Rightarrow> u32" where
+  "core_num_U32_wrapping_shr x n = scalar_wrapping_shr U32 x n"
+definition core_num_U64_wrapping_add :: "u64 \<Rightarrow> u64 \<Rightarrow> u64" where
+  "core_num_U64_wrapping_add x y = scalar_wrapping_add U64 x y"
+definition core_num_U64_wrapping_sub :: "u64 \<Rightarrow> u64 \<Rightarrow> u64" where
+  "core_num_U64_wrapping_sub x y = scalar_wrapping_sub U64 x y"
+definition core_num_U64_wrapping_mul :: "u64 \<Rightarrow> u64 \<Rightarrow> u64" where
+  "core_num_U64_wrapping_mul x y = scalar_wrapping_mul U64 x y"
+definition core_num_U64_wrapping_neg :: "u64 \<Rightarrow> u64" where
+  "core_num_U64_wrapping_neg x = scalar_wrapping_neg U64 x"
+definition core_num_U64_wrapping_shl :: "u64 \<Rightarrow> u32 \<Rightarrow> u64" where
+  "core_num_U64_wrapping_shl x n = scalar_wrapping_shl U64 x n"
+definition core_num_U64_wrapping_shr :: "u64 \<Rightarrow> u32 \<Rightarrow> u64" where
+  "core_num_U64_wrapping_shr x n = scalar_wrapping_shr U64 x n"
+definition core_num_U128_wrapping_add :: "u128 \<Rightarrow> u128 \<Rightarrow> u128" where
+  "core_num_U128_wrapping_add x y = scalar_wrapping_add U128 x y"
+definition core_num_U128_wrapping_sub :: "u128 \<Rightarrow> u128 \<Rightarrow> u128" where
+  "core_num_U128_wrapping_sub x y = scalar_wrapping_sub U128 x y"
+definition core_num_U128_wrapping_mul :: "u128 \<Rightarrow> u128 \<Rightarrow> u128" where
+  "core_num_U128_wrapping_mul x y = scalar_wrapping_mul U128 x y"
+definition core_num_U128_wrapping_neg :: "u128 \<Rightarrow> u128" where
+  "core_num_U128_wrapping_neg x = scalar_wrapping_neg U128 x"
+definition core_num_U128_wrapping_shl :: "u128 \<Rightarrow> u32 \<Rightarrow> u128" where
+  "core_num_U128_wrapping_shl x n = scalar_wrapping_shl U128 x n"
+definition core_num_U128_wrapping_shr :: "u128 \<Rightarrow> u32 \<Rightarrow> u128" where
+  "core_num_U128_wrapping_shr x n = scalar_wrapping_shr U128 x n"
+definition core_num_Usize_wrapping_add :: "usize \<Rightarrow> usize \<Rightarrow> usize" where
+  "core_num_Usize_wrapping_add x y = scalar_wrapping_add Usize x y"
+definition core_num_Usize_wrapping_sub :: "usize \<Rightarrow> usize \<Rightarrow> usize" where
+  "core_num_Usize_wrapping_sub x y = scalar_wrapping_sub Usize x y"
+definition core_num_Usize_wrapping_mul :: "usize \<Rightarrow> usize \<Rightarrow> usize" where
+  "core_num_Usize_wrapping_mul x y = scalar_wrapping_mul Usize x y"
+definition core_num_Usize_wrapping_neg :: "usize \<Rightarrow> usize" where
+  "core_num_Usize_wrapping_neg x = scalar_wrapping_neg Usize x"
+definition core_num_Usize_wrapping_shl :: "usize \<Rightarrow> u32 \<Rightarrow> usize" where
+  "core_num_Usize_wrapping_shl x n = scalar_wrapping_shl Usize x n"
+definition core_num_Usize_wrapping_shr :: "usize \<Rightarrow> u32 \<Rightarrow> usize" where
+  "core_num_Usize_wrapping_shr x n = scalar_wrapping_shr Usize x n"
+
+(* Byte-level encodings of the machine integers: [to_le_bytes], [to_be_bytes],
+   [from_le_bytes], [from_be_bytes].  A value is first reduced to its
+   unsigned bit pattern; the result is a list of [bits/8] bytes. *)
+definition scalar_to_le_bytes :: "scalar_ty \<Rightarrow> int \<Rightarrow> u8 list" where
+  "scalar_to_le_bytes ty x =
+    (let n = scalar_bits ty div 8; u = x mod scalar_modulus ty in
+     map (\<lambda>k. (u div (256 ^ k)) mod 256) [0..<n])"
+
+definition scalar_to_be_bytes :: "scalar_ty \<Rightarrow> int \<Rightarrow> u8 list" where
+  "scalar_to_be_bytes ty x = rev (scalar_to_le_bytes ty x)"
+
+definition scalar_from_le_bytes :: "scalar_ty \<Rightarrow> u8 list \<Rightarrow> int" where
+  "scalar_from_le_bytes ty bs =
+    scalar_wrap ty (\<Sum>k < length bs. (bs ! k) * 256 ^ k)"
+
+definition scalar_from_be_bytes :: "scalar_ty \<Rightarrow> u8 list \<Rightarrow> int" where
+  "scalar_from_be_bytes ty bs = scalar_from_le_bytes ty (rev bs)"
+
+definition core_num_I8_to_le_bytes :: "i8 \<Rightarrow> u8 list" where
+  "core_num_I8_to_le_bytes x = scalar_to_le_bytes I8 x"
+definition core_num_I8_to_be_bytes :: "i8 \<Rightarrow> u8 list" where
+  "core_num_I8_to_be_bytes x = scalar_to_be_bytes I8 x"
+definition core_num_I8_from_le_bytes :: "u8 list \<Rightarrow> i8" where
+  "core_num_I8_from_le_bytes bs = scalar_from_le_bytes I8 bs"
+definition core_num_I8_from_be_bytes :: "u8 list \<Rightarrow> i8" where
+  "core_num_I8_from_be_bytes bs = scalar_from_be_bytes I8 bs"
+definition core_num_I16_to_le_bytes :: "i16 \<Rightarrow> u8 list" where
+  "core_num_I16_to_le_bytes x = scalar_to_le_bytes I16 x"
+definition core_num_I16_to_be_bytes :: "i16 \<Rightarrow> u8 list" where
+  "core_num_I16_to_be_bytes x = scalar_to_be_bytes I16 x"
+definition core_num_I16_from_le_bytes :: "u8 list \<Rightarrow> i16" where
+  "core_num_I16_from_le_bytes bs = scalar_from_le_bytes I16 bs"
+definition core_num_I16_from_be_bytes :: "u8 list \<Rightarrow> i16" where
+  "core_num_I16_from_be_bytes bs = scalar_from_be_bytes I16 bs"
+definition core_num_I32_to_le_bytes :: "i32 \<Rightarrow> u8 list" where
+  "core_num_I32_to_le_bytes x = scalar_to_le_bytes I32 x"
+definition core_num_I32_to_be_bytes :: "i32 \<Rightarrow> u8 list" where
+  "core_num_I32_to_be_bytes x = scalar_to_be_bytes I32 x"
+definition core_num_I32_from_le_bytes :: "u8 list \<Rightarrow> i32" where
+  "core_num_I32_from_le_bytes bs = scalar_from_le_bytes I32 bs"
+definition core_num_I32_from_be_bytes :: "u8 list \<Rightarrow> i32" where
+  "core_num_I32_from_be_bytes bs = scalar_from_be_bytes I32 bs"
+definition core_num_I64_to_le_bytes :: "i64 \<Rightarrow> u8 list" where
+  "core_num_I64_to_le_bytes x = scalar_to_le_bytes I64 x"
+definition core_num_I64_to_be_bytes :: "i64 \<Rightarrow> u8 list" where
+  "core_num_I64_to_be_bytes x = scalar_to_be_bytes I64 x"
+definition core_num_I64_from_le_bytes :: "u8 list \<Rightarrow> i64" where
+  "core_num_I64_from_le_bytes bs = scalar_from_le_bytes I64 bs"
+definition core_num_I64_from_be_bytes :: "u8 list \<Rightarrow> i64" where
+  "core_num_I64_from_be_bytes bs = scalar_from_be_bytes I64 bs"
+definition core_num_I128_to_le_bytes :: "i128 \<Rightarrow> u8 list" where
+  "core_num_I128_to_le_bytes x = scalar_to_le_bytes I128 x"
+definition core_num_I128_to_be_bytes :: "i128 \<Rightarrow> u8 list" where
+  "core_num_I128_to_be_bytes x = scalar_to_be_bytes I128 x"
+definition core_num_I128_from_le_bytes :: "u8 list \<Rightarrow> i128" where
+  "core_num_I128_from_le_bytes bs = scalar_from_le_bytes I128 bs"
+definition core_num_I128_from_be_bytes :: "u8 list \<Rightarrow> i128" where
+  "core_num_I128_from_be_bytes bs = scalar_from_be_bytes I128 bs"
+definition core_num_Isize_to_le_bytes :: "isize \<Rightarrow> u8 list" where
+  "core_num_Isize_to_le_bytes x = scalar_to_le_bytes Isize x"
+definition core_num_Isize_to_be_bytes :: "isize \<Rightarrow> u8 list" where
+  "core_num_Isize_to_be_bytes x = scalar_to_be_bytes Isize x"
+definition core_num_Isize_from_le_bytes :: "u8 list \<Rightarrow> isize" where
+  "core_num_Isize_from_le_bytes bs = scalar_from_le_bytes Isize bs"
+definition core_num_Isize_from_be_bytes :: "u8 list \<Rightarrow> isize" where
+  "core_num_Isize_from_be_bytes bs = scalar_from_be_bytes Isize bs"
+definition core_num_U8_to_le_bytes :: "u8 \<Rightarrow> u8 list" where
+  "core_num_U8_to_le_bytes x = scalar_to_le_bytes U8 x"
+definition core_num_U8_to_be_bytes :: "u8 \<Rightarrow> u8 list" where
+  "core_num_U8_to_be_bytes x = scalar_to_be_bytes U8 x"
+definition core_num_U8_from_le_bytes :: "u8 list \<Rightarrow> u8" where
+  "core_num_U8_from_le_bytes bs = scalar_from_le_bytes U8 bs"
+definition core_num_U8_from_be_bytes :: "u8 list \<Rightarrow> u8" where
+  "core_num_U8_from_be_bytes bs = scalar_from_be_bytes U8 bs"
+definition core_num_U16_to_le_bytes :: "u16 \<Rightarrow> u8 list" where
+  "core_num_U16_to_le_bytes x = scalar_to_le_bytes U16 x"
+definition core_num_U16_to_be_bytes :: "u16 \<Rightarrow> u8 list" where
+  "core_num_U16_to_be_bytes x = scalar_to_be_bytes U16 x"
+definition core_num_U16_from_le_bytes :: "u8 list \<Rightarrow> u16" where
+  "core_num_U16_from_le_bytes bs = scalar_from_le_bytes U16 bs"
+definition core_num_U16_from_be_bytes :: "u8 list \<Rightarrow> u16" where
+  "core_num_U16_from_be_bytes bs = scalar_from_be_bytes U16 bs"
+definition core_num_U32_to_le_bytes :: "u32 \<Rightarrow> u8 list" where
+  "core_num_U32_to_le_bytes x = scalar_to_le_bytes U32 x"
+definition core_num_U32_to_be_bytes :: "u32 \<Rightarrow> u8 list" where
+  "core_num_U32_to_be_bytes x = scalar_to_be_bytes U32 x"
+definition core_num_U32_from_le_bytes :: "u8 list \<Rightarrow> u32" where
+  "core_num_U32_from_le_bytes bs = scalar_from_le_bytes U32 bs"
+definition core_num_U32_from_be_bytes :: "u8 list \<Rightarrow> u32" where
+  "core_num_U32_from_be_bytes bs = scalar_from_be_bytes U32 bs"
+definition core_num_U64_to_le_bytes :: "u64 \<Rightarrow> u8 list" where
+  "core_num_U64_to_le_bytes x = scalar_to_le_bytes U64 x"
+definition core_num_U64_to_be_bytes :: "u64 \<Rightarrow> u8 list" where
+  "core_num_U64_to_be_bytes x = scalar_to_be_bytes U64 x"
+definition core_num_U64_from_le_bytes :: "u8 list \<Rightarrow> u64" where
+  "core_num_U64_from_le_bytes bs = scalar_from_le_bytes U64 bs"
+definition core_num_U64_from_be_bytes :: "u8 list \<Rightarrow> u64" where
+  "core_num_U64_from_be_bytes bs = scalar_from_be_bytes U64 bs"
+definition core_num_U128_to_le_bytes :: "u128 \<Rightarrow> u8 list" where
+  "core_num_U128_to_le_bytes x = scalar_to_le_bytes U128 x"
+definition core_num_U128_to_be_bytes :: "u128 \<Rightarrow> u8 list" where
+  "core_num_U128_to_be_bytes x = scalar_to_be_bytes U128 x"
+definition core_num_U128_from_le_bytes :: "u8 list \<Rightarrow> u128" where
+  "core_num_U128_from_le_bytes bs = scalar_from_le_bytes U128 bs"
+definition core_num_U128_from_be_bytes :: "u8 list \<Rightarrow> u128" where
+  "core_num_U128_from_be_bytes bs = scalar_from_be_bytes U128 bs"
+definition core_num_Usize_to_le_bytes :: "usize \<Rightarrow> u8 list" where
+  "core_num_Usize_to_le_bytes x = scalar_to_le_bytes Usize x"
+definition core_num_Usize_to_be_bytes :: "usize \<Rightarrow> u8 list" where
+  "core_num_Usize_to_be_bytes x = scalar_to_be_bytes Usize x"
+definition core_num_Usize_from_le_bytes :: "u8 list \<Rightarrow> usize" where
+  "core_num_Usize_from_le_bytes bs = scalar_from_le_bytes Usize bs"
+definition core_num_Usize_from_be_bytes :: "u8 list \<Rightarrow> usize" where
+  "core_num_Usize_from_be_bytes bs = scalar_from_be_bytes Usize bs"
 
 (** [core::option::{core::option::Option<T>}::unwrap] *)
 fun core_option_Option_unwrap :: "'a option \<Rightarrow> 'a result" where
@@ -1049,6 +1575,10 @@ record ('self, 'target) core_ops_deref_DerefMut =
 record 'a core_ops_range_Range =
   core_ops_range_Range_start :: 'a
   core_ops_range_Range_end_' :: 'a
+
+(* [core::ops::range::RangeTo]: [..end] *)
+record 'a core_ops_range_RangeTo =
+  core_ops_range_RangeTo_end_' :: 'a
 
 (*** [alloc] *)
 
@@ -1547,5 +2077,896 @@ definition alloc_vec_DerefVec ::
 definition alloc_vec_DerefMutVec ::
   "('a alloc_vec_Vec, 'a slice) core_ops_deref_DerefMut" where
   "alloc_vec_DerefMutVec = core_ops_deref_DerefMutVecInst"
+
+
+(*** core::cmp *)
+
+datatype core_cmp_Ordering =
+    core_cmp_Ordering_Less
+  | core_cmp_Ordering_Equal
+  | core_cmp_Ordering_Greater
+
+(* Trait declaration: [core::cmp::PartialEq] *)
+record ('self, 'rhs) core_cmp_PartialEq =
+  core_cmp_PartialEq_eq :: "'self \<Rightarrow> 'rhs \<Rightarrow> bool result"
+  core_cmp_PartialEq_ne :: "'self \<Rightarrow> 'rhs \<Rightarrow> bool result"
+
+(* Default implementation of [PartialEq::ne], used to fill the record field of
+   implementations that do not override it. *)
+definition core_cmp_PartialEq_ne_default ::
+  "('self \<Rightarrow> 'rhs \<Rightarrow> bool result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialEq_ne_default eq x y = (b <- eq x y; Ok (\<not> b))"
+
+(* Trait declaration: [core::cmp::PartialOrd] *)
+record ('self, 'rhs) core_cmp_PartialOrd =
+  partialEqInst :: "('self, 'rhs) core_cmp_PartialEq"
+  core_cmp_PartialOrd_partial_cmp :: "'self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result"
+  core_cmp_PartialOrd_lt :: "'self \<Rightarrow> 'rhs \<Rightarrow> bool result"
+  core_cmp_PartialOrd_le :: "'self \<Rightarrow> 'rhs \<Rightarrow> bool result"
+  core_cmp_PartialOrd_gt :: "'self \<Rightarrow> 'rhs \<Rightarrow> bool result"
+  core_cmp_PartialOrd_ge :: "'self \<Rightarrow> 'rhs \<Rightarrow> bool result"
+
+(* Default implementations of the comparison methods in terms of [partial_cmp]. *)
+definition core_cmp_PartialOrd_lt_default ::
+  "('self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialOrd_lt_default pc x y = (c <- pc x y; Ok (c = Some core_cmp_Ordering_Less))"
+definition core_cmp_PartialOrd_le_default ::
+  "('self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialOrd_le_default pc x y =
+    (c <- pc x y; Ok (c = Some core_cmp_Ordering_Less \<or> c = Some core_cmp_Ordering_Equal))"
+definition core_cmp_PartialOrd_gt_default ::
+  "('self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialOrd_gt_default pc x y = (c <- pc x y; Ok (c = Some core_cmp_Ordering_Greater))"
+definition core_cmp_PartialOrd_ge_default ::
+  "('self \<Rightarrow> 'rhs \<Rightarrow> (core_cmp_Ordering option) result) \<Rightarrow> 'self \<Rightarrow> 'rhs \<Rightarrow> bool result" where
+  "core_cmp_PartialOrd_ge_default pc x y =
+    (c <- pc x y; Ok (c = Some core_cmp_Ordering_Greater \<or> c = Some core_cmp_Ordering_Equal))"
+
+(* Comparison of machine integers (all represented by [int]). *)
+definition scalar_partial_cmp :: "int \<Rightarrow> int \<Rightarrow> core_cmp_Ordering option" where
+  "scalar_partial_cmp x y =
+    Some (if x < y then core_cmp_Ordering_Less
+          else if x = y then core_cmp_Ordering_Equal
+          else core_cmp_Ordering_Greater)"
+
+definition core_cmp_impls_PartialEqI8_eq :: "i8 \<Rightarrow> i8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqI8_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqI8_ne :: "i8 \<Rightarrow> i8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqI8_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqI8 :: "(i8, i8) core_cmp_PartialEq" where
+  "core_cmp_PartialEqI8 = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqI8_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqI8_ne |)"
+definition core_cmp_impls_PartialOrdI8_partial_cmp ::
+  "i8 \<Rightarrow> i8 \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdI8_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdI8_lt :: "i8 \<Rightarrow> i8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI8_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdI8_le :: "i8 \<Rightarrow> i8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI8_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdI8_gt :: "i8 \<Rightarrow> i8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI8_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdI8_ge :: "i8 \<Rightarrow> i8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI8_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdI8 :: "(i8, i8) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdI8 = (|
+    partialEqInst = core_cmp_PartialEqI8,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdI8_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdI8_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdI8_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdI8_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdI8_ge |)"
+
+definition core_cmp_impls_PartialEqI16_eq :: "i16 \<Rightarrow> i16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqI16_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqI16_ne :: "i16 \<Rightarrow> i16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqI16_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqI16 :: "(i16, i16) core_cmp_PartialEq" where
+  "core_cmp_PartialEqI16 = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqI16_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqI16_ne |)"
+definition core_cmp_impls_PartialOrdI16_partial_cmp ::
+  "i16 \<Rightarrow> i16 \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdI16_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdI16_lt :: "i16 \<Rightarrow> i16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI16_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdI16_le :: "i16 \<Rightarrow> i16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI16_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdI16_gt :: "i16 \<Rightarrow> i16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI16_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdI16_ge :: "i16 \<Rightarrow> i16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI16_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdI16 :: "(i16, i16) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdI16 = (|
+    partialEqInst = core_cmp_PartialEqI16,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdI16_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdI16_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdI16_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdI16_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdI16_ge |)"
+
+definition core_cmp_impls_PartialEqI32_eq :: "i32 \<Rightarrow> i32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqI32_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqI32_ne :: "i32 \<Rightarrow> i32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqI32_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqI32 :: "(i32, i32) core_cmp_PartialEq" where
+  "core_cmp_PartialEqI32 = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqI32_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqI32_ne |)"
+definition core_cmp_impls_PartialOrdI32_partial_cmp ::
+  "i32 \<Rightarrow> i32 \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdI32_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdI32_lt :: "i32 \<Rightarrow> i32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI32_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdI32_le :: "i32 \<Rightarrow> i32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI32_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdI32_gt :: "i32 \<Rightarrow> i32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI32_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdI32_ge :: "i32 \<Rightarrow> i32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI32_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdI32 :: "(i32, i32) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdI32 = (|
+    partialEqInst = core_cmp_PartialEqI32,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdI32_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdI32_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdI32_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdI32_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdI32_ge |)"
+
+definition core_cmp_impls_PartialEqI64_eq :: "i64 \<Rightarrow> i64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqI64_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqI64_ne :: "i64 \<Rightarrow> i64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqI64_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqI64 :: "(i64, i64) core_cmp_PartialEq" where
+  "core_cmp_PartialEqI64 = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqI64_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqI64_ne |)"
+definition core_cmp_impls_PartialOrdI64_partial_cmp ::
+  "i64 \<Rightarrow> i64 \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdI64_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdI64_lt :: "i64 \<Rightarrow> i64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI64_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdI64_le :: "i64 \<Rightarrow> i64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI64_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdI64_gt :: "i64 \<Rightarrow> i64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI64_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdI64_ge :: "i64 \<Rightarrow> i64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI64_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdI64 :: "(i64, i64) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdI64 = (|
+    partialEqInst = core_cmp_PartialEqI64,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdI64_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdI64_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdI64_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdI64_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdI64_ge |)"
+
+definition core_cmp_impls_PartialEqI128_eq :: "i128 \<Rightarrow> i128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqI128_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqI128_ne :: "i128 \<Rightarrow> i128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqI128_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqI128 :: "(i128, i128) core_cmp_PartialEq" where
+  "core_cmp_PartialEqI128 = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqI128_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqI128_ne |)"
+definition core_cmp_impls_PartialOrdI128_partial_cmp ::
+  "i128 \<Rightarrow> i128 \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdI128_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdI128_lt :: "i128 \<Rightarrow> i128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI128_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdI128_le :: "i128 \<Rightarrow> i128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI128_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdI128_gt :: "i128 \<Rightarrow> i128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI128_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdI128_ge :: "i128 \<Rightarrow> i128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdI128_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdI128 :: "(i128, i128) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdI128 = (|
+    partialEqInst = core_cmp_PartialEqI128,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdI128_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdI128_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdI128_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdI128_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdI128_ge |)"
+
+definition core_cmp_impls_PartialEqIsize_eq :: "isize \<Rightarrow> isize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqIsize_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqIsize_ne :: "isize \<Rightarrow> isize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqIsize_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqIsize :: "(isize, isize) core_cmp_PartialEq" where
+  "core_cmp_PartialEqIsize = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqIsize_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqIsize_ne |)"
+definition core_cmp_impls_PartialOrdIsize_partial_cmp ::
+  "isize \<Rightarrow> isize \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdIsize_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdIsize_lt :: "isize \<Rightarrow> isize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdIsize_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdIsize_le :: "isize \<Rightarrow> isize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdIsize_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdIsize_gt :: "isize \<Rightarrow> isize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdIsize_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdIsize_ge :: "isize \<Rightarrow> isize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdIsize_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdIsize :: "(isize, isize) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdIsize = (|
+    partialEqInst = core_cmp_PartialEqIsize,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdIsize_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdIsize_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdIsize_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdIsize_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdIsize_ge |)"
+
+definition core_cmp_impls_PartialEqU8_eq :: "u8 \<Rightarrow> u8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqU8_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqU8_ne :: "u8 \<Rightarrow> u8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqU8_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqU8 :: "(u8, u8) core_cmp_PartialEq" where
+  "core_cmp_PartialEqU8 = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqU8_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqU8_ne |)"
+definition core_cmp_impls_PartialOrdU8_partial_cmp ::
+  "u8 \<Rightarrow> u8 \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdU8_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdU8_lt :: "u8 \<Rightarrow> u8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU8_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdU8_le :: "u8 \<Rightarrow> u8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU8_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdU8_gt :: "u8 \<Rightarrow> u8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU8_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdU8_ge :: "u8 \<Rightarrow> u8 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU8_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdU8 :: "(u8, u8) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdU8 = (|
+    partialEqInst = core_cmp_PartialEqU8,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdU8_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdU8_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdU8_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdU8_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdU8_ge |)"
+
+definition core_cmp_impls_PartialEqU16_eq :: "u16 \<Rightarrow> u16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqU16_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqU16_ne :: "u16 \<Rightarrow> u16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqU16_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqU16 :: "(u16, u16) core_cmp_PartialEq" where
+  "core_cmp_PartialEqU16 = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqU16_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqU16_ne |)"
+definition core_cmp_impls_PartialOrdU16_partial_cmp ::
+  "u16 \<Rightarrow> u16 \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdU16_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdU16_lt :: "u16 \<Rightarrow> u16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU16_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdU16_le :: "u16 \<Rightarrow> u16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU16_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdU16_gt :: "u16 \<Rightarrow> u16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU16_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdU16_ge :: "u16 \<Rightarrow> u16 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU16_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdU16 :: "(u16, u16) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdU16 = (|
+    partialEqInst = core_cmp_PartialEqU16,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdU16_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdU16_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdU16_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdU16_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdU16_ge |)"
+
+definition core_cmp_impls_PartialEqU32_eq :: "u32 \<Rightarrow> u32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqU32_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqU32_ne :: "u32 \<Rightarrow> u32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqU32_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqU32 :: "(u32, u32) core_cmp_PartialEq" where
+  "core_cmp_PartialEqU32 = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqU32_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqU32_ne |)"
+definition core_cmp_impls_PartialOrdU32_partial_cmp ::
+  "u32 \<Rightarrow> u32 \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdU32_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdU32_lt :: "u32 \<Rightarrow> u32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU32_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdU32_le :: "u32 \<Rightarrow> u32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU32_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdU32_gt :: "u32 \<Rightarrow> u32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU32_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdU32_ge :: "u32 \<Rightarrow> u32 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU32_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdU32 :: "(u32, u32) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdU32 = (|
+    partialEqInst = core_cmp_PartialEqU32,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdU32_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdU32_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdU32_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdU32_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdU32_ge |)"
+
+definition core_cmp_impls_PartialEqU64_eq :: "u64 \<Rightarrow> u64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqU64_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqU64_ne :: "u64 \<Rightarrow> u64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqU64_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqU64 :: "(u64, u64) core_cmp_PartialEq" where
+  "core_cmp_PartialEqU64 = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqU64_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqU64_ne |)"
+definition core_cmp_impls_PartialOrdU64_partial_cmp ::
+  "u64 \<Rightarrow> u64 \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdU64_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdU64_lt :: "u64 \<Rightarrow> u64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU64_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdU64_le :: "u64 \<Rightarrow> u64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU64_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdU64_gt :: "u64 \<Rightarrow> u64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU64_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdU64_ge :: "u64 \<Rightarrow> u64 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU64_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdU64 :: "(u64, u64) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdU64 = (|
+    partialEqInst = core_cmp_PartialEqU64,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdU64_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdU64_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdU64_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdU64_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdU64_ge |)"
+
+definition core_cmp_impls_PartialEqU128_eq :: "u128 \<Rightarrow> u128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqU128_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqU128_ne :: "u128 \<Rightarrow> u128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqU128_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqU128 :: "(u128, u128) core_cmp_PartialEq" where
+  "core_cmp_PartialEqU128 = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqU128_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqU128_ne |)"
+definition core_cmp_impls_PartialOrdU128_partial_cmp ::
+  "u128 \<Rightarrow> u128 \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdU128_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdU128_lt :: "u128 \<Rightarrow> u128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU128_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdU128_le :: "u128 \<Rightarrow> u128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU128_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdU128_gt :: "u128 \<Rightarrow> u128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU128_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdU128_ge :: "u128 \<Rightarrow> u128 \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdU128_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdU128 :: "(u128, u128) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdU128 = (|
+    partialEqInst = core_cmp_PartialEqU128,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdU128_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdU128_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdU128_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdU128_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdU128_ge |)"
+
+definition core_cmp_impls_PartialEqUsize_eq :: "usize \<Rightarrow> usize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqUsize_eq x y = Ok (x = y)"
+definition core_cmp_impls_PartialEqUsize_ne :: "usize \<Rightarrow> usize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialEqUsize_ne x y = Ok (x \<noteq> y)"
+definition core_cmp_PartialEqUsize :: "(usize, usize) core_cmp_PartialEq" where
+  "core_cmp_PartialEqUsize = (|
+    core_cmp_PartialEq_eq = core_cmp_impls_PartialEqUsize_eq,
+    core_cmp_PartialEq_ne = core_cmp_impls_PartialEqUsize_ne |)"
+definition core_cmp_impls_PartialOrdUsize_partial_cmp ::
+  "usize \<Rightarrow> usize \<Rightarrow> (core_cmp_Ordering option) result" where
+  "core_cmp_impls_PartialOrdUsize_partial_cmp x y = Ok (scalar_partial_cmp x y)"
+definition core_cmp_impls_PartialOrdUsize_lt :: "usize \<Rightarrow> usize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdUsize_lt x y = Ok (x < y)"
+definition core_cmp_impls_PartialOrdUsize_le :: "usize \<Rightarrow> usize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdUsize_le x y = Ok (x \<le> y)"
+definition core_cmp_impls_PartialOrdUsize_gt :: "usize \<Rightarrow> usize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdUsize_gt x y = Ok (x > y)"
+definition core_cmp_impls_PartialOrdUsize_ge :: "usize \<Rightarrow> usize \<Rightarrow> bool result" where
+  "core_cmp_impls_PartialOrdUsize_ge x y = Ok (x \<ge> y)"
+definition core_cmp_PartialOrdUsize :: "(usize, usize) core_cmp_PartialOrd" where
+  "core_cmp_PartialOrdUsize = (|
+    partialEqInst = core_cmp_PartialEqUsize,
+    core_cmp_PartialOrd_partial_cmp = core_cmp_impls_PartialOrdUsize_partial_cmp,
+    core_cmp_PartialOrd_lt = core_cmp_impls_PartialOrdUsize_lt,
+    core_cmp_PartialOrd_le = core_cmp_impls_PartialOrdUsize_le,
+    core_cmp_PartialOrd_gt = core_cmp_impls_PartialOrdUsize_gt,
+    core_cmp_PartialOrd_ge = core_cmp_impls_PartialOrdUsize_ge |)"
+
+(*** core::ops::function *)
+
+(* Trait declarations: [core::ops::function::FnOnce], [FnMut], [Fn].  The
+   associated type [Output] is a type parameter. *)
+record ('self, 'args, 'output) core_ops_function_FnOnce =
+  core_ops_function_FnOnce_call_once :: "'self \<Rightarrow> 'args \<Rightarrow> 'output result"
+
+record ('self, 'args, 'output) core_ops_function_FnMut =
+  fnOnceInst :: "('self, 'args, 'output) core_ops_function_FnOnce"
+  core_ops_function_FnMut_call_mut :: "'self \<Rightarrow> 'args \<Rightarrow> ('output \<times> 'self) result"
+
+record ('self, 'args, 'output) core_ops_function_Fn =
+  fnMutInst :: "('self, 'args, 'output) core_ops_function_FnMut"
+  core_ops_function_Fn_call :: "'self \<Rightarrow> 'args \<Rightarrow> 'output result"
+
+(*** core::clone (default method) *)
+
+(* Default implementation of [Clone::clone_from]: ignore the old value and
+   clone the source. *)
+definition core_clone_Clone_clone_from_default ::
+  "('self \<Rightarrow> 'self result) \<Rightarrow> 'self \<Rightarrow> 'self \<Rightarrow> 'self result" where
+  "core_clone_Clone_clone_from_default clone _ source = clone source"
+
+(*** core::result, core::ops::control_flow, core::convert *)
+
+datatype ('t, 'e) core_result_Result =
+    core_result_Result_Ok 't
+  | core_result_Result_Err 'e
+
+datatype ('b, 'c) core_ops_control_flow_ControlFlow =
+    core_ops_control_flow_ControlFlow_Continue 'c
+  | core_ops_control_flow_ControlFlow_Break 'b
+
+typedecl core_num_error_TryFromIntError
+
+(* Trait declaration: [core::convert::From] *)
+record ('self, 't) core_convert_From =
+  from_' :: "'t \<Rightarrow> 'self result"
+
+(* [impl From<T> for T] *)
+definition core_convert_FromSame_from :: "'t \<Rightarrow> 't" where
+  "core_convert_FromSame_from x = x"
+
+definition core_convert_FromSame :: "('t, 't) core_convert_From" where
+  "core_convert_FromSame = (| from_' = (\<lambda>x. Ok x) |)"
+
+(* [Result::map_err] *)
+definition core_result_Result_map_err ::
+  "('o, 'e, 'f) core_ops_function_FnOnce \<Rightarrow> ('t, 'e) core_result_Result \<Rightarrow> 'o \<Rightarrow>
+   ('t, 'f) core_result_Result result" where
+  "core_result_Result_map_err inst x f =
+    (case x of
+       core_result_Result_Ok v \<Rightarrow> Ok (core_result_Result_Ok v)
+     | core_result_Result_Err e \<Rightarrow>
+         (e' <- core_ops_function_FnOnce_call_once inst f e;
+          Ok (core_result_Result_Err e')))"
+
+(* [impl Try for Result<T, E>]::branch *)
+definition core_result_Result_Insts_CoreOpsTry_branch ::
+  "('t, 'e) core_result_Result \<Rightarrow>
+   ((Never, 'e) core_result_Result, 't) core_ops_control_flow_ControlFlow result" where
+  "core_result_Result_Insts_CoreOpsTry_branch x =
+    (case x of
+       core_result_Result_Ok v \<Rightarrow> Ok (core_ops_control_flow_ControlFlow_Continue v)
+     | core_result_Result_Err e \<Rightarrow>
+         Ok (core_ops_control_flow_ControlFlow_Break (core_result_Result_Err e)))"
+
+(* [impl FromResidual<Result<!, E>> for Result<T, F>]::from_residual *)
+definition core_result_Result_Insts_CoreOpsTryFromResidual_from_residual ::
+  "('f, 'e) core_convert_From \<Rightarrow> (Never, 'e) core_result_Result \<Rightarrow>
+   ('t, 'f) core_result_Result result" where
+  "core_result_Result_Insts_CoreOpsTryFromResidual_from_residual inst r =
+    (case r of
+       core_result_Result_Ok _ \<Rightarrow> Fail Failure
+     | core_result_Result_Err e \<Rightarrow>
+         (v <- from_' inst e; Ok (core_result_Result_Err v)))"
+
+(* [TryFrom<SRC> for DST]::try_from for integer types: succeeds iff the value
+   fits in the destination type. *)
+definition scalar_try_from :: "scalar_ty \<Rightarrow> int \<Rightarrow> (int, core_num_error_TryFromIntError) core_result_Result result" where
+  "scalar_try_from ty x =
+    Ok (if scalar_in_bounds ty x then core_result_Result_Ok x
+        else core_result_Result_Err undefined)"
+definition core_convert_num_TryFromI8I16_try_from :: "i16 \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8I16_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI8I32_try_from :: "i32 \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8I32_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI8I64_try_from :: "i64 \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8I64_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI8I128_try_from :: "i128 \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8I128_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI8Isize_try_from :: "isize \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8Isize_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI8U8_try_from :: "u8 \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8U8_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI8U16_try_from :: "u16 \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8U16_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI8U32_try_from :: "u32 \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8U32_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI8U64_try_from :: "u64 \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8U64_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI8U128_try_from :: "u128 \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8U128_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI8Usize_try_from :: "usize \<Rightarrow> (i8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI8Usize_try_from x = scalar_try_from I8 x"
+definition core_convert_num_TryFromI16I8_try_from :: "i8 \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16I8_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI16I32_try_from :: "i32 \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16I32_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI16I64_try_from :: "i64 \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16I64_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI16I128_try_from :: "i128 \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16I128_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI16Isize_try_from :: "isize \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16Isize_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI16U8_try_from :: "u8 \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16U8_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI16U16_try_from :: "u16 \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16U16_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI16U32_try_from :: "u32 \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16U32_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI16U64_try_from :: "u64 \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16U64_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI16U128_try_from :: "u128 \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16U128_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI16Usize_try_from :: "usize \<Rightarrow> (i16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI16Usize_try_from x = scalar_try_from I16 x"
+definition core_convert_num_TryFromI32I8_try_from :: "i8 \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32I8_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI32I16_try_from :: "i16 \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32I16_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI32I64_try_from :: "i64 \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32I64_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI32I128_try_from :: "i128 \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32I128_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI32Isize_try_from :: "isize \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32Isize_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI32U8_try_from :: "u8 \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32U8_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI32U16_try_from :: "u16 \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32U16_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI32U32_try_from :: "u32 \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32U32_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI32U64_try_from :: "u64 \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32U64_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI32U128_try_from :: "u128 \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32U128_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI32Usize_try_from :: "usize \<Rightarrow> (i32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI32Usize_try_from x = scalar_try_from I32 x"
+definition core_convert_num_TryFromI64I8_try_from :: "i8 \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64I8_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI64I16_try_from :: "i16 \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64I16_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI64I32_try_from :: "i32 \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64I32_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI64I128_try_from :: "i128 \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64I128_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI64Isize_try_from :: "isize \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64Isize_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI64U8_try_from :: "u8 \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64U8_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI64U16_try_from :: "u16 \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64U16_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI64U32_try_from :: "u32 \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64U32_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI64U64_try_from :: "u64 \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64U64_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI64U128_try_from :: "u128 \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64U128_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI64Usize_try_from :: "usize \<Rightarrow> (i64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI64Usize_try_from x = scalar_try_from I64 x"
+definition core_convert_num_TryFromI128I8_try_from :: "i8 \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128I8_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromI128I16_try_from :: "i16 \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128I16_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromI128I32_try_from :: "i32 \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128I32_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromI128I64_try_from :: "i64 \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128I64_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromI128Isize_try_from :: "isize \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128Isize_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromI128U8_try_from :: "u8 \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128U8_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromI128U16_try_from :: "u16 \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128U16_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromI128U32_try_from :: "u32 \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128U32_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromI128U64_try_from :: "u64 \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128U64_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromI128U128_try_from :: "u128 \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128U128_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromI128Usize_try_from :: "usize \<Rightarrow> (i128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromI128Usize_try_from x = scalar_try_from I128 x"
+definition core_convert_num_TryFromIsizeI8_try_from :: "i8 \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeI8_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromIsizeI16_try_from :: "i16 \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeI16_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromIsizeI32_try_from :: "i32 \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeI32_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromIsizeI64_try_from :: "i64 \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeI64_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromIsizeI128_try_from :: "i128 \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeI128_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromIsizeU8_try_from :: "u8 \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeU8_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromIsizeU16_try_from :: "u16 \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeU16_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromIsizeU32_try_from :: "u32 \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeU32_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromIsizeU64_try_from :: "u64 \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeU64_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromIsizeU128_try_from :: "u128 \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeU128_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromIsizeUsize_try_from :: "usize \<Rightarrow> (isize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromIsizeUsize_try_from x = scalar_try_from Isize x"
+definition core_convert_num_TryFromU8I8_try_from :: "i8 \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8I8_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU8I16_try_from :: "i16 \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8I16_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU8I32_try_from :: "i32 \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8I32_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU8I64_try_from :: "i64 \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8I64_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU8I128_try_from :: "i128 \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8I128_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU8Isize_try_from :: "isize \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8Isize_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU8U16_try_from :: "u16 \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8U16_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU8U32_try_from :: "u32 \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8U32_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU8U64_try_from :: "u64 \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8U64_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU8U128_try_from :: "u128 \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8U128_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU8Usize_try_from :: "usize \<Rightarrow> (u8, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU8Usize_try_from x = scalar_try_from U8 x"
+definition core_convert_num_TryFromU16I8_try_from :: "i8 \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16I8_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU16I16_try_from :: "i16 \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16I16_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU16I32_try_from :: "i32 \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16I32_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU16I64_try_from :: "i64 \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16I64_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU16I128_try_from :: "i128 \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16I128_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU16Isize_try_from :: "isize \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16Isize_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU16U8_try_from :: "u8 \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16U8_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU16U32_try_from :: "u32 \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16U32_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU16U64_try_from :: "u64 \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16U64_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU16U128_try_from :: "u128 \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16U128_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU16Usize_try_from :: "usize \<Rightarrow> (u16, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU16Usize_try_from x = scalar_try_from U16 x"
+definition core_convert_num_TryFromU32I8_try_from :: "i8 \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32I8_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU32I16_try_from :: "i16 \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32I16_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU32I32_try_from :: "i32 \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32I32_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU32I64_try_from :: "i64 \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32I64_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU32I128_try_from :: "i128 \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32I128_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU32Isize_try_from :: "isize \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32Isize_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU32U8_try_from :: "u8 \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32U8_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU32U16_try_from :: "u16 \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32U16_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU32U64_try_from :: "u64 \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32U64_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU32U128_try_from :: "u128 \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32U128_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU32Usize_try_from :: "usize \<Rightarrow> (u32, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU32Usize_try_from x = scalar_try_from U32 x"
+definition core_convert_num_TryFromU64I8_try_from :: "i8 \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64I8_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU64I16_try_from :: "i16 \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64I16_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU64I32_try_from :: "i32 \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64I32_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU64I64_try_from :: "i64 \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64I64_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU64I128_try_from :: "i128 \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64I128_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU64Isize_try_from :: "isize \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64Isize_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU64U8_try_from :: "u8 \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64U8_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU64U16_try_from :: "u16 \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64U16_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU64U32_try_from :: "u32 \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64U32_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU64U128_try_from :: "u128 \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64U128_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU64Usize_try_from :: "usize \<Rightarrow> (u64, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU64Usize_try_from x = scalar_try_from U64 x"
+definition core_convert_num_TryFromU128I8_try_from :: "i8 \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128I8_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromU128I16_try_from :: "i16 \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128I16_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromU128I32_try_from :: "i32 \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128I32_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromU128I64_try_from :: "i64 \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128I64_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromU128I128_try_from :: "i128 \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128I128_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromU128Isize_try_from :: "isize \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128Isize_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromU128U8_try_from :: "u8 \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128U8_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromU128U16_try_from :: "u16 \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128U16_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromU128U32_try_from :: "u32 \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128U32_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromU128U64_try_from :: "u64 \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128U64_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromU128Usize_try_from :: "usize \<Rightarrow> (u128, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromU128Usize_try_from x = scalar_try_from U128 x"
+definition core_convert_num_TryFromUsizeI8_try_from :: "i8 \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeI8_try_from x = scalar_try_from Usize x"
+definition core_convert_num_TryFromUsizeI16_try_from :: "i16 \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeI16_try_from x = scalar_try_from Usize x"
+definition core_convert_num_TryFromUsizeI32_try_from :: "i32 \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeI32_try_from x = scalar_try_from Usize x"
+definition core_convert_num_TryFromUsizeI64_try_from :: "i64 \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeI64_try_from x = scalar_try_from Usize x"
+definition core_convert_num_TryFromUsizeI128_try_from :: "i128 \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeI128_try_from x = scalar_try_from Usize x"
+definition core_convert_num_TryFromUsizeIsize_try_from :: "isize \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeIsize_try_from x = scalar_try_from Usize x"
+definition core_convert_num_TryFromUsizeU8_try_from :: "u8 \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeU8_try_from x = scalar_try_from Usize x"
+definition core_convert_num_TryFromUsizeU16_try_from :: "u16 \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeU16_try_from x = scalar_try_from Usize x"
+definition core_convert_num_TryFromUsizeU32_try_from :: "u32 \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeU32_try_from x = scalar_try_from Usize x"
+definition core_convert_num_TryFromUsizeU64_try_from :: "u64 \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeU64_try_from x = scalar_try_from Usize x"
+definition core_convert_num_TryFromUsizeU128_try_from :: "u128 \<Rightarrow> (usize, core_num_error_TryFromIntError) core_result_Result result" where
+  "core_convert_num_TryFromUsizeU128_try_from x = scalar_try_from Usize x"
+
+(*** core::option *)
+
+definition core_option_Option_is_none :: "'t option \<Rightarrow> bool" where
+  "core_option_Option_is_none x = (x = None)"
+
+definition core_option_Option_is_some :: "'t option \<Rightarrow> bool" where
+  "core_option_Option_is_some x = (x \<noteq> None)"
+
+fun core_option_Option_ok_or :: "'t option \<Rightarrow> 'e \<Rightarrow> ('t, 'e) core_result_Result result" where
+  "core_option_Option_ok_or (Some v) e = Ok (core_result_Result_Ok v)"
+| "core_option_Option_ok_or None e = Ok (core_result_Result_Err e)"
+
+(* [impl Clone for Option<T>] *)
+definition core_option_CloneOption_clone ::
+  "'t core_clone_Clone \<Rightarrow> 't option \<Rightarrow> 't option result" where
+  "core_option_CloneOption_clone inst x =
+    (case x of
+       None \<Rightarrow> Ok None
+     | Some v \<Rightarrow> (v' <- core_clone_Clone_clone inst v; Ok (Some v')))"
+
+definition core_option_CloneOption :: "'t core_clone_Clone \<Rightarrow> ('t option) core_clone_Clone" where
+  "core_option_CloneOption inst = (|
+    core_clone_Clone_clone = core_option_CloneOption_clone inst,
+    core_clone_Clone_clone_from =
+      core_clone_Clone_clone_from_default (core_option_CloneOption_clone inst) |)"
+
+(*** core::ops::range::RangeInclusive *)
+
+record 'idx core_ops_range_RangeInclusive =
+  core_ops_range_RangeInclusive_start :: 'idx
+  core_ops_range_RangeInclusive_end_' :: 'idx
+  core_ops_range_RangeInclusive_exhausted :: bool
+
+definition core_ops_range_RangeInclusive_new ::
+  "'idx \<Rightarrow> 'idx \<Rightarrow> 'idx core_ops_range_RangeInclusive result" where
+  "core_ops_range_RangeInclusive_new s e =
+    Ok (| core_ops_range_RangeInclusive_start = s,
+          core_ops_range_RangeInclusive_end_' = e,
+          core_ops_range_RangeInclusive_exhausted = False |)"
+
+(* [RangeInclusive::contains]: [start <= item && item <= end], using the
+   [PartialOrd<Idx, U>] and [PartialOrd<U, Idx>] dictionaries. *)
+definition core_ops_range_RangeInclusive_contains ::
+  "('idx, 'idx) core_cmp_PartialOrd \<Rightarrow> ('idx, 'u) core_cmp_PartialOrd \<Rightarrow>
+   ('u, 'idx) core_cmp_PartialOrd \<Rightarrow> 'idx core_ops_range_RangeInclusive \<Rightarrow> 'u \<Rightarrow> bool result" where
+  "core_ops_range_RangeInclusive_contains _ inst1 inst2 r x =
+    (b1 <- core_cmp_PartialOrd_le inst1 (core_ops_range_RangeInclusive_start r) x;
+     if b1 then core_cmp_PartialOrd_le inst2 x (core_ops_range_RangeInclusive_end_' r)
+     else Ok False)"
+
+(*** alloc::vec (continued) *)
+
+definition alloc_vec_Vec_clear :: "'a alloc_vec_Vec \<Rightarrow> 'a alloc_vec_Vec" where
+  "alloc_vec_Vec_clear _ = []"
+
+(* [alloc::vec::from_elem]: [vec![x; n]] *)
+definition alloc_vec_from_elem :: "'a core_clone_Clone \<Rightarrow> 'a \<Rightarrow> usize \<Rightarrow> 'a alloc_vec_Vec result" where
+  "alloc_vec_from_elem _ x n = Ok (replicate (nat n) x)"
+
+(* [Vec::extend_from_slice]: clone the elements of the slice onto the vector.
+   Cloning is modelled as the identity (the [Clone] dictionary is ignored),
+   which is exact for [Copy] data. *)
+definition alloc_vec_Vec_extend_from_slice ::
+  "'a core_clone_Clone \<Rightarrow> 'a alloc_vec_Vec \<Rightarrow> 'a slice \<Rightarrow> 'a alloc_vec_Vec result" where
+  "alloc_vec_Vec_extend_from_slice _ v s =
+    (let l = v @ s in
+     if int (length l) \<le> usize_max then Ok l else Fail Failure)"
+
+(*** core::slice (continued) *)
+
+(* [<[T]>::copy_from_slice]: panics unless both slices have the same length. *)
+definition core_slice_Slice_copy_from_slice ::
+  "'a core_marker_Copy \<Rightarrow> 'a slice \<Rightarrow> 'a slice \<Rightarrow> 'a slice result" where
+  "core_slice_Slice_copy_from_slice _ s src =
+    (if length s = length src then Ok src else Fail Failure)"
+
+(* Shared slice iterator: the slice and the index of the next element. *)
+record 'a core_slice_iter_Iter =
+  core_slice_iter_Iter_slice :: "'a slice"
+  core_slice_iter_Iter_i :: usize
+
+definition core_slice_iter_IteratorSliceIter_next ::
+  "'a core_slice_iter_Iter \<Rightarrow> ('a option \<times> 'a core_slice_iter_Iter) result" where
+  "core_slice_iter_IteratorSliceIter_next it =
+    (let s = core_slice_iter_Iter_slice it; i = core_slice_iter_Iter_i it in
+     if 0 \<le> i \<and> i < int (length s)
+     then Ok (Some (s ! nat i), it (| core_slice_iter_Iter_i := i + 1 |))
+     else Ok (None, it))"
+
+definition alloc_vec_IntoIteratorSharedVec_into_iter ::
+  "'a alloc_vec_Vec \<Rightarrow> 'a core_slice_iter_Iter result" where
+  "alloc_vec_IntoIteratorSharedVec_into_iter v =
+    Ok (| core_slice_iter_Iter_slice = v, core_slice_iter_Iter_i = 0 |)"
+
+(* [SliceIndex<RangeTo<usize>, [T]>]: [s[..end]] *)
+definition slice_range_to_valid :: "usize core_ops_range_RangeTo \<Rightarrow> 'a slice \<Rightarrow> bool" where
+  "slice_range_to_valid r s =
+    (0 \<le> core_ops_range_RangeTo_end_' r \<and> core_ops_range_RangeTo_end_' r \<le> int (length s))"
+
+definition slice_range_to_prefix :: "usize core_ops_range_RangeTo \<Rightarrow> 'a slice \<Rightarrow> 'a slice" where
+  "slice_range_to_prefix r s = take (nat (core_ops_range_RangeTo_end_' r)) s"
+
+definition slice_range_to_replace :: "usize core_ops_range_RangeTo \<Rightarrow> 'a slice \<Rightarrow> 'a slice \<Rightarrow> 'a slice" where
+  "slice_range_to_replace r s ys = ys @ drop (nat (core_ops_range_RangeTo_end_' r)) s"
+
+definition core_slice_index_SliceIndexRangeToUsizeSlice_get ::
+  "usize core_ops_range_RangeTo \<Rightarrow> 'a slice \<Rightarrow> 'a slice option result" where
+  "core_slice_index_SliceIndexRangeToUsizeSlice_get r s =
+    Ok (if slice_range_to_valid r s then Some (slice_range_to_prefix r s) else None)"
+
+definition core_slice_index_SliceIndexRangeToUsizeSlice_get_mut ::
+  "usize core_ops_range_RangeTo \<Rightarrow> 'a slice \<Rightarrow>
+   ('a slice option \<times> ('a slice option \<Rightarrow> 'a slice)) result" where
+  "core_slice_index_SliceIndexRangeToUsizeSlice_get_mut r s =
+    (if slice_range_to_valid r s then
+       Ok (Some (slice_range_to_prefix r s),
+           \<lambda>nss. case nss of None \<Rightarrow> s | Some ys \<Rightarrow> slice_range_to_replace r s ys)
+     else Ok (None, \<lambda>_. s))"
+
+definition core_slice_index_SliceIndexRangeToUsizeSlice_get_unchecked ::
+  "usize core_ops_range_RangeTo \<Rightarrow> 'a slice const_raw_ptr \<Rightarrow> 'a slice const_raw_ptr result" where
+  "core_slice_index_SliceIndexRangeToUsizeSlice_get_unchecked _ _ = Fail Failure"
+
+definition core_slice_index_SliceIndexRangeToUsizeSlice_get_unchecked_mut ::
+  "usize core_ops_range_RangeTo \<Rightarrow> 'a slice mut_raw_ptr \<Rightarrow> 'a slice mut_raw_ptr result" where
+  "core_slice_index_SliceIndexRangeToUsizeSlice_get_unchecked_mut _ _ = Fail Failure"
+
+definition core_slice_index_SliceIndexRangeToUsizeSlice_index ::
+  "usize core_ops_range_RangeTo \<Rightarrow> 'a slice \<Rightarrow> 'a slice result" where
+  "core_slice_index_SliceIndexRangeToUsizeSlice_index r s =
+    (if slice_range_to_valid r s then Ok (slice_range_to_prefix r s) else Fail Failure)"
+
+definition core_slice_index_SliceIndexRangeToUsizeSlice_index_mut ::
+  "usize core_ops_range_RangeTo \<Rightarrow> 'a slice \<Rightarrow> ('a slice \<times> ('a slice \<Rightarrow> 'a slice)) result" where
+  "core_slice_index_SliceIndexRangeToUsizeSlice_index_mut r s =
+    (if slice_range_to_valid r s
+     then Ok (slice_range_to_prefix r s, slice_range_to_replace r s)
+     else Fail Failure)"
+
+definition core_slice_index_private_slice_index_SealedRangeToUsizeInst
+  :: "usize core_ops_range_RangeTo core_slice_index_private_slice_index_Sealed"
+  where "core_slice_index_private_slice_index_SealedRangeToUsizeInst =
+    (| core_slice_index_private_slice_index_Sealed_dummy = () |)"
+
+definition core_slice_index_SliceIndexRangeToUsizeSliceInst ::
+  "(usize core_ops_range_RangeTo, 'a slice, 'a slice) core_slice_index_SliceIndex" where
+  "core_slice_index_SliceIndexRangeToUsizeSliceInst = (|
+    sealedInst = core_slice_index_private_slice_index_SealedRangeToUsizeInst,
+    core_slice_index_SliceIndex_get = core_slice_index_SliceIndexRangeToUsizeSlice_get,
+    core_slice_index_SliceIndex_get_mut = core_slice_index_SliceIndexRangeToUsizeSlice_get_mut,
+    core_slice_index_SliceIndex_get_unchecked = core_slice_index_SliceIndexRangeToUsizeSlice_get_unchecked,
+    core_slice_index_SliceIndex_get_unchecked_mut = core_slice_index_SliceIndexRangeToUsizeSlice_get_unchecked_mut,
+    core_slice_index_SliceIndex_index = core_slice_index_SliceIndexRangeToUsizeSlice_index,
+    core_slice_index_SliceIndex_index_mut = core_slice_index_SliceIndexRangeToUsizeSlice_index_mut
+  |)"
 
 end
