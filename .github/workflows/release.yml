@@ -1,7 +1,7 @@
 name: Release
 on:
-  schedule:
-    - cron: '0 4 * * *' # Nightly at 04:00 UTC
+  # This fork does not publish nightly releases: the upstream schedule
+  # (`cron: '0 4 * * *'`) is disabled, the workflow can only be run by hand.
   workflow_dispatch:
 
 jobs:
